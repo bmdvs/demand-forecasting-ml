@@ -370,11 +370,10 @@ stockout events and jobs held are also tracked in this report.</p>
 <p>A forecast can only be scored once its lead-time window has closed, so each month is judged on accuracy once at
 least {TH['matured'] * 100:.0f}% of its forecasts have matured. By June 30th that covers January to April; May and June
 are shown but not yet judged on accuracy.</p>
-<p>The flag reads {rec_label}. While the model is refit on new data every month as a matter of course, this
-recommendation is for a full re-tune, refreshing the bias corrections and hyperparameters on data through June. This
-is because {worst[0] + ' items' if worst else 'one demand pattern'} drifted outside tolerance in two consecutive
-matured months. Separately, the safety buffers should be recalibrated: achieved fill rates ran below their targets
-through most of the half.</p>
+<p>The flag reads {rec_label}, meaning the model should be fully retrained on data through June. This is because
+the model's forecast error on intermittent items drifted outside tolerance in two consecutive months (March and
+April). Separately, the safety buffers should be recalibrated: achieved fill rates ran more than 1 point below their
+targets for the five months between January and May.</p>
 {status_block()}
 <p>The monitoring rules are presented below across three tiers and evaluated every month. Model rules determine when
 retraining is needed, Secondary rules manage leading indicators that warrant investigation, and Policy rules set
