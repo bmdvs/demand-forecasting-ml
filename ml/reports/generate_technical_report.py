@@ -463,10 +463,13 @@ def ops_table():
         ["Data lineage", "ERP and WMS extracts &rarr; dbt staging, intermediate and data-quality models &rarr; weekly "
                          "usage and item attribute marts &rarr; forward_policy.py (train, forecast, policy) &rarr; "
                          "rop_schedule.json &rarr; ERP reorder queue"],
-        ["Retraining triggers", "Live WAPE for any demand pattern more than 5 points above its 2025 level for two "
-                                "consecutive months; corrected bias outside &plusmn;10% for a pattern; achieved fill "
-                                "rate more than 1 point below target for a criticality group; stockout events or jobs "
-                                "held for material above their 1H 2026 monthly level for two consecutive months"],
+        ["Retraining triggers", "Full re-tune when, in two consecutive matured months (at least 80% of forecasts "
+                                "scored), live WAPE for any demand pattern is more than 5 points above its 2025 level "
+                                "or corrected bias for a pattern is outside &plusmn;10%. Safety buffers are "
+                                "recalibrated when achieved fill rate is more than 1 point below target for a "
+                                "criticality group; stockout events or jobs held for material above the 2025 monthly "
+                                "average call for investigation. See the "
+                                "<a href=\"monitoring_report.html\">monitoring report</a>"],
     ]
     return widths(B.data_table(["Specification", "Detail"], rows), [22, 78])
 
