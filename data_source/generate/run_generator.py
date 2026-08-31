@@ -333,6 +333,27 @@ def _forward_results(sim, sim_dirty, sim_rule, schedule, item_master, imc, cost_
             res["forward"][k]["clean_rule"] = window_metrics(sim_rule, a, b, cost_by_item, abc_by_item, primary,
                                                              production_orders, tier_by_item=tier_by_iid,
                                                              ss_by_item=ss_of(rule_schedule, a, b, ss_rule))
+    # month by month, for monitoring: the model's live months and the status quo alongside
+    if schedule:
+        res["monthly"] = {}
+        m0 = C.FORWARD_START
+        while m0 <= C.END_DATE:
+            m1 = (date(m0.year + (m0.month // 12), m0.month % 12 + 1, 1) - timedelta(days=1))
+            m1 = min(m1, C.END_DATE)
+            res["monthly"][m0.strftime("%Y-%m")] = {
+                "model": window_metrics(sim, m0, m1, cost_by_item, abc_by_item, primary, production_orders,
+                                       tier_by_item=tier_by_iid, ss_by_item=ss_model(m0, m1)),
+                "dirty": window_metrics(sim_dirty, m0, m1, cost_by_item, abc_by_item, primary, production_orders,
+                                       tier_by_item=tier_by_iid, ss_by_item=ss_dirty)}
+            m0 = m1 + timedelta(days=1)
+        res["monthly_2025"] = {}
+        m0 = date(C.MODEL_SPAN_END.year, 1, 1)
+        while m0 < C.FORWARD_START:
+            m1 = date(m0.year + (m0.month // 12), m0.month % 12 + 1, 1) - timedelta(days=1)
+            res["monthly_2025"][m0.strftime("%Y-%m")] = window_metrics(sim, m0, m1, cost_by_item, abc_by_item, primary,
+                                                                       production_orders, tier_by_item=tier_by_iid,
+                                                                       ss_by_item=ss_dirty)
+            m0 = m1 + timedelta(days=1)
     return res
 
 
