@@ -575,8 +575,8 @@ model in use. The reorder points use the bias-corrected forecast (Section 5), wh
 {metrics_table()}
 <p>A live WAPE of {pct(live_w, 0)} means that for every 100 units an item used over its lead time, the forecast was
 off by about {live_w * 100:.0f} units in either direction. That is typical for item-level forecasts of lumpy,
-job-driven demand, where a single job or spare-parts order can double an item's usage in a week. <strong>The errors
-largely cancel across items: total forecast usage was within {abs(live_bias) * 100:.1f}% of actual.</strong> The model's
+job-driven demand, where a single job or spare-parts order can double an item's usage in a week. The errors
+largely cancel across items: total forecast usage was within {abs(live_bias) * 100:.1f}% of actual. The model's
 gain over the best simple method ({pct(live_b, 0)}) is modest, as is usual for forecasts built from usage history
 alone. Most of the operational improvement comes from how the forecast is used, covered in Section 5.</p>
 <p>The learning curve refits the selected model on growing random shares of the training rows. The held-out error
@@ -623,18 +623,6 @@ median rather than the mean, so they run low, most of all for intermittent items
 scaled by the ratio of actual to forecast usage in the held-out 2025 year. This correction removes almost all of the
 systematic under-forecasting in live use, as shown below.</p>
 {bias_table()}
-<p><strong>Safety buffer.</strong> The buffer is calculated as k standard errors of the item's own forecast
-error: k &times; &sigma;, where &sigma; combines the forecast's miss over the lead time with the variability of the
-supplier's delivery time, and k sets how many of those standard errors to hold. Two refinements are important to
-highlight here. First, the part of an item's demand already visible on booked production jobs carries no forecast
-error, so the error is scaled down by that share. Second, k is not taken from a normal curve. It is set on the
-model's actual 2025 errors so that the expected shortfall per replenishment cycle stays within the fill-rate target
-for the item's criticality group. The errors have much fatter tails than a normal curve: at k = 2 the expected
-shortfall is {k_emp[2.0][0] / k_emp[2.0][1]:.1f} times what a normal distribution implies, and at k = 3,
-{k_emp[3.0][0] / k_emp[3.0][1]:.1f} times. This is important to ensure an adequate buffer size. Because the shortfall allowance scales with the order
-quantity, an item ordered in large lots needs less buffer (its own lot protects most of the cycle), and an item
-ordered often needs more.</p>
-{B.chart("Expected Shortfall vs Buffer Size: Actual Errors vs Normal", charts["loss"])}
 <p><strong>Order quantity.</strong> The recommended order quantity for each item, calculated from its usage
 forecast, balances the cost of placing an order line against the cost of holding stock. Expensive, heavily used items
 are ordered every few weeks, and cheap items a few times a year.</p>
@@ -647,6 +635,18 @@ last 5%. In 2025 the typical A item used about {k_(ABCV.loc['A', 'med_val'])} of
 are bought in the smallest lots. See the <a href="model_overview.html">ML Model Overview</a> report for more detail on
 this order quantity approach.</p>
 {B.chart("Order Quantity in Days of Usage, by Value Class", charts["lots"])}
+<p><strong>Safety buffer.</strong> The buffer is calculated as k standard errors of the item's own forecast
+error: k &times; &sigma;, where &sigma; combines the forecast's miss over the lead time with the variability of the
+supplier's delivery time, and k sets how many of those standard errors to hold. Two refinements are important to
+highlight here. First, the part of an item's demand already visible on booked production jobs carries no forecast
+error, so the error is scaled down by that share. Second, k is not taken from a normal curve. It is set on the
+model's actual 2025 errors so that the expected shortfall per replenishment cycle stays within the fill-rate target
+for the item's criticality group. The errors have much fatter tails than a normal curve: at k = 2 the expected
+shortfall is {k_emp[2.0][0] / k_emp[2.0][1]:.1f} times what a normal distribution implies, and at k = 3,
+{k_emp[3.0][0] / k_emp[3.0][1]:.1f} times. This is important to ensure an adequate buffer size. Because the shortfall allowance scales with the order
+quantity, an item ordered in large lots needs less buffer (its own lot protects most of the cycle), and an item
+ordered often needs more.</p>
+{B.chart("Expected Shortfall vs Buffer Size: Actual Errors vs Normal", charts["loss"])}
 
 {B.section("limits", "Section 6", "Known Limitations")}
 <ul class="limitation-list">
