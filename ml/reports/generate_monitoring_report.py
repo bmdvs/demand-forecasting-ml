@@ -267,11 +267,11 @@ def rules_table():
     rows_spec = [
         ("Model", f"Forecast error for any demand pattern more than {TH['wape_tol'] * 100:.0f} points above its 2025 level", "performance", "Retrain if met in two consecutive matured months"),
         ("Model", f"Forecast bias for any demand pattern outside &plusmn;{TH['bias_tol'] * 100:.0f}%", "bias", "Retrain if met in two consecutive matured months"),
-        ("Policy", f"Fill rate more than {TH['fill_tol'] * 100:.0f} point below target for a criticality group", "service", "Recalibrate safety buffers"),
-        ("Policy", "Stockout events or jobs held for material above the 2025 monthly average", "outcomes", "Investigate"),
         ("Secondary", f"Target drift (distance &ge; {TH['drift']:.2f})", "target_drift", "Investigate with another secondary"),
         ("Secondary", f"Prediction drift (distance &ge; {TH['drift']:.2f})", "prediction_drift", "Investigate with another secondary"),
         ("Secondary", f"More than {TH['max_feats']} input features drifted", "feature_drift", "Investigate with another secondary"),
+        ("Policy", f"Fill rate more than {TH['fill_tol'] * 100:.0f} point below target for a criticality group", "service", "Recalibrate safety buffers"),
+        ("Policy", "Stockout events or jobs held for material above the 2025 monthly average", "outcomes", "Investigate"),
     ]
     head = "".join(f'<th style="text-align:center;">{s_}</th>' for s_ in short)
     rows = ""
@@ -377,8 +377,8 @@ matured months. Separately, the safety buffers should be recalibrated: achieved 
 through most of the half.</p>
 {status_block()}
 <p>The monitoring rules are presented below across three tiers and evaluated every month. Model rules determine when
-retraining is needed, the Policy rules set business KPI targets, and the Secondary rules manage leading indicators
-that warrant investigation.</p>
+retraining is needed, Secondary rules manage leading indicators that warrant investigation, and Policy rules set
+business KPI targets.</p>
 {rules_table()}
 
 {B.section("summary", "Section 2", "MLOps Monitoring Summary")}
