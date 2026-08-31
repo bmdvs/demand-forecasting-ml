@@ -363,21 +363,21 @@ toc = ('<a href="#status">1 &middot; Status &amp; Decision</a>'
 
 body = f"""
 {B.section("status", "Section 1", "Status &amp; Retraining Decision")}
-<p>The demand model is monitored monthly across its live window, January to June 2026. Forecast error and bias are
-the primary model triggers; target, prediction and feature drift are leading indicators; and the fill rates,
-stockouts and held jobs the reorder policy produces are tracked alongside. A forecast can only be scored once its
-lead-time window has closed, so each month is judged on accuracy once at least {TH['matured'] * 100:.0f}% of its
-forecasts have matured. By June 30 that covers January to April; May and June are shown but not yet judged on
-accuracy.</p>
-<p>The flag reads {rec_label}. The model is refit on new data every month as a matter of course; this
-recommendation is for a full re-tune, refreshing the bias corrections and hyperparameters on data through June,
-because {worst[0] + ' items' if worst else 'one demand pattern'} drifted outside tolerance in two consecutive matured
-months. Separately, the safety buffers should be recalibrated: achieved fill rates ran below their targets through
-most of the half.</p>
+<p>The demand forecasting model has been monitored monthly across its live window, January to June 2026. Forecast
+error and bias are the primary model triggers (i.e., when these fail in two consecutive months, the model must be
+retrained), while target, prediction and feature drift are leading indicators.</p>
+<p>A forecast can only be scored once its lead-time window has closed, so each month is judged on accuracy once at
+least {TH['matured'] * 100:.0f}% of its forecasts have matured. By June 30 that covers January to April; May and June
+are shown but not yet judged on accuracy.</p>
+<p>The flag reads {rec_label}. While the model is refit on new data every month as a matter of course, this
+recommendation is for a full re-tune, refreshing the bias corrections and hyperparameters on data through June. This
+is because {worst[0] + ' items' if worst else 'one demand pattern'} drifted outside tolerance in two consecutive
+matured months. Separately, the safety buffers should be recalibrated: achieved fill rates ran below their targets
+through most of the half.</p>
 {status_block()}
-<p>The rules below are evaluated every month. Model rules call for retraining; the policy rule calls for recalibrating
-the safety buffers rather than the forecast; the guardrail watches the outcomes the business feels; and the
-secondary rules are leading proxies that warrant investigation.</p>
+<p>The monitoring rules are presented below across four tiers. Model rules determine when retraining is needed, the
+Policy rule determines when recalibrating the safety buffers is needed, the Guardrail rule sets business KPI targets,
+and the Secondary rules manage leading indicators that warrant investigation.</p>
 {rules_table()}
 
 {B.section("summary", "Section 2", "MLOps Monitoring Summary")}
