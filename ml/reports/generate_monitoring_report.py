@@ -41,6 +41,21 @@ short = [pd.Timestamp(p["period"] + "-01").strftime("%b") for p in P]
 matured = [p for p in P if p["matured"]]
 last_m = matured[-1]
 last = P[-1]
+M = [p for p in P if p["matured"]]                       # months judged on accuracy
+mnames = [pd.Timestamp(p["period"] + "-01").strftime("%b %Y") for p in M]
+mshort = [pd.Timestamp(p["period"] + "-01").strftime("%b") for p in M]
+
+
+def model_rule(p):
+    """Model-tier result for a matured month: Pass, Flagged (first month) or Retrain (second in a row)."""
+    hit = p["primary"]["performance"] or p["primary"]["bias"]
+    if not hit:
+        return "Pass"
+    prev = [q for q in M if q["period"] < p["period"]]
+    return "Retrain" if prev and (prev[-1]["primary"]["performance"] or prev[-1]["primary"]["bias"]) else "Flagged"
+
+
+RULE_STYLE = {"Pass": (GREEN, "&#10003;"), "Flagged": (AMBER, "&#9680;"), "Retrain": (ACCENT_RED, "&#9888;")}
 ref_wape = float(np.abs(bt["actual"] - bt["pred_c"]).sum() / bt["actual"].sum())
 SEG = ["smooth", "erratic", "lumpy", "intermittent"]
 TIERS = [("line", "Production items"), ("service", "Spare parts"), ("standard", "Shop supplies")]
@@ -87,28 +102,28 @@ def _mat_color(p, c):
 
 def chart_wape():
     fig, ax = B.make_fig(3.2)
-    vals = [p["wape"] * 100 for p in P]
-    bars = ax.bar(names, vals, color=[_mat_color(p, STATUS[p["status"]][0]) for p in P], width=0.55)
+    vals = [p["wape"] * 100 for p in M]
+    bars = ax.bar(mnames, vals, color=[RULE_STYLE[model_rule(p)][0] for p in M], width=0.5)
     ax.axhline(ref_wape * 100, color=MED_GREY, ls="--", lw=1.4, label=f"Held-out 2025 reference {ref_wape * 100:.1f}%")
-    for b_, v, p in zip(bars, vals, P):
-        ax.text(b_.get_x() + b_.get_width() / 2, v + 0.6, f"{v:.1f}%" + ("" if p["matured"] else "\n(maturing)"),
-                ha="center", va="bottom", fontsize=8.5)
-    ax.set_ylabel("WAPE, bias-corrected (%)"); ax.set_ylim(0, max(vals) * 1.25); ax.legend(loc="lower left", fontsize=8.5)
+    for b_, v in zip(bars, vals):
+        ax.text(b_.get_x() + b_.get_width() / 2, v + 0.6, f"{v:.1f}%", ha="center", va="bottom", fontsize=8.5)
+    ax.set_ylabel("WAPE, bias-corrected (%)"); ax.set_ylim(0, max(vals) * 1.2)
+    ax.legend(loc="lower center", bbox_to_anchor=(0.5, 1.0), fontsize=8.5, frameon=False)
     B.chart_style(ax); fig.tight_layout()
     return B.b64(fig)
 
 
 def chart_pattern():
     fig, ax = B.make_fig(3.2)
-    x = np.arange(len(P)); w = 0.2
+    x = np.arange(len(M)); w = 0.2
     cols = {"smooth": DARK_BLUE, "erratic": LIGHT_BLUE, "lumpy": MED_GREY, "intermittent": AMBER}
     for i, sg in enumerate(SEG):
-        vals = [(p["pattern_bias"].get(sg, np.nan) * 100) if p["matured"] else np.nan for p in P]
+        vals = [p["pattern_bias"].get(sg, np.nan) * 100 for p in M]
         ax.bar(x + (i - 1.5) * w, vals, w, color=cols[sg], label=sg.capitalize())
     for y in (TH["bias_tol"] * 100, -TH["bias_tol"] * 100):
         ax.axhline(y, color=ACCENT_RED, ls="--", lw=1.2)
     ax.axhline(0, color=DARK_GREY, lw=0.8)
-    ax.set_xticks(x); ax.set_xticklabels([n + ("" if p["matured"] else "\n(maturing)") for n, p in zip(names, P)], fontsize=8.5)
+    ax.set_xticks(x); ax.set_xticklabels(mnames)
     ax.set_ylabel("Forecast bias (%)"); ax.legend(ncol=4, fontsize=8.5, loc="lower center", bbox_to_anchor=(0.5, 1.0), frameon=False)
     B.chart_style(ax); fig.tight_layout()
     return B.b64(fig)
@@ -116,14 +131,15 @@ def chart_pattern():
 
 def chart_drift(key):
     fig, ax = B.make_fig(3.0)
-    vals = [p[key] for p in P]
+    PP = M if key == "target_drift" else P
+    labels = [pd.Timestamp(p["period"] + "-01").strftime("%b %Y") for p in PP]
+    vals = [p[key] for p in PP]
     colors = [LIGHT_GREY if (key == "target_drift" and not p["matured"]) else (ACCENT_RED if v >= TH["drift"] else GREEN)
-              for v, p in zip(vals, P)]
-    bars = ax.bar(names, vals, color=colors, width=0.55)
+              for v, p in zip(vals, PP)]
+    bars = ax.bar(labels, vals, color=colors, width=0.55)
     ax.axhline(TH["drift"], color=ACCENT_RED, ls="--", lw=1.3, label=f"Threshold {TH['drift']:.2f}")
-    for b_, v, p in zip(bars, vals, P):
-        note = "\n(maturing)" if key == "target_drift" and not p["matured"] else ""
-        ax.text(b_.get_x() + b_.get_width() / 2, v + 0.004, f"{v:.3f}{note}", ha="center", va="bottom", fontsize=8.5)
+    for b_, v in zip(bars, vals):
+        ax.text(b_.get_x() + b_.get_width() / 2, v + 0.004, f"{v:.3f}", ha="center", va="bottom", fontsize=8.5)
     ax.set_ylabel("Jensen-Shannon distance"); ax.set_ylim(0, max(TH["drift"] * 1.4, max(vals) * 1.35)); ax.legend()
     B.chart_style(ax); fig.tight_layout()
     return B.b64(fig)
@@ -288,15 +304,18 @@ def rules_table():
                  f'<td>{rule}</td><td style="font-size:12.5px;">{action}</td>{cells}</tr>')
     status_row = "".join(f'<td style="text-align:center;font-size:11px;color:{STATUS[p["status"]][0]};font-weight:700;'
                          f'line-height:1.3;">{STATUS[p["status"]][1]}<br>{p["status"].title()}</td>' for p in P)
-    rows += f'<tr style="font-weight:700;"><td></td><td>Status</td><td></td>{status_row}</tr>'
+    rows += f'<tr style="font-weight:700;"><td></td><td>Overall status</td><td></td>{status_row}</tr>'
     return widths(f'<table class="data-table"><thead><tr><th>Tier</th><th>Rule</th><th>Action</th>{head}</tr></thead>'
                   f'<tbody>{rows}</tbody></table>', [9, 29, 14] + [8] * len(P))
 
 
 def perf_table():
+    def rule(p):
+        c, i = RULE_STYLE[model_rule(p)]
+        return f'<span style="color:{c};font-weight:700;">{i} {model_rule(p)}</span>'
     rows = [[n, f"{p['n_forecasts']:,}", pct(p["n_scored"] / p["n_forecasts"], 0), pct(p["wape"]), pct(p["base_wape"]),
-             f"{p['bias'] * 100:+.1f}%", tag(p["status"])] for n, p in zip(names, P)]
-    return widths(B.data_table(["Month", "Forecasts", "Matured", "WAPE", "Best simple method", "Bias", "Status"], rows,
+             f"{p['bias'] * 100:+.1f}%", rule(p)] for n, p in zip(mnames, M)]
+    return widths(B.data_table(["Month", "Forecasts", "Matured", "WAPE", "Best simple method", "Bias", "Model rules"], rows,
                                right=[1, 2, 3, 4, 5]), [15, 13, 11, 12, 18, 11, 20])
 
 
@@ -304,8 +323,8 @@ def pattern_table():
     rows = []
     for sg in SEG:
         r = [sg.capitalize(), pct(REFP[sg]["wape"], 0)]
-        for p in P:
-            if not p["matured"] or sg not in p["pattern_wape"]:
+        for p in M:
+            if sg not in p["pattern_wape"]:
                 r.append(f'<span style="color:{MED_GREY};">&middot;</span>')
                 continue
             w_, b_ = p["pattern_wape"][sg], p["pattern_bias"][sg]
@@ -313,8 +332,8 @@ def pattern_table():
             r.append(f'<span style="white-space:nowrap;color:{ACCENT_RED if bad else "inherit"};{"font-weight:700;" if bad else ""}">'
                      f'{w_ * 100:.0f}% / {b_ * 100:+.0f}%</span>')
         rows.append(r)
-    return widths(B.data_table(["Demand pattern", "2025 WAPE"] + short, rows, right=list(range(1, len(P) + 2))),
-                  [18, 12] + [70 / len(P)] * len(P))
+    return widths(B.data_table(["Demand pattern", "2025 WAPE"] + mshort, rows, right=list(range(1, len(M) + 2))),
+                  [22, 14] + [64 / len(M)] * len(M))
 
 
 def dq_table():
@@ -339,7 +358,7 @@ def log_table():
     for r in rlog.itertuples():
         p = next((x for x in P if x["period"] == r.period), None)
         rows.append([pd.Timestamp(r.period + "-01").strftime("%b %Y"), r.trained_on, r.history_through, f"{r.training_rows:,}",
-                     WIN, pct(p["wape"]) + ("" if p and p["matured"] else " (maturing)") if p else "-"])
+                     WIN, pct(p["wape"]) if p and p["matured"] else "Not yet matured"])
     return widths(B.data_table(["Month", "Retrained on", "History through", "Training rows", "Model", "Month's WAPE"], rows,
                                right=[3, 5]), [14, 16, 17, 15, 17, 21])
 
@@ -385,17 +404,18 @@ business KPI targets.</p>
 against the rows the model was trained on, and outcomes against the shop's 2025 results.</p>
 
 {B.section("perf", "Section 2.1", "Performance")}
-<p>Forecast error each month for the bias-corrected forecasts the reorder points use, against the
-{pct(ref_wape)} reference from the held-out 2025 year. <strong>Across the matured months, overall error stays close
-to the reference ({pct(min(p['wape'] for p in matured))} to {pct(max(p['wape'] for p in matured))}) and overall
-bias stays within {max(abs(p['bias']) for p in matured) * 100:.0f}%, so the model as a whole has not degraded.</strong>
-The later months' figures come from the few forecasts already matured, mostly items with short lead times, so they
-are not comparable yet.</p>
+<p>Forecast error for each complete month of data is presented below against the {pct(ref_wape)} reference from
+the held-out 2025 year. <strong>From January to April, overall error stays close to the reference
+({pct(min(p['wape'] for p in M))} to {pct(max(p['wape'] for p in M))}) and overall bias stays within
+{max(abs(p['bias']) for p in M) * 100:.0f}%, meaning the model as a whole has not degraded.</strong> Recall, May and
+June's forecasts haven't matured yet, so they're not included in this chart.</p>
 {B.chart("Forecast Error (WAPE) by Month", charts["wape"])}
 {perf_table()}
-<p>By demand pattern the picture is less even. Each cell shows the month's error and bias.
-{('<strong>' + worst[0].capitalize() + ' items were over-forecast in ' + ' and '.join(pd.Timestamp(h[0] + '-01').strftime('%B') for h in worst[1]) + ', with error rising above the 2025 level and bias beyond the tolerance. This is the trigger behind the recommendation: the bias correction set on 2025 is now too strong for these items, which leads to excess stock on them rather than shortages.</strong>') if worst else ''}
-{other_pats_txt}</p>
+<p>Examining forecast error by demand pattern, <strong>intermittent items were over-forecast in March and April,
+with error rising above the 2025 level and bias beyond the tolerance. This is the trigger behind the retraining
+recommendation: the bias correction set on 2025 is now too strong for these items, which leads to excess stock on
+them rather than shortages.</strong> Erratic items also crossed the bias tolerance in April. Smooth and lumpy items
+stay within tolerance.</p>
 {pattern_table()}
 {B.chart("Forecast Bias by Demand Pattern and Month (tolerance &plusmn;" + f"{TH['bias_tol'] * 100:.0f}" + "%)", charts["pattern"])}
 
@@ -404,8 +424,7 @@ are not comparable yet.</p>
 {TH['drift']:.2f}). A shift would mean demand itself has moved away from what the model learned. <strong>Across the
 matured months target drift stays well under the threshold ({min(p['target_drift'] for p in matured):.3f} to
 {max(p['target_drift'] for p in matured):.3f}): the shop's usage looks like the usage the model was trained
-on.</strong> The higher readings for May and June reflect the short-lead-time items that make up their few matured
-forecasts, not a shift in demand.</p>
+on.</strong></p>
 {B.chart("Target Drift Distance by Month", charts["target"])}
 
 {B.section("prediction", "Section 2.3", "Prediction Drift")}
