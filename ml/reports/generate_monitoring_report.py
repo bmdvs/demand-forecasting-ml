@@ -47,15 +47,15 @@ mshort = [pd.Timestamp(p["period"] + "-01").strftime("%b") for p in M]
 
 
 def model_rule(p):
-    """Model-tier result for a matured month: Pass, Flagged (first month) or Retrain (second in a row)."""
+    """Model-tier result for a matured month: Pass, Investigate (first month) or Retrain (second in a row)."""
     hit = p["primary"]["performance"] or p["primary"]["bias"]
     if not hit:
         return "Pass"
     prev = [q for q in M if q["period"] < p["period"]]
-    return "Retrain" if prev and (prev[-1]["primary"]["performance"] or prev[-1]["primary"]["bias"]) else "Flagged"
+    return "Retrain" if prev and (prev[-1]["primary"]["performance"] or prev[-1]["primary"]["bias"]) else "Investigate"
 
 
-RULE_STYLE = {"Pass": (GREEN, "&#10003;"), "Flagged": (AMBER, "&#9680;"), "Retrain": (ACCENT_RED, "&#9888;")}
+RULE_STYLE = {"Pass": (GREEN, "&#10003;"), "Investigate": (AMBER, "&#9680;"), "Retrain": (ACCENT_RED, "&#9888;")}
 ref_wape = float(np.abs(bt["actual"] - bt["pred_c"]).sum() / bt["actual"].sum())
 SEG = ["smooth", "erratic", "lumpy", "intermittent"]
 TIERS = [("line", "Production items"), ("service", "Spare parts"), ("standard", "Shop supplies")]
@@ -103,7 +103,7 @@ def _mat_color(p, c):
 def chart_wape():
     fig, ax = B.make_fig(3.2)
     vals = [p["wape"] * 100 for p in M]
-    bars = ax.bar(mnames, vals, color=[RULE_STYLE[model_rule(p)][0] for p in M], width=0.5)
+    bars = ax.bar(mnames, vals, color=DARK_BLUE, width=0.5)
     ax.axhline(ref_wape * 100, color=MED_GREY, ls="--", lw=1.4, label=f"Held-out 2025 reference {ref_wape * 100:.1f}%")
     for b_, v in zip(bars, vals):
         ax.text(b_.get_x() + b_.get_width() / 2, v + 0.6, f"{v:.1f}%", ha="center", va="bottom", fontsize=8.5)
@@ -407,7 +407,9 @@ against the rows the model was trained on, and outcomes against the shop's 2025 
 <p>Forecast error for each complete month of data is presented below against the {pct(ref_wape)} reference from
 the held-out 2025 year. <strong>From January to April, overall error stays close to the reference
 ({pct(min(p['wape'] for p in M))} to {pct(max(p['wape'] for p in M))}) and overall bias stays within
-{max(abs(p['bias']) for p in M) * 100:.0f}%, meaning the model as a whole has not degraded.</strong> Recall, May and
+{max(abs(p['bias']) for p in M) * 100:.0f}%, meaning the model as a whole has not degraded.</strong> However, the model rules are checked by demand pattern,
+not just overall: intermittent items failed them in March (Investigate) and again in April (Retrain), as the table
+and the pattern breakdown below show. Recall, May and
 June's forecasts haven't matured yet, so they're not included in this chart.</p>
 {B.chart("Forecast Error (WAPE) by Month", charts["wape"])}
 {perf_table()}
