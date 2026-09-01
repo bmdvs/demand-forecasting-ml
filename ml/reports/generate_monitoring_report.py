@@ -342,8 +342,7 @@ def _th(text):
 
 
 def perf_table():
-    rows = [[_th("Investigate threshold"), _th(f"above {pct(ref_wape)}"), _th("none"), ""],
-            [_th("Retrain threshold"), _th(f"above {pct(ret_wape)}"), _th(f"outside &plusmn;{TH['bias_tol'] * 100:.0f}%"), ""]]
+    rows = []
     for n, p in zip(mnames, M):
         ml = p["model_levels"]
         rows.append([n, _val(pct(p["wape"]), ml["overall_wape"]), _val(f"{p['bias'] * 100:+.1f}%", ml["overall_bias"]),
@@ -439,7 +438,7 @@ the held-out 2025 year. <strong>From January to April, overall error stays close
 ({pct(min(p['wape'] for p in M))} to {pct(max(p['wape'] for p in M))}) and overall bias stays within
 {max(abs(p['bias']) for p in M) * 100:.0f}%, meaning the model as a whole has not degraded.</strong> March and April sit slightly above the reference, so both
 are flagged to Investigate, but stay below the Retrain threshold of {pct(ret_wape)}.</p>
-{B.chart("Forecast Error (WAPE) by Month", charts["wape"])}
+{B.chart("Overall Forecast Error (WAPE) by Month", charts["wape"])}
 {perf_table()}
 <p>Examining forecast error by demand pattern, <strong>intermittent items were over-forecast in March and April,
 with error rising above the Retrain threshold and bias beyond the tolerance. This is the trigger behind the retraining
