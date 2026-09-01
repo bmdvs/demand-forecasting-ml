@@ -54,6 +54,7 @@ def model_rule(p):
     return LEVEL[max(p["model_levels"]["overall_wape"], p["model_levels"]["overall_bias"])]
 
 
+LV_COLOR = {0: GREEN, 1: AMBER, 2: ACCENT_RED}
 RULE_STYLE = {"Pass": (GREEN, "&#10003;"), "Investigate": (AMBER, "&#9680;"), "Retrain": (ACCENT_RED, "&#9888;")}
 ref_wape = summ["reference_wape"]
 ret_wape = ref_wape + TH["wape_overall_tol"]
@@ -126,6 +127,40 @@ def chart_pattern():
     ax.axhline(0, color=DARK_GREY, lw=0.8)
     ax.set_xticks(x); ax.set_xticklabels(mnames)
     ax.set_ylabel("Forecast bias (%)"); ax.legend(ncol=4, fontsize=8.5, loc="lower center", bbox_to_anchor=(0.5, 1.0), frameon=False)
+    B.chart_style(ax); fig.tight_layout()
+    return B.b64(fig)
+
+
+def chart_overall_bias():
+    fig, ax = B.make_fig(3.0)
+    vals = [p["bias"] * 100 for p in M]
+    bars = ax.bar(mnames, vals, color=[LV_COLOR[p["model_levels"]["overall_bias"]] for p in M], width=0.5)
+    for y in (TH["bias_tol"] * 100, -TH["bias_tol"] * 100):
+        ax.axhline(y, color=ACCENT_RED, ls="--", lw=1.3)
+    ax.plot([], [], color=ACCENT_RED, ls="--", lw=1.3, label=f"Retrain outside ±{TH['bias_tol'] * 100:.0f}%")
+    ax.axhline(0, color=DARK_GREY, lw=0.8)
+    for b_, v in zip(bars, vals):
+        ax.text(b_.get_x() + b_.get_width() / 2, v + (0.5 if v >= 0 else -0.5), f"{v:+.1f}%",
+                ha="center", va="bottom" if v >= 0 else "top", fontsize=9)
+    lim = TH["bias_tol"] * 100 * 1.4
+    ax.set_ylim(-lim, lim); ax.set_ylabel("Forecast bias (%)")
+    ax.legend(loc="lower center", bbox_to_anchor=(0.5, 1.0), fontsize=8.5, frameon=False)
+    B.chart_style(ax); fig.tight_layout()
+    return B.b64(fig)
+
+
+def chart_pattern_wape():
+    fig, ax = B.make_fig(3.2)
+    x = np.arange(len(M)); w = 0.2
+    cols = {"smooth": DARK_BLUE, "erratic": LIGHT_BLUE, "lumpy": MED_GREY, "intermittent": AMBER}
+    for i, sg in enumerate(SEG):
+        vals = [(p["pattern_wape"][sg] - REFP[sg]["wape"]) * 100 if sg in p["pattern_wape"] else np.nan for p in M]
+        ax.bar(x + (i - 1.5) * w, vals, w, color=cols[sg], label=sg.capitalize())
+    ax.axhline(0, color=AMBER, ls="--", lw=1.3, label="Investigate above 2025 level")
+    ax.axhline(TH["wape_tol"] * 100, color=ACCENT_RED, ls="--", lw=1.3, label=f"Retrain above +{TH['wape_tol'] * 100:.0f} points")
+    ax.set_xticks(x); ax.set_xticklabels(mnames); ax.set_xlim(-0.5, len(M) - 0.5)
+    ax.set_ylabel("Points above 2025 level")
+    ax.legend(ncol=3, fontsize=8.5, loc="lower center", bbox_to_anchor=(0.5, 1.0), frameon=False)
     B.chart_style(ax); fig.tight_layout()
     return B.b64(fig)
 
@@ -218,7 +253,7 @@ def chart_outcomes():
     return B.b64(fig)
 
 
-charts = {"wape": chart_wape(), "pattern": chart_pattern(), "target": chart_drift("target_drift"),
+charts = {"wape": chart_wape(), "obias": chart_overall_bias(), "pwape": chart_pattern_wape(), "pattern": chart_pattern(), "target": chart_drift("target_drift"),
           "pred": chart_drift("prediction_drift"), "pdist": chart_pred_dist(), "heat": chart_feat_heat(),
           "fill": chart_fill(), "outcomes": chart_outcomes()}
 
@@ -325,9 +360,6 @@ def rules_table():
                   f'<tbody>{rows}</tbody></table>', [9, 29, 14] + [8] * len(P))
 
 
-LV_COLOR = {0: GREEN, 1: AMBER, 2: ACCENT_RED}
-
-
 def _val(text, level):
     return f'<span style="color:{LV_COLOR[level]};font-weight:700;">{text}</span>'
 
@@ -352,24 +384,28 @@ def perf_table():
 
 
 def pattern_table():
-    rows = [[_th("Investigate threshold")] + [_th(f"above {pct(REFP[sg]['wape'])}") for sg in SEG] + [""],
-            [_th("Retrain threshold")] + [_th(f"above {pct(REFP[sg]['wape'] + TH['wape_tol'])}") for sg in SEG] + [""]]
+    th = 'style="text-align:right;"'
+    top = ('<th rowspan="2">Month</th>'
+           + "".join(f'<th colspan="2" style="text-align:center;">{sg.capitalize()}<br>'
+                     f'<span style="font-weight:400;text-transform:none;">2025: {pct(REFP[sg]["wape"])}</span></th>' for sg in SEG)
+           + '<th rowspan="2">Model rules</th>')
+    sub = "".join(f"<th {th}>Error</th><th {th}>Bias</th>" for sg in SEG)
+    body = ""
     for n, p in zip(mnames, M):
         lv = p["pattern_levels"]
-        rows.append([n] + [_val(pct(p["pattern_wape"][sg]), lv[sg]["wape"]) if sg in lv else "" for sg in SEG]
-                    + [_flag(p["model_levels"]["pattern_wape"])])
-    return widths(B.data_table(["Month"] + [sg.capitalize() for sg in SEG] + ["Model rules"], rows, right=[1, 2, 3, 4]),
-                  [20, 14, 14, 14, 14, 24])
-
-
-def pattern_bias_table():
-    rows = [[_th("Retrain threshold")] + [_th(f"outside &plusmn;{TH['bias_tol'] * 100:.0f}%") for sg in SEG] + [""]]
-    for n, p in zip(mnames, M):
-        lv = p["pattern_levels"]
-        rows.append([n] + [_val(f"{p['pattern_bias'][sg] * 100:+.1f}%", lv[sg]["bias"]) if sg in lv else "" for sg in SEG]
-                    + [_flag(p["model_levels"]["pattern_bias"])])
-    return widths(B.data_table(["Month"] + [sg.capitalize() for sg in SEG] + ["Model rules"], rows, right=[1, 2, 3, 4]),
-                  [20, 14, 14, 14, 14, 24])
+        cells = ""
+        for sg in SEG:
+            if sg in lv:
+                b_txt = f"{p['pattern_bias'][sg] * 100:+.1f}%"
+                cells += (f'<td {th}>{_val(pct(p["pattern_wape"][sg]), lv[sg]["wape"])}</td>'
+                          f'<td {th}>{_val(b_txt, lv[sg]["bias"])}</td>')
+            else:
+                cells += "<td></td><td></td>"
+        flag = _flag(max(p["model_levels"]["pattern_wape"], p["model_levels"]["pattern_bias"]))
+        body += f"<tr><td>{n}</td>{cells}<td>{flag}</td></tr>"
+    cols = "".join(f'<col style="width:{v}%;">' for v in [10] + [9.25] * 8 + [16])
+    return (f'<table class="data-table" style="table-layout:fixed;"><colgroup>{cols}</colgroup>'
+            f'<thead><tr>{top}</tr><tr>{sub}</tr></thead><tbody>{body}</tbody></table>')
 
 
 def dq_table():
@@ -439,18 +475,19 @@ the held-out 2025 year. <strong>From January to April, overall error stays close
 {max(abs(p['bias']) for p in M) * 100:.0f}%, meaning the model as a whole has not degraded.</strong> March and April sit slightly above the reference, so both
 are flagged to Investigate, but stay below the Retrain threshold of {pct(ret_wape)}.</p>
 {B.chart("Overall Forecast Error (WAPE) by Month", charts["wape"])}
+{B.chart("Overall Forecast Bias by Month", charts["obias"])}
 {perf_table()}
 <p>Examining forecast error by demand pattern, <strong>intermittent items were over-forecast in March and April,
 with error rising above the Retrain threshold and bias beyond the tolerance. This is the trigger behind the retraining
 recommendation: the bias correction set on 2025 is now too strong for these items, which leads to excess stock on
 them rather than shortages.</strong> Each pattern is judged against its own 2025 level: above it flags Investigate,
 and more than {TH['wape_tol'] * 100:.0f} points above flags Retrain. Smooth, erratic and lumpy items stay below their
-Retrain thresholds, though some ran slightly above their 2025 levels (Investigate), most often smooth items.</p>
-{pattern_table()}
-<p>Bias by demand pattern is judged against the same &plusmn;{TH['bias_tol'] * 100:.0f}% threshold. Intermittent
+Retrain thresholds, though some ran slightly above their 2025 levels (Investigate), most often smooth items.
+Bias by demand pattern is judged against the same &plusmn;{TH['bias_tol'] * 100:.0f}% threshold: intermittent
 items crossed it in March and April, and erratic items in April.</p>
-{pattern_bias_table()}
+{B.chart("Forecast Error by Demand Pattern, Points Above 2025 Level", charts["pwape"])}
 {B.chart("Forecast Bias by Demand Pattern and Month (Retrain threshold &plusmn;" + f"{TH['bias_tol'] * 100:.0f}" + "%)", charts["pattern"])}
+{pattern_table()}
 
 {B.section("target", "Section 2.2", "Target Drift")}
 <p>Distance between each month's actual lead-time usage and the training rows (Jensen-Shannon, flagged at
