@@ -46,17 +46,17 @@ mnames = [pd.Timestamp(p["period"] + "-01").strftime("%b %Y") for p in M]
 mshort = [pd.Timestamp(p["period"] + "-01").strftime("%b") for p in M]
 
 
+LEVEL = {0: "Pass", 1: "Investigate", 2: "Retrain"}
+
+
 def model_rule(p):
-    """Model-tier result for a matured month: Pass, Investigate (first month) or Retrain (second in a row)."""
-    hit = p["primary"]["performance"] or p["primary"]["bias"]
-    if not hit:
-        return "Pass"
-    prev = [q for q in M if q["period"] < p["period"]]
-    return "Retrain" if prev and (prev[-1]["primary"]["performance"] or prev[-1]["primary"]["bias"]) else "Investigate"
+    """Overall model rules for a matured month: forecast error and bias."""
+    return LEVEL[max(p["model_levels"]["overall_wape"], p["model_levels"]["overall_bias"])]
 
 
 RULE_STYLE = {"Pass": (GREEN, "&#10003;"), "Investigate": (AMBER, "&#9680;"), "Retrain": (ACCENT_RED, "&#9888;")}
-ref_wape = float(np.abs(bt["actual"] - bt["pred_c"]).sum() / bt["actual"].sum())
+ref_wape = summ["reference_wape"]
+ret_wape = ref_wape + TH["wape_overall_tol"]
 SEG = ["smooth", "erratic", "lumpy", "intermittent"]
 TIERS = [("line", "Production items"), ("service", "Spare parts"), ("standard", "Shop supplies")]
 WIN = {"RandomForest": "Random forest", "XGBoost": "XGBoost", "Linear": "Ridge regression"}[metrics["winner"]]
@@ -86,11 +86,10 @@ def tag(status):
 # what drove the model triggers in the matured months
 flag_pats = {}
 for p in matured:
-    for sg, w_ in p["pattern_wape"].items():
-        b_ = p["pattern_bias"][sg]
-        if w_ - REFP[sg]["wape"] > TH["wape_tol"] or abs(b_) > TH["bias_tol"]:
-            flag_pats.setdefault(sg, []).append((p["period"], w_, b_))
-model_months = [p for p in matured if p["primary"]["performance"] or p["primary"]["bias"]]
+    for sg, lv in p["pattern_levels"].items():
+        if max(lv.values()) == 2:
+            flag_pats.setdefault(sg, []).append((p["period"], p["pattern_wape"][sg], p["pattern_bias"][sg], lv))
+inv_overall = [p for p in matured if p["model_levels"]["overall_wape"] == 1]
 svc_months = [p for p in P if p["primary"]["service"]]
 out_months = [p for p in P if p["primary"]["outcomes"]]
 
@@ -103,12 +102,14 @@ def _mat_color(p, c):
 def chart_wape():
     fig, ax = B.make_fig(3.2)
     vals = [p["wape"] * 100 for p in M]
-    bars = ax.bar(mnames, vals, color=DARK_BLUE, width=0.5)
-    ax.axhline(ref_wape * 100, color=MED_GREY, ls="--", lw=1.4, label=f"Held-out 2025 reference {ref_wape * 100:.1f}%")
+    bars = ax.bar(mnames, vals, color=[RULE_STYLE[model_rule(p)][0] for p in M], width=0.5)
+    ax.axhline(ref_wape * 100, color=AMBER, ls="--", lw=1.4, label=f"Investigate above {ref_wape * 100:.1f}% (2025 reference)")
+    ax.axhline(ret_wape * 100, color=ACCENT_RED, ls="--", lw=1.4, label=f"Retrain above {ret_wape * 100:.1f}%")
     for b_, v in zip(bars, vals):
-        ax.text(b_.get_x() + b_.get_width() / 2, v + 0.6, f"{v:.1f}%", ha="center", va="bottom", fontsize=8.5)
-    ax.set_ylabel("WAPE, bias-corrected (%)"); ax.set_ylim(0, max(vals) * 1.2)
-    ax.legend(loc="lower center", bbox_to_anchor=(0.5, 1.0), fontsize=8.5, frameon=False)
+        ax.text(b_.get_x() + b_.get_width() / 2, v - 2, f"{v:.1f}%", ha="center", va="top", fontsize=9,
+                color="white", fontweight="bold")
+    ax.set_ylabel("WAPE, bias-corrected (%)"); ax.set_ylim(0, max(max(vals), ret_wape * 100) * 1.15)
+    ax.legend(loc="lower center", bbox_to_anchor=(0.5, 1.0), ncol=2, fontsize=8.5, frameon=False)
     B.chart_style(ax); fig.tight_layout()
     return B.b64(fig)
 
@@ -225,15 +226,21 @@ charts = {"wape": chart_wape(), "pattern": chart_pattern(), "target": chart_drif
 # ── tables and blocks ───────────────────────────────────────────────────────
 def reasons():
     r = []
+    mon = lambda ps: " and ".join(pd.Timestamp(x + "-01").strftime("%B") for x in ps)
     for sg, hits in flag_pats.items():
-        months = " and ".join(pd.Timestamp(h[0] + "-01").strftime("%B") for h in hits)
         parts = []
-        if any(h[1] - REFP[sg]["wape"] > TH["wape_tol"] for h in hits):
-            parts.append(f"forecast error up to {max(h[1] for h in hits) * 100:.0f}% against "
-                         f"{REFP[sg]['wape'] * 100:.0f}% in 2025")
-        if any(abs(h[2]) > TH["bias_tol"] for h in hits):
-            parts.append(f"bias up to {max((h[2] for h in hits), key=abs) * 100:+.0f}%")
-        r.append(f"{sg.capitalize()} items: {' and '.join(parts)} ({months})")
+        wh = [h for h in hits if h[3]["wape"] == 2]
+        bh = [h for h in hits if h[3]["bias"] == 2]
+        if wh:
+            parts.append(f"forecast error {' and '.join(f'{h[1] * 100:.0f}%' for h in wh)} against a Retrain threshold of "
+                         f"{(REFP[sg]['wape'] + TH['wape_tol']) * 100:.0f}% ({mon([h[0] for h in wh])})")
+        if bh:
+            parts.append(f"bias {' and '.join(f'{h[2] * 100:+.0f}%' for h in bh)} against &plusmn;{TH['bias_tol'] * 100:.0f}% "
+                         f"({mon([h[0] for h in bh])})")
+        r.append(f"{sg.capitalize()} items: {'; '.join(parts)}")
+    if inv_overall:
+        r.append(f"Overall forecast error above the 2025 reference of {pct(ref_wape)} in {mon([p['period'] for p in inv_overall])} "
+                 f"(Investigate), below the Retrain threshold of {pct(ret_wape)}")
     if svc_months:
         r.append(f"Fill rate below target by more than {TH['fill_tol'] * 100:.0f} point in {len(svc_months)} of "
                  f"{len(P)} months (largest gap {max(p['fill_gap'] for p in P) * 100:.1f} points): recalibrate the "
@@ -259,6 +266,7 @@ def status_block():
         "<p style='margin:8px 0 0;color:#8093A4;'>No triggers met.</p>"
     def c(cond):
         return ACCENT_RED if cond else GREEN
+    lc = {0: GREEN, 1: AMBER, 2: ACCENT_RED}
     return f"""<div class="status-block" style="border-color:{rec_color};">
       <div class="status-header" style="background:{rec_color};">
         <span class="status-icon">{rec_icon}</span><span class="status-label">{rec_label}</span>
@@ -268,9 +276,9 @@ def status_block():
           <div><span class="meta-label">Model</span><span class="meta-val">demand_forecaster ({WIN}), retrained monthly</span></div>
           <div><span class="meta-label">Periods Monitored</span><span class="meta-val">{names[0]} to {names[-1]}</span></div>
           <div><span class="meta-label">Latest Matured Month</span><span class="meta-val">{pd.Timestamp(last_m['period'] + '-01').strftime('%B %Y')}</span></div>
-          <div><span class="meta-label">WAPE (latest matured)</span><span class="meta-val" style="color:{c(last_m['wape'] - ref_wape > TH['wape_tol'])};">{pct(last_m['wape'])} overall (2025: {pct(ref_wape)})</span></div>
-          <div><span class="meta-label">Bias (latest matured)</span><span class="meta-val" style="color:{c(abs(last_m['bias']) > TH['bias_tol'])};">{last_m['bias'] * 100:+.1f}% overall</span></div>
-          <div><span class="meta-label">Worst Pattern</span><span class="meta-val" style="color:{c(last_m['primary']['performance'] or last_m['primary']['bias'])};">{worst_pat_txt}</span></div>
+          <div><span class="meta-label">WAPE (latest matured)</span><span class="meta-val" style="color:{lc[last_m['model_levels']['overall_wape']]};">{pct(last_m['wape'])} overall (2025: {pct(ref_wape)})</span></div>
+          <div><span class="meta-label">Bias (latest matured)</span><span class="meta-val" style="color:{lc[last_m['model_levels']['overall_bias']]};">{last_m['bias'] * 100:+.1f}% overall</span></div>
+          <div><span class="meta-label">Worst Pattern</span><span class="meta-val" style="color:{lc[max(last_m['model_levels']['pattern_wape'], last_m['model_levels']['pattern_bias'])]};">{worst_pat_txt}</span></div>
           <div><span class="meta-label">Target Drift</span><span class="meta-val" style="color:{c(last_m['secondary']['target_drift'])};">{last_m['target_drift']:.3f}</span></div>
           <div><span class="meta-label">Prediction Drift</span><span class="meta-val" style="color:{c(last['secondary']['prediction_drift'])};">{last['prediction_drift']:.3f}</span></div>
           <div><span class="meta-label">Features Drifted</span><span class="meta-val" style="color:{c(last['secondary']['feature_drift'])};">{last['n_features_drifted']} / {last['n_features']}</span></div>
@@ -281,25 +289,33 @@ def status_block():
 
 def rules_table():
     rows_spec = [
-        ("Model", f"Forecast error for any demand pattern more than {TH['wape_tol'] * 100:.0f} points above its 2025 level", "performance", "Retrain if met in two consecutive matured months"),
-        ("Model", f"Forecast bias for any demand pattern outside &plusmn;{TH['bias_tol'] * 100:.0f}%", "bias", "Retrain if met in two consecutive matured months"),
+        ("Model", f"Overall forecast error above the 2025 reference ({pct(ref_wape)})", "overall_wape",
+         f"Investigate; Retrain if above {pct(ret_wape)}"),
+        ("Model", "Forecast error for any demand pattern above its 2025 level", "pattern_wape",
+         f"Investigate; Retrain if more than {TH['wape_tol'] * 100:.0f} points above"),
+        ("Model", f"Forecast bias, overall or for any demand pattern, outside &plusmn;{TH['bias_tol'] * 100:.0f}%", "bias", "Retrain"),
         ("Secondary", f"Target drift (distance &ge; {TH['drift']:.2f})", "target_drift", "Investigate with another secondary"),
         ("Secondary", f"Prediction drift (distance &ge; {TH['drift']:.2f})", "prediction_drift", "Investigate with another secondary"),
         ("Secondary", f"More than {TH['max_feats']} input features drifted", "feature_drift", "Investigate with another secondary"),
         ("Policy", f"Fill rate more than {TH['fill_tol'] * 100:.0f} point below target for a criticality group", "service", "Recalibrate safety buffers"),
         ("Policy", "Stockout events or jobs held for material above the 2025 monthly average", "outcomes", "Investigate"),
     ]
+    icon = {0: (GREEN, "&#10003;"), 1: (AMBER, "&#9680;"), 2: (ACCENT_RED, "&#9888;")}
     head = "".join(f'<th style="text-align:center;">{s_}</th>' for s_ in short)
     rows = ""
     for tier, rule, key, action in rows_spec:
         cells = ""
         for p in P:
-            v = {**p["primary"], **p["secondary"]}[key]
-            if key in ("performance", "bias", "target_drift") and not p["matured"]:
+            if (tier == "Model" or key == "target_drift") and not p["matured"]:
                 cells += f'<td style="text-align:center;color:{MED_GREY};">&middot;</td>'
+                continue
+            if tier == "Model":
+                ml = p["model_levels"]
+                v = max(ml["overall_bias"], ml["pattern_bias"]) if key == "bias" else ml[key]
             else:
-                cells += (f'<td style="text-align:center;color:{ACCENT_RED if v else GREEN};font-weight:700;">'
-                          f'{"&#9888;" if v else "&#10003;"}</td>')
+                v = 2 if {**p["primary"], **p["secondary"]}[key] else 0
+            c_, i_ = icon[v]
+            cells += f'<td style="text-align:center;color:{c_};font-weight:700;">{i_}</td>'
         rows += (f'<tr><td><span style="font-size:11px;font-weight:700;color:{DARK_GREY};">{tier}</span></td>'
                  f'<td>{rule}</td><td style="font-size:12.5px;">{action}</td>{cells}</tr>')
     status_row = "".join(f'<td style="text-align:center;font-size:11px;color:{STATUS[p["status"]][0]};font-weight:700;'
@@ -309,31 +325,52 @@ def rules_table():
                   f'<tbody>{rows}</tbody></table>', [9, 29, 14] + [8] * len(P))
 
 
+LV_COLOR = {0: GREEN, 1: AMBER, 2: ACCENT_RED}
+
+
+def _val(text, level):
+    return f'<span style="color:{LV_COLOR[level]};font-weight:700;">{text}</span>'
+
+
+def _flag(level):
+    c_, i_ = RULE_STYLE[LEVEL[level]]
+    return f'<span style="color:{c_};font-weight:700;">{i_} {LEVEL[level]}</span>'
+
+
+def _th(text):
+    return f'<span style="color:{MED_GREY};font-style:italic;">{text}</span>'
+
+
 def perf_table():
-    def rule(p):
-        c, i = RULE_STYLE[model_rule(p)]
-        return f'<span style="color:{c};font-weight:700;">{i} {model_rule(p)}</span>'
-    rows = [[n, f"{p['n_forecasts']:,}", pct(p["n_scored"] / p["n_forecasts"], 0), pct(p["wape"]), pct(p["base_wape"]),
-             f"{p['bias'] * 100:+.1f}%", rule(p)] for n, p in zip(mnames, M)]
-    return widths(B.data_table(["Month", "Forecasts", "Matured", "WAPE", "Best simple method", "Bias", "Model rules"], rows,
-                               right=[1, 2, 3, 4, 5]), [15, 13, 11, 12, 18, 11, 20])
+    rows = [[_th("Investigate threshold"), _th(f"above {pct(ref_wape)}"), _th("none"), ""],
+            [_th("Retrain threshold"), _th(f"above {pct(ret_wape)}"), _th(f"outside &plusmn;{TH['bias_tol'] * 100:.0f}%"), ""]]
+    for n, p in zip(mnames, M):
+        ml = p["model_levels"]
+        rows.append([n, _val(pct(p["wape"]), ml["overall_wape"]), _val(f"{p['bias'] * 100:+.1f}%", ml["overall_bias"]),
+                     _flag(max(ml["overall_wape"], ml["overall_bias"]))])
+    return widths(B.data_table(["Month", "Forecast error (WAPE)", "Bias", "Model rules"], rows, right=[1, 2]),
+                  [28, 24, 24, 24])
 
 
 def pattern_table():
-    rows = []
-    for sg in SEG:
-        r = [sg.capitalize(), pct(REFP[sg]["wape"], 0)]
-        for p in M:
-            if sg not in p["pattern_wape"]:
-                r.append(f'<span style="color:{MED_GREY};">&middot;</span>')
-                continue
-            w_, b_ = p["pattern_wape"][sg], p["pattern_bias"][sg]
-            bad = w_ - REFP[sg]["wape"] > TH["wape_tol"] or abs(b_) > TH["bias_tol"]
-            r.append(f'<span style="white-space:nowrap;color:{ACCENT_RED if bad else "inherit"};{"font-weight:700;" if bad else ""}">'
-                     f'{w_ * 100:.0f}% / {b_ * 100:+.0f}%</span>')
-        rows.append(r)
-    return widths(B.data_table(["Demand pattern", "2025 WAPE"] + mshort, rows, right=list(range(1, len(M) + 2))),
-                  [22, 14] + [64 / len(M)] * len(M))
+    rows = [[_th("Investigate threshold")] + [_th(f"above {pct(REFP[sg]['wape'])}") for sg in SEG] + [""],
+            [_th("Retrain threshold")] + [_th(f"above {pct(REFP[sg]['wape'] + TH['wape_tol'])}") for sg in SEG] + [""]]
+    for n, p in zip(mnames, M):
+        lv = p["pattern_levels"]
+        rows.append([n] + [_val(pct(p["pattern_wape"][sg]), lv[sg]["wape"]) if sg in lv else "" for sg in SEG]
+                    + [_flag(p["model_levels"]["pattern_wape"])])
+    return widths(B.data_table(["Month"] + [sg.capitalize() for sg in SEG] + ["Model rules"], rows, right=[1, 2, 3, 4]),
+                  [20, 14, 14, 14, 14, 24])
+
+
+def pattern_bias_table():
+    rows = [[_th("Retrain threshold")] + [_th(f"outside &plusmn;{TH['bias_tol'] * 100:.0f}%") for sg in SEG] + [""]]
+    for n, p in zip(mnames, M):
+        lv = p["pattern_levels"]
+        rows.append([n] + [_val(f"{p['pattern_bias'][sg] * 100:+.1f}%", lv[sg]["bias"]) if sg in lv else "" for sg in SEG]
+                    + [_flag(p["model_levels"]["pattern_bias"])])
+    return widths(B.data_table(["Month"] + [sg.capitalize() for sg in SEG] + ["Model rules"], rows, right=[1, 2, 3, 4]),
+                  [20, 14, 14, 14, 14, 24])
 
 
 def dq_table():
@@ -363,12 +400,6 @@ def log_table():
                                right=[3, 5]), [14, 16, 17, 15, 17, 21])
 
 
-_others = [sg for sg in flag_pats if sg != max(flag_pats, key=lambda k: max(abs(h[2]) for h in flag_pats[k]))]
-_ok = [sg for sg in SEG if sg not in flag_pats]
-other_pats_txt = " ".join(
-    [f"{sg.capitalize()} items also crossed the bias tolerance in "
-     + " and ".join(pd.Timestamp(h[0] + "-01").strftime("%B") for h in flag_pats[sg]) + "." for sg in _others]
-    + [(" and ".join(_ok).capitalize() + " items stay within tolerance.") if _ok else ""])
 worst = max(flag_pats.items(), key=lambda kv: max(abs(h[2]) for h in kv[1])) if flag_pats else None
 toc = ('<a href="#status">1 &middot; Status &amp; Decision</a>'
        '<a href="#summary">2 &middot; MLOps Monitoring Summary</a>'
@@ -383,15 +414,14 @@ toc = ('<a href="#status">1 &middot; Status &amp; Decision</a>'
 body = f"""
 {B.section("status", "Section 1", "Status &amp; Retraining Decision")}
 <p>The demand forecasting model has been monitored monthly across its live window, January to June 2026. Forecast
-error and bias are the primary model triggers (i.e., when these fail in two consecutive months, the model must be
+error and bias are the primary model triggers (i.e., when these exceed their Retrain thresholds, the model must be
 retrained), while target, prediction and feature drift are leading indicators. Business KPIs including fill rates,
 stockout events and jobs held are also tracked in this report.</p>
 <p>A forecast can only be scored once its lead-time window has closed, so each month is judged on accuracy once at
 least {TH['matured'] * 100:.0f}% of its forecasts have matured. By June 30th that covers January to April; May and June
 are shown but not yet judged on accuracy.</p>
 <p>The flag reads {rec_label}, meaning the model should be fully retrained on data through June. This is because
-the model's forecast error on intermittent items drifted outside tolerance in two consecutive months (March and
-April). Separately, the safety buffers should be recalibrated: achieved fill rates ran more than 1 point below their
+the model's forecast error on intermittent items rose above its Retrain threshold in March and April. Separately, the safety buffers should be recalibrated: achieved fill rates ran more than 1 point below their
 targets for the five months between January and May.</p>
 {status_block()}
 <p>The monitoring rules are presented below across three tiers and evaluated every month. Model rules determine when
@@ -407,19 +437,22 @@ against the rows the model was trained on, and outcomes against the shop's 2025 
 <p>Forecast error for each complete month of data is presented below against the {pct(ref_wape)} reference from
 the held-out 2025 year. <strong>From January to April, overall error stays close to the reference
 ({pct(min(p['wape'] for p in M))} to {pct(max(p['wape'] for p in M))}) and overall bias stays within
-{max(abs(p['bias']) for p in M) * 100:.0f}%, meaning the model as a whole has not degraded.</strong> However, the model rules are checked by demand pattern,
-not just overall: intermittent items failed them in March (Investigate) and again in April (Retrain), as the table
-and the pattern breakdown below show. Recall, May and
+{max(abs(p['bias']) for p in M) * 100:.0f}%, meaning the model as a whole has not degraded.</strong> March and April sit slightly above the reference, so both
+are flagged to Investigate, but stay well below the Retrain threshold of {pct(ret_wape)}. Recall, May and
 June's forecasts haven't matured yet, so they're not included in this chart.</p>
 {B.chart("Forecast Error (WAPE) by Month", charts["wape"])}
 {perf_table()}
 <p>Examining forecast error by demand pattern, <strong>intermittent items were over-forecast in March and April,
-with error rising above the 2025 level and bias beyond the tolerance. This is the trigger behind the retraining
+with error rising above the Retrain threshold and bias beyond the tolerance. This is the trigger behind the retraining
 recommendation: the bias correction set on 2025 is now too strong for these items, which leads to excess stock on
-them rather than shortages.</strong> Erratic items also crossed the bias tolerance in April. Smooth and lumpy items
-stay within tolerance.</p>
+them rather than shortages.</strong> Each pattern is judged against its own 2025 level: above it flags Investigate,
+and more than {TH['wape_tol'] * 100:.0f} points above flags Retrain. Smooth, erratic and lumpy items stay below their
+Retrain thresholds, though some ran slightly above their 2025 levels (Investigate), most often smooth items.</p>
 {pattern_table()}
-{B.chart("Forecast Bias by Demand Pattern and Month (tolerance &plusmn;" + f"{TH['bias_tol'] * 100:.0f}" + "%)", charts["pattern"])}
+<p>Bias by demand pattern is judged against the same &plusmn;{TH['bias_tol'] * 100:.0f}% threshold. Intermittent
+items crossed it in March and April, and erratic items in April.</p>
+{pattern_bias_table()}
+{B.chart("Forecast Bias by Demand Pattern and Month (Retrain threshold &plusmn;" + f"{TH['bias_tol'] * 100:.0f}" + "%)", charts["pattern"])}
 
 {B.section("target", "Section 2.2", "Target Drift")}
 <p>Distance between each month's actual lead-time usage and the training rows (Jensen-Shannon, flagged at
