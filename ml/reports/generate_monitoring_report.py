@@ -456,8 +456,8 @@ stockout events and jobs held are also monitored against target levels.</p>
 least {TH['matured'] * 100:.0f}% of its forecasts have matured. By June 30th that covers January to April; May and June
 are shown but not yet judged on accuracy.</p>
 <p>The flag reads {rec_label}, meaning the model should be fully retrained on data through June. This is because
-the model's forecast error on intermittent items rose above its Retrain threshold in March and April. Separately, the safety buffers should be recalibrated: achieved fill rates ran more than 1 point below their
-targets for the five months between January and May.</p>
+the model's forecast error on intermittent items rose above its Retrain threshold in March and April. Separately, the safety buffers should be recalibrated, because the fill rates achieved ran more than 1 point
+below their targets for the five months between January and May.</p>
 {status_block()}
 <p>The monitoring rules are presented below across three tiers and evaluated every month. Model rules determine when
 retraining is needed, Secondary rules manage leading indicators that warrant investigation, and Policy rules set
