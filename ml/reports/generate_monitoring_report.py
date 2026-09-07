@@ -533,8 +533,7 @@ on.</strong></p>
 has not seen, missing item attributes, and the largest weekly usage against the largest in the training history.
 <strong>The inputs arrive complete every month, with {'no' if max(p['negative_usage'] for p in P) == 0 else 'some'}
 negative usage, {'no' if max(p['unseen_items'] for p in P) == 0 else 'some'} unseen items and
-{'no' if max(p['missing_attributes'] for p in P) == 0 else 'some'} missing attributes, which rules out broken
-inputs as a cause of the pattern-level drift.</strong></p>
+{'no' if max(p['missing_attributes'] for p in P) == 0 else 'some'} missing attributes, so no flags are raised.</strong></p>
 {dq_table()}
 
 {B.section("outcomes", "Section 2.4", "Business KPIs")}
