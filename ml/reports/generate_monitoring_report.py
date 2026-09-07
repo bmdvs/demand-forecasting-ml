@@ -537,15 +537,10 @@ negative usage, {'no' if max(p['unseen_items'] for p in P) == 0 else 'some'} uns
 {dq_table()}
 
 {B.section("outcomes", "Section 2.4", "Business KPIs")}
-<p>Fill rate is measured against each item type's target: {FT['line'] * 100:g}% for production items and
-{FT['service'] * 100:g}% for spare parts and shop supplies. <strong>Most of the time, item types fell below their
-targets: across the six months and three item types, fill rate was below target in {n_below} of {n_cells} cases, and
-more than {TH['fill_tol'] * 100:.0f} point below in {n_below1} of them. Shop supplies missed their target in
-{'every month' if miss['standard'] == len(P) else str(miss['standard']) + ' of ' + str(len(P)) + ' months'}, spare parts in {miss['service']} and production items in {miss['line']}, with the
-largest gap for {worst_gap[0]} in {worst_gap[1]} ({worst_gap[2]:.1f} points). By {names[-1]} the gaps had narrowed to
-{P[-1]['fill_gap'] * 100:.1f} points or less.</strong> Overall forecast bias is small, so the shortfall points to the
-safety buffers: calibrated on 2025 errors, they are not quite reaching the targets, and should be recalibrated on the
-January to June errors. The early months also carry the handover from the manual stock levels.</p>
+<p><strong>Over the past six months, fill rate across each item type measured mostly below target (in {n_below} of
+{n_cells} months across the three item types).</strong> Since the overall forecast bias is small, the shortfall points
+to the safety buffers: calibrated on 2025 errors, they are not quite reaching the targets, and should be recalibrated
+on the January to June errors.</p>
 {B.chart("Fill Rate by Item Type", charts["fill"])}
 <p>Stockout events and held jobs sit above the 2025 monthly average, the Investigate threshold, in January and
 February (stockout events in January only), and below it from March onward.</p>
