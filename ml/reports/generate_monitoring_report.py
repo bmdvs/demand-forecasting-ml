@@ -516,9 +516,8 @@ drift stays well under the threshold ({min(p['target_drift'] for p in matured):.
 {max(p['target_drift'] for p in matured):.3f}), meaning monthly demand resembles the demand the model was trained
 on.</strong></p>
 {B.chart("Target Drift Distance by Month", charts["target"])}
-<p>Prediction drift measures how far the distribution of each month's forecasts has moved from that of the
-held-out 2025 forecasts, i.e., whether the forecasts are spread across the same range of values in similar
-proportions. <strong>Prediction drift stays under the threshold every month (at most
+<p><strong>Prediction drift.</strong> Distance between each month's forecasts and the forecasts from the held-out
+2025 year. <strong>Prediction drift stays under the threshold every month (at most
 {max(p['prediction_drift'] for p in P):.3f}), so the model is producing forecasts on the same scale and spread as in
 2025.</strong></p>
 {B.chart("Prediction Drift Distance by Month", charts["pred"])}
