@@ -522,13 +522,11 @@ on.</strong></p>
 2025.</strong></p>
 {B.chart("Prediction Drift Distance by Month", charts["pred"])}
 {B.chart(f"Forecast Distribution: Held-out 2025 Reference vs {names[-1]}", charts["pdist"])}
-<p>Feature drift measures how far the distribution of each input has moved each month from its distribution in
-the training rows; calendar features are excluded, since they change with the date by design. <strong>No input
-feature crosses the threshold in any month, so the item-level over-forecasting above is not explained by a shift in
-the inputs.</strong></p>
+<p><strong>Feature drift.</strong> Per-feature distance between each month's inputs and the training rows;
+calendar features are excluded, since they change with the date by design. <strong>No input feature crosses the
+threshold in any month, meaning the model's monthly inputs resemble the inputs that the model was trained
+on.</strong></p>
 {B.chart("Per-Feature Drift Distance (feature by month)", charts["heat"])}
-<p>Latest-month detail ({names[-1]}), ordered by distance:</p>
-{feat_table()}
 
 {B.section("quality", "Section 2.3", "Data Quality")}
 <p>Checks on each month's inputs: usage records, items scored, missing features, negative usage, items the model
