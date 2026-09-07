@@ -116,18 +116,16 @@ def chart_wape():
 
 
 def chart_pattern():
-    fig, ax = B.make_fig(3.2)
-    x = np.arange(len(M)); w = 0.2
-    cols = {"smooth": DARK_BLUE, "erratic": LIGHT_BLUE, "lumpy": MED_GREY, "intermittent": AMBER}
-    for i, sg in enumerate(SEG):
-        vals = [p["pattern_bias"].get(sg, np.nan) * 100 for p in M]
-        ax.bar(x + (i - 1.5) * w, vals, w, color=cols[sg], label=sg.capitalize())
+    fig, ax = B.make_fig(3.5)
+    hs = _pattern_bars(ax, lambda sg: [p["pattern_bias"].get(sg, np.nan) * 100 for p in M])
+    ret = None
     for y in (TH["bias_tol"] * 100, -TH["bias_tol"] * 100):
-        ax.axhline(y, color=ACCENT_RED, ls="--", lw=1.2)
+        ret = ax.axhline(y, color=ACCENT_RED, ls="--", lw=1.3, label=f"Retrain outside ±{TH['bias_tol'] * 100:.0f}%")
     ax.axhline(0, color=DARK_GREY, lw=0.8)
-    ax.set_xticks(x); ax.set_xticklabels(mnames)
-    ax.set_ylabel("Forecast bias (%)"); ax.legend(ncol=4, fontsize=8.5, loc="lower center", bbox_to_anchor=(0.5, 1.0), frameon=False)
-    B.chart_style(ax); fig.tight_layout()
+    ax.set_ylabel("Forecast bias (%)")
+    lo, hi = ax.get_ylim(); ax.set_ylim(lo - 1, hi + 1.5)
+    B.chart_style(ax)
+    _two_legends(fig, ax, hs, [ret])
     return B.b64(fig)
 
 
@@ -149,19 +147,43 @@ def chart_overall_bias():
     return B.b64(fig)
 
 
-def chart_pattern_wape():
-    fig, ax = B.make_fig(3.2)
+def _pattern_bars(ax, series):
+    """Grouped bars by month, one per demand pattern, each labelled with its value."""
     x = np.arange(len(M)); w = 0.2
     cols = {"smooth": DARK_BLUE, "erratic": LIGHT_BLUE, "lumpy": MED_GREY, "intermittent": AMBER}
+    handles = []
     for i, sg in enumerate(SEG):
-        vals = [(p["pattern_wape"][sg] - REFP[sg]["wape"]) * 100 if sg in p["pattern_wape"] else np.nan for p in M]
-        ax.bar(x + (i - 1.5) * w, vals, w, color=cols[sg], label=sg.capitalize())
-    ax.axhline(0, color=AMBER, ls="--", lw=1.3, label="Investigate above 2025 level")
-    ax.axhline(TH["wape_tol"] * 100, color=ACCENT_RED, ls="--", lw=1.3, label=f"Retrain above +{TH['wape_tol'] * 100:.0f} points")
+        vals = series(sg)
+        bars = ax.bar(x + (i - 1.5) * w, vals, w, color=cols[sg], label=sg.capitalize())
+        handles.append(bars)
+        for b_, v in zip(bars, vals):
+            if np.isnan(v):
+                continue
+            ax.text(b_.get_x() + b_.get_width() / 2, v + (0.3 if v >= 0 else -0.3), f"{v:+.1f}",
+                    ha="center", va="bottom" if v >= 0 else "top", fontsize=7, color=DARK_GREY)
     ax.set_xticks(x); ax.set_xticklabels(mnames); ax.set_xlim(-0.5, len(M) - 0.5)
+    return handles
+
+
+def _two_legends(fig, ax, pattern_handles, threshold_handles):
+    fig.legend(handles=threshold_handles, ncol=len(threshold_handles), fontsize=8.5, loc="upper center",
+               bbox_to_anchor=(0.5, 1.0), frameon=False)
+    fig.legend(handles=pattern_handles, ncol=4, fontsize=8.5, loc="lower center", bbox_to_anchor=(0.5, 0.0),
+               frameon=False)
+    fig.tight_layout(rect=(0, 0.07, 1, 0.92))
+
+
+def chart_pattern_wape():
+    fig, ax = B.make_fig(3.5)
+    hs = _pattern_bars(ax, lambda sg: [(p["pattern_wape"][sg] - REFP[sg]["wape"]) * 100 if sg in p["pattern_wape"]
+                                       else np.nan for p in M])
+    inv = ax.axhline(0, color=AMBER, ls="--", lw=1.3, label="Investigate above 2025 level")
+    ret = ax.axhline(TH["wape_tol"] * 100, color=ACCENT_RED, ls="--", lw=1.3,
+                     label=f"Retrain above +{TH['wape_tol'] * 100:.0f} points")
     ax.set_ylabel("Points above 2025 level")
-    ax.legend(ncol=3, fontsize=8.5, loc="lower center", bbox_to_anchor=(0.5, 1.0), frameon=False)
-    B.chart_style(ax); fig.tight_layout()
+    lo, hi = ax.get_ylim(); ax.set_ylim(lo - 0.6, hi + 0.8)
+    B.chart_style(ax)
+    _two_legends(fig, ax, hs, [inv, ret])
     return B.b64(fig)
 
 
@@ -479,7 +501,7 @@ items, exceeded the Retrain threshold. These are the primary triggers behind thi
 recommendation.</strong> Smooth and lumpy items stay below their Retrain thresholds, though at times ran slightly
 above their 2025 levels (Investigate).</p>
 {B.chart("Forecast Error by Demand Pattern, Points Above 2025 Level", charts["pwape"])}
-{B.chart("Forecast Bias by Demand Pattern and Month (Retrain threshold &plusmn;" + f"{TH['bias_tol'] * 100:.0f}" + "%)", charts["pattern"])}
+{B.chart("Forecast Bias by Demand Pattern and Month", charts["pattern"])}
 {pattern_table()}
 
 {B.section("drift", "Section 2.2", "Drift")}
