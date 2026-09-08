@@ -258,9 +258,12 @@ def chart_outcomes():
     for ax, key, ref, title in [(axes[0], "stockout_events", summ["ref_events"], "Stockout events"),
                                 (axes[1], "jobs_held", summ["ref_held"], "Jobs held for material")]:
         vals = [p[key] for p in P]
-        ax.bar(short, vals, color=[ACCENT_RED if v > ref else DARK_BLUE for v in vals], width=0.55)
+        bars = ax.bar(short, vals, color=[ACCENT_RED if v > ref else DARK_BLUE for v in vals], width=0.55)
+        for b_, v in zip(bars, vals):
+            ax.text(b_.get_x() + b_.get_width() / 2, v + max(max(vals), ref) * 0.015, f"{v:,.0f}", ha="center",
+                    va="bottom", fontsize=9, color=DARK_GREY, fontweight="bold")
         ax.axhline(ref, color=AMBER, ls="--", lw=1.3)
-        ax.text(len(P) - 0.5, ref, f"2025 monthly avg. {ref:.1f}", ha="right", va="bottom", fontsize=8.5,
+        ax.text(len(P) - 0.45, ref, f"2025 monthly avg. {ref:.1f}", ha="right", va="bottom", fontsize=8.5,
                 color=DARK_GREY, fontweight="bold")
         ax.set_xlim(-0.6, len(P) - 0.4); ax.set_ylim(0, max(max(vals), ref) * 1.2)
         ax.set_title(title, fontsize=10, color=DARK_GREY)
@@ -541,7 +544,7 @@ negative usage, {'no' if max(p['unseen_items'] for p in P) == 0 else 'some'} uns
 {n_cells} months across the three item types).</strong> Since the overall forecast bias is small, the shortfall points
 to the safety buffers: calibrated on 2025 errors, they are not quite reaching the targets, and should be recalibrated
 on the January to June errors.</p>
-{B.chart("Fill Rate by Item Type", charts["fill"])}
+{B.chart("Fill Rate by Item Type and Month", charts["fill"])}
 <p>Stockout events and held jobs sit above the 2025 monthly average, the Investigate threshold, in January and
 February (stockout events in January only), and below it from March onward.</p>
 {B.chart("Stockout Events and Held Jobs by Month", charts["outcomes"])}
