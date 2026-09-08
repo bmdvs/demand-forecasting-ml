@@ -501,7 +501,7 @@ items, exceeded the Retrain threshold. These are the primary triggers behind thi
 recommendation.</strong> Smooth and lumpy items stay below their Retrain thresholds, though at times ran slightly
 above their 2025 levels (Investigate).</p>
 {B.chart("Forecast Error by Demand Pattern, Points Above 2025 Level", charts["pwape"])}
-{B.chart("Forecast Bias by Demand Pattern and Month", charts["pattern"])}
+{B.chart("Forecast Bias by Demand Pattern, % Above or Below Actual", charts["pattern"])}
 {pattern_table()}
 
 {B.section("drift", "Section 2.2", "Drift")}
