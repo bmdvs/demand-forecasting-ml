@@ -370,13 +370,13 @@ def rules_table():
                 v = 2 if {**p["primary"], **p["secondary"]}[key] else 0
             c_, i_ = icon[v]
             cells += f'<td style="text-align:center;color:{c_};font-weight:700;">{i_}</td>'
-        rows += (f'<tr><td><span style="font-size:11px;font-weight:700;color:{DARK_GREY};">{tier}</span></td>'
-                 f'<td>{rule}</td><td style="font-size:12.5px;">{action}</td>{cells}</tr>')
-    status_row = "".join(f'<td style="text-align:center;font-size:11px;color:{STATUS[p["status"]][0]};font-weight:700;'
+        rows += (f'<tr><td><span style="font-weight:700;color:{DARK_GREY};">{tier}</span></td>'
+                 f'<td>{rule}</td><td>{action}</td>{cells}</tr>')
+    status_row = "".join(f'<td style="text-align:center;padding:9px 2px;font-size:11px;color:{STATUS[p["status"]][0]};font-weight:700;'
                          f'line-height:1.3;">{STATUS[p["status"]][1]}<br>{p["status"].title()}</td>' for p in P)
     rows += f'<tr style="font-weight:700;"><td></td><td>Overall status</td><td></td>{status_row}</tr>'
     return widths(f'<table class="data-table"><thead><tr><th>Tier</th><th>Rule</th><th>Action</th>{head}</tr></thead>'
-                  f'<tbody>{rows}</tbody></table>', [9, 29, 14] + [8] * len(P))
+                  f'<tbody>{rows}</tbody></table>', [12, 26, 18] + [44 / len(P)] * len(P))
 
 
 def _val(text, level):
