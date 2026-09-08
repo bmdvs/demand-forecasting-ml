@@ -39,6 +39,41 @@ The work had two parts. First, a full data quality audit of the ERP found 16 typ
 
 ---
 
+## Code
+
+### Data pipeline: [`data_pipeline/models/`](data_pipeline/models/)
+
+| Layer | What it is, does and contains |
+|---|---|
+| Staging | One model per source table (ERP, WMS and the buyers' spreadsheet), plus the cleanup's remediation records and the generator's ground truth. Each types and cleans the raw data into a consistent shape and format. |
+| Data quality | One model per error in the audit, sixteen in all, each flagging the records affected: dead and duplicate item records, stale lead times and reorder points, UOM mismatches, missing fields, BOM omissions, fragmented suppliers, and the ledger and purchasing errors. |
+| Intermediate | Applies the remediation without overwriting the source: resolves duplicate records to one canonical item, applies the confirmed ledger corrections, and assembles recorded usage and its corrections by item, month and week. |
+| Marts | The analysis-ready tables the audit and model read: raw, master-cleaned and fully cleaned usage, true demand, weekly usage, item attributes (demand pattern, ABC class, corrected lead time), inventory position, supplier performance, and the audit's error register. |
+
+### Data cleaning: [`data_pipeline/models/data_quality/`](data_pipeline/models/data_quality/) and [`data_source/generate/remediation.py`](data_source/generate/remediation.py)
+
+| File | What it does |
+|---|---|
+| `data_quality/dq_01` to `dq_16` | Flags the records affected by each of the sixteen errors in the audit. |
+| `marts/mart_dq_error_summary.sql` | Rolls the flagged records into the audit's error register: rows affected and rows in scope for each error and ERP table. |
+| `remediation.py` | Produces the records the cleanup leaves behind: dead-item dispositions, duplicate and supplier crosswalks, UOM conversions, recomputed lead times and reorder points, ledger corrections, document closures and the free-text attributions. |
+| `ml/src/reliability.py` | Classes every item's on-hand balance as reliable, uncertain or unreliable, before and after remediation. |
+| `ml/src/financials.py` | Measures what the errors cost and what the cleanup achieved, from the records: rush spend and shortages traced to each error, inventory write-offs and phantom on-order, and the before-and-after measures in the audit's results. |
+
+### Machine learning model: [`ml/src/`](ml/src/)
+
+| File | What it does |
+|---|---|
+| `export_marts.py` | Exports the dbt marts the model reads to parquet. |
+| `baselines.py` | Simple forecasting methods (naive, seasonal naive, moving averages, exponential smoothing, Croston) and the rolling-origin backtest harness. |
+| `features.py`, `training.py` | Feature building, the model candidates and the evaluation helpers the weekly model shares. |
+| `training_3way.py` | Runs the same model on raw, master-cleaned and fully cleaned history to measure what each tier of cleaning is worth. |
+| `forward_policy.py` | The production model: builds the weekly features, tunes random forest, XGBoost and ridge regression with Optuna, selects the winner, retrains it monthly, and turns each week's forecast into bias-corrected reorder points, safety buffers and order quantities for the ERP. |
+| `explain_weekly.py` | SHAP feature importance, the learning curve, feature correlations and the train, validation and test summary for the technical report. |
+| `monitor_weekly.py` | Monthly monitoring against Investigate and Retrain thresholds: forecast error and bias overall and by demand pattern, target, prediction and feature drift, data quality and business KPIs. |
+
+---
+
 ## How it works
 
 ```mermaid
@@ -67,18 +102,6 @@ Raw extracts from the ERP, the warehouse system and the buyers' spreadsheet are 
 Because the data is generated, dbt also reads the generator's record of what it planted, flattened into tables by [`data_source/generate/export_truth.py`](data_source/generate/export_truth.py): the true duplicate clusters, the usage that was never recorded, the planned value classes and true demand. These stand in for findings the business confirmed, and they let the marts carry raw, master-cleaned and fully cleaned versions of the usage history, plus a true-demand series to score each version against. The model reads its marts from the warehouse, exported to parquet by [`ml/src/export_marts.py`](ml/src/export_marts.py), and the data quality audit reads its error register from the `mart_dq_error_summary` mart.
 
 The demand model is a random forest, selected over XGBoost and ridge regression on a 2024 validation window and tested on the full 2025 year. Every Monday it forecasts each item's usage over its supplier lead time. That forecast is bias-corrected by demand pattern and combined with a safety buffer, sized from the model's own errors to each item type's fill-rate target, and a cost-based order quantity. The result is loaded into the ERP's reorder queue. The model is retrained monthly and monitored each month against its 2025 performance.
-
----
-
-## Results
-
-All figures below are read directly from the pipeline in this repository.
-
-- **Data quality:** over 228K records across eight ERP tables were audited, and 16 types of error were found. The largest were dead records (40% of item master records were inactive but still flagged active), stale lead times (56% of live items) and stale reorder points (77% of live items). After remediation, 100% of live items carry a lead time matching actual deliveries and a reorder point reflecting real usage, up from 4% and 23%.
-- **Operations:** in its first six months (January to June 2026), the model cut stockout events by 34%, jobs held for material by 32% and rush spend by 38% against the 2025 monthly averages.
-- **Working capital:** inventory fell 10%, about $340K, from December 31, 2025 to June 30, 2026, alongside those improvements. The entire reduction is a release of working capital.
-- **Forecast accuracy:** live forecast error (WAPE) of 46%, against 45.7% on the held-out 2025 year and 50% for the best simple forecasting method.
-- **Monitoring:** the monitoring report recommends a full retrain on data through June 2026, because forecast error and bias on intermittent items rose above their Retrain thresholds in March and April. Separately, the safety buffers should be recalibrated, since fill rates ran more than 1 point below target from January to May.
 
 ---
 
