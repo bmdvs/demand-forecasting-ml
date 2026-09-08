@@ -1,62 +1,51 @@
--- Recorded inventory position per canonical item, as the net of receipts,
--- returns, issues and adjustments. For box-bought items (defect D3) receipts are
--- booked in boxes against issues in each, so this recorded position is distorted;
--- that distortion is what the cycle-count variance surfaces. Grain: one row per
--- canonical item.
+-- Recorded inventory position per live canonical item as of the reference date: the
+-- corrected ledger's net on hand, material genuinely on order (open lines closed in
+-- remediation excluded), and their value at standard cost.
 
-with tx as (
-
-    select item_number, type, quantity
-    from {{ ref('stg_erp__inventory_transactions') }}
-
-),
-
-crosswalk as (
-
-    select * from {{ ref('item_crosswalk') }}
-
-),
-
-mapped as (
-
-    select
-        coalesce(x.canonical_item_number, t.item_number) as canonical_item_number,
-        t.type,
-        t.quantity
-    from tx t
-    left join crosswalk x on t.item_number = x.item_number
-
-),
-
-net as (
+with on_hand as (
 
     select
         canonical_item_number,
-        sum(case type
-                when 'receipt' then quantity
-                when 'return'  then quantity
-                when 'issue'   then -quantity
-                when 'adjustment' then quantity
-                else 0 end) as on_hand_recorded
-    from mapped
+        sum(case txn_type when 'RECEIPT' then qty
+                          when 'ADJUST' then qty
+                          else -abs(qty) end) as on_hand_units
+    from {{ ref('int_transactions_corrected') }}
+    where txn_date <= cast('{{ var("as_of_date") }}' as date)
     group by 1
 
 ),
 
-attrs as (
+closed as (
 
-    select canonical_item_number, standard_cost, corrected_lead_days, abc, segment
-    from {{ ref('mart_item_attributes') }}
+    select document_id, line
+    from {{ ref('stg_remediation__open_document_closures') }}
+    where document_type = 'PO'
+
+),
+
+on_order as (
+
+    select
+        coalesce(x.canonical_item_number, p.item_number)       as canonical_item_number,
+        sum(greatest(p.qty_ordered - coalesce(p.qty_received, 0), 0)) as on_order_units
+    from {{ ref('stg_erp__purchase_orders') }} p
+    left join {{ ref('item_crosswalk') }} x using (item_number)
+    left join closed c on c.document_id = p.po_id and c.line = p.line
+    where p.status = 'OPEN'
+      and c.document_id is null
+      and p.order_date <= cast('{{ var("as_of_date") }}' as date)
+    group by 1
 
 )
 
 select
-    n.canonical_item_number,
-    greatest(n.on_hand_recorded, 0)                        as on_hand_recorded,
+    a.canonical_item_number,
+    a.abc_class,
+    a.demand_pattern,
     a.standard_cost,
-    round(greatest(n.on_hand_recorded, 0) * a.standard_cost, 2) as on_hand_value,
-    a.corrected_lead_days,
-    a.abc,
-    a.segment
-from net n
-left join attrs a on n.canonical_item_number = a.canonical_item_number
+    greatest(coalesce(h.on_hand_units, 0), 0)                                   as on_hand_units,
+    coalesce(o.on_order_units, 0)                                               as on_order_units,
+    round(greatest(coalesce(h.on_hand_units, 0), 0) * coalesce(a.standard_cost, 0), 2) as on_hand_value
+from {{ ref('mart_item_attributes') }} a
+left join on_hand h using (canonical_item_number)
+left join on_order o using (canonical_item_number)

@@ -33,7 +33,9 @@ from datetime import date
 import numpy as np
 import pandas as pd
 
-from .resolution import REPO
+from pathlib import Path
+
+REPO = Path(__file__).resolve().parents[2]
 from data_source.generate import config as _C
 
 C_REM_START, C_REM_END = _C.REMEDIATION_START, _C.REMEDIATION_END

@@ -1,0 +1,44 @@
+version: 2
+
+models:
+  - name: stg_erp__item_master
+    description: One row per item record in the ERP item master, including dead and duplicate records.
+    columns:
+      - name: item_number
+        tests: [unique, not_null]
+      - name: master_lead_time_days
+        tests: [not_null]
+
+  - name: stg_erp__supplier_master
+    columns:
+      - name: supplier_id
+        tests: [unique, not_null]
+
+  - name: stg_erp__inventory_transactions
+    description: The inventory ledger, one row per posting.
+    columns:
+      - name: txn_id
+        tests: [unique, not_null]
+      - name: txn_type
+        tests:
+          - accepted_values:
+              values: ['ISSUE', 'BACKFLUSH', 'RECEIPT', 'ADJUST']
+
+  - name: stg_erp__purchase_orders
+    columns:
+      - name: po_id
+        tests: [not_null]
+      - name: status
+        tests:
+          - accepted_values:
+              values: ['OPEN', 'CLOSED']
+
+  - name: stg_erp__production_orders
+    columns:
+      - name: order_id
+        tests: [unique, not_null]
+
+  - name: stg_wms__cycle_counts
+    columns:
+      - name: count_id
+        tests: [unique, not_null]

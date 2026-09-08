@@ -1,42 +1,31 @@
--- Corrected lead time per canonical item, recalculated from actual purchase-order
--- receipts over the trailing year, replacing the stale master value (defect D2).
+-- Corrected lead time per canonical item: the lead time recomputed from actual receipts
+-- in remediation, replacing the stale master value (error #2), falling back to the
+-- median realized lead time where no recommendation was made.
 
-with po as (
+with recommended as (
 
-    select item_number, order_date, actual_lead_days
+    select item_number, recommended_lead_days
+    from {{ ref('stg_remediation__lead_time_computation') }}
+
+),
+
+realized as (
+
+    select item_number, median(actual_lead_days) as median_actual_lead_days
     from {{ ref('stg_erp__purchase_orders') }}
-    where actual_lead_days is not null
-
-),
-
-crosswalk as (
-
-    select * from {{ ref('item_crosswalk') }}
-
-),
-
-mapped as (
-
-    select
-        coalesce(x.canonical_item_number, p.item_number) as canonical_item_number,
-        p.order_date,
-        p.actual_lead_days
-    from po p
-    left join crosswalk x on p.item_number = x.item_number
-
-),
-
-recent as (
-
-    select *
-    from mapped
-    where order_date >= (select max(order_date) from mapped) - interval '365 day'
+    where received_date is not null
+    group by 1
 
 )
 
 select
-    canonical_item_number,
-    median(actual_lead_days) as corrected_lead_days,
-    quantile_cont(actual_lead_days, 0.90) as p90_lead_days
-from recent
+    im.canonical_item_number,
+    max(im.master_lead_time_days) filter (where im.is_survivor)                    as master_lead_time_days,
+    coalesce(max(r.recommended_lead_days) filter (where im.is_survivor),
+             median(a.median_actual_lead_days),
+             max(im.master_lead_time_days) filter (where im.is_survivor))           as corrected_lead_days
+from {{ ref('int_items_resolved') }} im
+left join recommended r using (item_number)
+left join realized a using (item_number)
+where not im.is_dead
 group by 1

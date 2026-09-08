@@ -19,7 +19,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-from .resolution import REPO
+REPO = Path(__file__).resolve().parents[2]
 
 MARTS = REPO / "ml" / "data" / "marts"
 OUT = REPO / "ml" / "data" / "backtest"

@@ -276,28 +276,6 @@ def gather():
     d["jobs25"] = int(len(jobs25)); d["jobs25_on_affected"] = int(jobs25["product_number"].isin(aff).sum())
     shorts = pd.read_csv(TRUTH / "shortages.csv"); shorts = shorts[shorts["date"].str[:4] == "2025"]
     d["shortages25"] = int(len(shorts)); d["shortages25_on_omitted"] = int(shorts["item_number"].isin(t1_nums).sum())
-    d["threeway"] = json.loads((BACKTEST / "threeway_overall.json").read_text())
-    # the same model on the merged duplicate items only, raw history vs fully cleaned
-    dup_items = set(pd.read_parquet(BACKTEST / "clean_before_after.parquet")["item"])
-    def _wape(path):
-        t = pd.read_parquet(path)
-        if "split" in t.columns and (t["split"] == "test").any():
-            t = t[t["split"] == "test"]
-        t = t[t["item"].isin(dup_items)]
-        return float((t["target"] - t["pred"]).abs().sum() / max(1e-9, t["target"].abs().sum()))
-    d["threeway_dups"] = {"raw": _wape(BACKTEST / "threeway_raw.parquet"),
-                          "master": _wape(BACKTEST / "threeway_master.parquet"),
-                          "fully": _wape(BACKTEST / "threeway_fully.parquet"), "n": len(dup_items)}
-    d["model"] = json.loads((BACKTEST / "model_metrics.json").read_text())
-    xw_seed = pd.read_csv(REPO / "data_pipeline" / "seeds" / "item_crosswalk.csv").set_index("item_number")["canonical_item_number"].to_dict()
-    unrec_items = {xw_seed.get(n, n) for n in t1_nums}
-    def _wape_on(path, items):
-        t_ = pd.read_parquet(path)
-        t_ = t_[t_["item"].isin(items)]
-        return float((t_["target"] - t_["pred"]).abs().sum() / max(1e-9, t_["target"].abs().sum()))
-    d["threeway_unrec"] = {"raw": _wape_on(BACKTEST / "threeway_raw.parquet", unrec_items),
-                           "fully": _wape_on(BACKTEST / "threeway_fully.parquet", unrec_items), "n": len(unrec_items)}
-    d["decision"] = json.loads((REPO / "ml" / "data" / "policy" / "decision_summary.json").read_text())
     # a part's history is complete when none of its demand was split across a
     # duplicate number, hidden under a generic code or never recorded at all
     ft_items = {r["true_item_number"] for r in pod.get("t3", []) if r.get("is_stocked")}
@@ -404,69 +382,6 @@ def _samples(im, tx, po, sup, cross, txn, pod, lead, params, chronic, dead_nums)
 
 
 # ── charts ───────────────────────────────────────────────────────────────────
-def chart_accuracy(d):
-    """Forecast error before and after, overall and where the repairs concentrate."""
-    fig, ax = B.make_fig(3.4)
-    tw, td, tu = d["threeway"], d["threeway_dups"], d["threeway_unrec"]
-    groups = ["All live items", f"Items carried under\nduplicate numbers ({td['n']})",
-              f"Items with unrecorded\nconsumption ({tu['n']})"]
-    before = [tw["raw"] * 100, td["raw"] * 100, tu["raw"] * 100]
-    after = [tw["fully"] * 100, td["fully"] * 100, tu["fully"] * 100]
-    x = np.arange(len(groups)); w = 0.36
-    b1 = ax.bar(x - w / 2, before, width=w, color=B.MED_GREY, label="Before cleaning")
-    b2 = ax.bar(x + w / 2, after, width=w, color=B.DARK_BLUE, label="After cleaning")
-    for bars, vals in ((b1, before), (b2, after)):
-        for bar, v in zip(bars, vals):
-            ax.text(bar.get_x() + bar.get_width() / 2, v + 1, f"{v:.0f}%", ha="center", fontsize=9, fontweight="bold")
-    ax.set_xticks(x); ax.set_xticklabels(groups, fontsize=9.5)
-    ax.set_ylabel("Forecast error, WAPE (%)")
-    ax.set_ylim(0, max(before) * 1.22)
-    B.chart_style(ax)
-    ax.legend(loc="lower center", bbox_to_anchor=(0.5, 1.0), frameon=False, ncol=2, fontsize=9)
-    return B.b64(fig)
-
-
-def chart_decision(d):
-    """The same forecast through dirty inputs and clean ones: what the reorder decision delivers."""
-    import matplotlib.pyplot as plt
-    dc = d["decision"]
-    fig, axes = plt.subplots(1, 3, figsize=(B.CHART_W, 3.3))
-    panels = [
-        ("Fill rate (%)", dc["dirty"]["fill_rate"] * 100, dc["clean"]["fill_rate"] * 100, "{:.1f}%"),
-        ("Stockout item-weeks", dc["dirty"]["stockout_item_weeks"], dc["clean"]["stockout_item_weeks"], "{:,.0f}"),
-        ("Average inventory ($000)", dc["dirty"]["avg_inventory_value"] / 1000, dc["clean"]["avg_inventory_value"] / 1000, "${:,.0f}K"),
-    ]
-    for ax, (title, dv, cv, fmt) in zip(axes, panels):
-        bars = ax.bar(["Dirty inputs", "Clean inputs"], [dv, cv], color=[B.MED_GREY, B.DARK_BLUE], width=0.6)
-        for bar, v in zip(bars, [dv, cv]):
-            ax.text(bar.get_x() + bar.get_width() / 2, v * 1.02, fmt.format(v), ha="center", fontsize=9, fontweight="bold")
-        ax.set_title(title, fontsize=10, color=B.DARK_GREY, pad=8)
-        ax.set_ylim(0, max(dv, cv) * 1.2)
-        B.chart_style(ax)
-        ax.tick_params(axis="x", labelsize=9)
-        ax.set_yticks([])
-    fig.tight_layout(w_pad=2.0)
-    return B.b64(fig)
-
-
-def chart_reliability(d):
-    fig, ax = B.make_fig(3.4)
-    cats = ["Before", "After"]
-    order = ["reliable", "uncertain", "unreliable"]
-    colors = {"reliable": B.GREEN, "uncertain": B.AMBER, "unreliable": B.ACCENT_RED}
-    before = [d["rel_before"][k]["val"] / 1000 for k in order]
-    after = [d["rel_after"][k]["val"] / 1000 for k in order]
-    data = np.array([before, after])
-    left = np.zeros(2)
-    for i, k in enumerate(order):
-        ax.barh(cats, data[:, i], left=left, color=colors[k], label=k.capitalize())
-        left = left + data[:, i]
-    ax.set_xlabel("Inventory value ($000)")
-    B.chart_style(ax)
-    ax.legend(loc="lower center", bbox_to_anchor=(0.5, 1.0), frameon=False, ncol=3, fontsize=9)
-    ax.invert_yaxis()
-    return B.b64(fig)
-
 def chart_erd(d):
     """Entity relationship diagram: the eight ERP tables, their row counts, and
     which tables depend on which. An arrow points from the table relied on to the
@@ -539,29 +454,6 @@ def _widths(table_html, widths):
                               f'<table class="data-table" style="table-layout:fixed;"><colgroup>{cols}</colgroup>', 1)
 
 
-def chart_error_rates(d):
-    """Horizontal bars: share of each ERP table's rows carrying at least one error."""
-    rates = d["table_rates"]
-    fig, ax = B.make_fig(4.2)
-    names = [r[0] for r in rates][::-1]
-    pct = [r[1] / r[2] * 100 if r[2] else 0 for r in rates][::-1]
-    labels = [f"{r[1] / r[2] * 100:.1f}%  ({r[1]:,} of {r[2]:,})" if r[2] else "" for r in rates][::-1]
-    bars = ax.barh(names, pct, color=B.DARK_BLUE, height=0.62)
-    for b, lab in zip(bars, labels):
-        ax.text(b.get_width() + 1.2, b.get_y() + b.get_height() / 2, lab, va="center", fontsize=9.5)
-    ax.set_xlim(0, max(pct) * 1.45 if max(pct) else 10)
-    ax.set_xlabel("Rows with at least one error (%)")
-    ax.xaxis.grid(True, color=B.LIGHT_GREY, linewidth=0.8)
-    ax.yaxis.grid(False)
-    ax.set_axisbelow(True)
-    for sp in ("top", "right"):
-        ax.spines[sp].set_visible(False)
-    ax.spines["left"].set_color(B.LIGHT_GREY)
-    ax.spines["bottom"].set_color(B.LIGHT_GREY)
-    return B.b64(fig)
-
-
-# ── report ───────────────────────────────────────────────────────────────────
 def build(d):
     toc = "".join([
         '<a href="#found">Findings</a>',
