@@ -1,7 +1,7 @@
 [project]
 name = "mfg-inventory-forecast"
 version = "0.1.0"
-description = "Inventory demand forecasting and ERP data quality for an industrial equipment builder."
+description = "Inventory demand forecasting and ERP data quality for an industrial equipment manufacturer."
 requires-python = ">=3.11"
 dependencies = [
     "pandas>=2.0",
