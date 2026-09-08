@@ -1,6 +1,6 @@
-name: 'inventory_forecast'
+name: 'demand_forecasting'
 version: '2.0.0'
-profile: 'inventory_forecast'
+profile: 'demand_forecasting'
 
 model-paths: ["models"]
 test-paths: ["tests"]
@@ -27,7 +27,7 @@ vars:
   abc_b_cum: 0.95
 
 models:
-  inventory_forecast:
+  demand_forecasting:
     staging:
       +materialized: view
     data_quality:

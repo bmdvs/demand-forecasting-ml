@@ -1,4 +1,4 @@
-"""Central configuration for the inventory-forecasting and ERP data-quality platform.
+"""Central configuration for the demand-forecasting and ERP data-quality platform.
 
 Every generative choice that determines whether the case works lives here as a
 named constant: the observation window, the item universe, the multi-level bill
