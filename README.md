@@ -1,15 +1,12 @@
-# Manufacturing Data Platform: Inventory Forecasting & ERP Data Quality
+# ERP Data Quality Audit & Inventory Forecasting
 
-**An end-to-end data platform for a mid-sized manufacturer, spanning data engineering, data quality and machine learning, applied to inventory forecasting and ERP data quality.**
+**A comprehensive data quality audit of an industrial equipment manufacturer's ERP system. The cleaned data feeds a machine learning model that sets the shop's reorder points and order quantities for all stocked items. As detailed in the deliverables, this model achieved significant improvements across production and purchasing KPIs while at the same time releasing working capital through a lower inventory balance.**
 
-It starts with a **data pipeline** in dbt on DuckDB that integrates the shop's item, supplier, bill-of-materials, production, service, purchasing, inventory and cycle-count records, flags the errors in them through one data-quality model per error type, applies the remediation, and models the cleaned history into marts.
+The data quality audit covered all of the records across the ERP's eight tables and found 16 types of recurring data quality errors. It details the remediation process, which resolved the majority of these errors, as well as the process changes that will keep the ERP system clean going forward.
 
-A **data quality and ML layer** is then built on top of that cleaned dataset, including:
+The machine learning model makes weekly reordering predictions for each of the shop's 1,300 stocked items. It forecasts each item's expected usage over its supplier lead time and turns this into a reorder point and order quantity. It was calibrated to ensure minimal stockouts, jobs held for material and expedited freight, while keeping inventory as low as possible. The model is supported by technical documentation and MLOps monitoring in production.
 
-1. **Data quality audit** that finds every type of error in the ERP, remediates it, and sets the process changes that stop it recurring
-2. **Machine learning model** that forecasts each item's usage over its supplier lead time and turns it into a reorder point and order quantity, supported by technical documentation and MLOps monitoring in production
-
-The model's reorder suggestions are embedded into the company's existing ERP purchasing screen, as shown below:
+The model's reorder suggestions are embedded in the company's existing ERP purchasing screen, as shown below:
 
 [![ERP reorder queue with embedded demand forecasts](docs/screenshots/erp_queue.png)](https://brimsystems.github.io/mfg-inventory-forecast/docs/index.html)
 
@@ -19,7 +16,7 @@ The model's reorder suggestions are embedded into the company's existing ERP pur
 
 ## Business Context
 
-An industrial equipment builder, making conveyors and material-handling modules, industrial mixers and agitators, and custom enclosures and frames, stocks about 1,300 purchased items from 40 suppliers. Its products carry multi-level bills of materials, and material is consumed by production jobs, service and spare-parts orders, and manual issues.
+An industrial equipment manufacturer, making conveyors and material-handling modules, industrial mixers and agitators, and custom enclosures and frames, stocks about 1,300 purchased items from 40 suppliers. Its products carry multi-level bills of materials, and material is consumed by production jobs, service and spare-parts orders, and manual issues.
 
 Two buyers and a purchasing manager reordered by hand. They could not trust the ERP: its lead times and reorder points were years out of date, the same part sat under several item numbers, dead items were still flagged active, and receipts were posted late and in batches. So they kept their own spreadsheet, padded safety stock well beyond what usage required, and relied on rush orders to cover the shortfalls. The shop carried roughly 160 days of usage in inventory, yet still logged frequent stockouts, jobs held for missing material and rush freight spend.
 
