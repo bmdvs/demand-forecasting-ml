@@ -3,7 +3,6 @@ version: '2.0.0'
 profile: 'inventory_forecast'
 
 model-paths: ["models"]
-seed-paths: ["seeds"]
 test-paths: ["tests"]
 macro-paths: ["macros"]
 
@@ -37,7 +36,3 @@ models:
       +materialized: view
     marts:
       +materialized: table
-
-seeds:
-  inventory_forecast:
-    +quote_columns: false

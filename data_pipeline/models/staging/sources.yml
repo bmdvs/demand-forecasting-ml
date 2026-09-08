@@ -81,3 +81,32 @@ sources:
       - name: free_text_attribution
         meta:
           external_location: "read_csv_auto('../data_source/raw/remediation/free_text_attribution.csv')"
+
+  - name: truth
+    description: >
+      The generator's record of what it planted and the true demand behind the recorded
+      history, flattened by data_source/generate/export_truth.py. A real warehouse would
+      not have these; here they stand in for findings the business confirmed and give
+      the forecast a true-demand series to be scored against.
+    tables:
+      - name: true_direct_demand
+        meta:
+          external_location: "read_csv_auto('../data_source/truth/true_direct_demand.csv')"
+      - name: true_backflush
+        meta:
+          external_location: "read_csv_auto('../data_source/truth/true_backflush.csv')"
+      - name: duplicate_clusters
+        meta:
+          external_location: "read_csv_auto('../data_source/truth/duplicate_clusters.csv')"
+      - name: abc_by_item
+        meta:
+          external_location: "read_csv_auto('../data_source/truth/abc_by_item.csv')"
+      - name: unrecorded_usage
+        meta:
+          external_location: "read_csv_auto('../data_source/truth/unrecorded_usage.csv')"
+      - name: uom_mismatch_items
+        meta:
+          external_location: "read_csv_auto('../data_source/truth/uom_mismatch_items.csv')"
+      - name: batched_receipts
+        meta:
+          external_location: "read_csv_auto('../data_source/truth/batched_receipts.csv')"

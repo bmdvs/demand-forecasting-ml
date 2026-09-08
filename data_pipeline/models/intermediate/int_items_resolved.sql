@@ -10,7 +10,7 @@ with item_master as (
 
 crosswalk as (
 
-    select * from {{ ref('item_crosswalk') }}
+    select * from {{ ref('int_item_crosswalk') }}
 
 ),
 

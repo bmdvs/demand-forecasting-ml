@@ -147,7 +147,7 @@ def run():
     attrs = pd.read_parquet(MARTS / "item_attributes.parquet").set_index("canonical_item_number")
     po = pd.read_csv(RAW / "erp" / "purchase_orders.csv", low_memory=False)
     tx = pd.read_csv(RAW / "erp" / "inventory_transactions.csv", low_memory=False)
-    xw = pd.read_csv(REPO / "data_pipeline" / "seeds" / "item_crosswalk.csv").set_index("item_number")["canonical_item_number"].to_dict()
+    xw = pd.read_csv(MARTS / "item_crosswalk.csv").set_index("item_number")["canonical_item_number"].to_dict()
 
     frame, weeks = build_frame(weekly, attrs)
     frame[FEATS] = frame[FEATS].replace([np.inf, -np.inf], np.nan).fillna(0)

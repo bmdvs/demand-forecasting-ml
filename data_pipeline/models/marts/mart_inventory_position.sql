@@ -29,7 +29,7 @@ on_order as (
         coalesce(x.canonical_item_number, p.item_number)       as canonical_item_number,
         sum(greatest(p.qty_ordered - coalesce(p.qty_received, 0), 0)) as on_order_units
     from {{ ref('stg_erp__purchase_orders') }} p
-    left join {{ ref('item_crosswalk') }} x using (item_number)
+    left join {{ ref('int_item_crosswalk') }} x using (item_number)
     left join closed c on c.document_id = p.po_id and c.line = p.line
     where p.status = 'OPEN'
       and c.document_id is null
@@ -40,8 +40,8 @@ on_order as (
 
 select
     a.canonical_item_number,
-    a.abc_class,
-    a.demand_pattern,
+    a.abc,
+    a.segment,
     a.standard_cost,
     greatest(coalesce(h.on_hand_units, 0), 0)                                   as on_hand_units,
     coalesce(o.on_order_units, 0)                                               as on_order_units,

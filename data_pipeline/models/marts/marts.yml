@@ -2,21 +2,21 @@ version: 2
 
 models:
   - name: mart_item_attributes
-    description: One row per live canonical item, the attributes the forecast and reorder policy read.
+    description: One row per canonical item, the attributes the forecast and reorder policy read.
     columns:
       - name: canonical_item_number
         tests: [unique, not_null]
-      - name: abc_class
+      - name: abc
         tests:
           - accepted_values:
               values: ['A', 'B', 'C']
-      - name: demand_pattern
+      - name: segment
         tests:
           - accepted_values:
               values: ['smooth', 'erratic', 'lumpy', 'intermittent']
 
-  - name: mart_usage_weekly
-    description: Cleaned weekly usage per live canonical item on a dense grid.
+  - name: mart_consumption_weekly
+    description: Fully cleaned weekly usage, the series the weekly model trains on.
     columns:
       - name: canonical_item_number
         tests:
@@ -24,7 +24,17 @@ models:
           - relationships:
               to: ref('mart_item_attributes')
               field: canonical_item_number
-      - name: units_used
+      - name: consumption
+        tests: [not_null]
+
+  - name: mart_consumption_fully
+    columns:
+      - name: canonical_item_number
+        tests: [not_null]
+
+  - name: mart_true_demand
+    columns:
+      - name: canonical_item_number
         tests: [not_null]
 
   - name: mart_inventory_position
@@ -38,7 +48,7 @@ models:
         tests: [unique, not_null]
 
   - name: mart_dq_error_summary
-    description: The audit's error register, one row per error type.
+    description: The audit's error register, one row per error per ERP table.
     columns:
       - name: error_no
-        tests: [unique, not_null]
+        tests: [not_null]

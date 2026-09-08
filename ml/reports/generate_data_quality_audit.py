@@ -27,6 +27,7 @@ MARTS = REPO / "ml" / "data" / "marts"
 BACKTEST = REPO / "ml" / "data" / "backtest"
 FIN = REPO / "ml" / "data" / "financials"
 OUT = REPO / "docs" / "reports" / "data_quality_audit.html"
+WAREHOUSE = REPO / "data_source" / "inventory_forecast.duckdb"
 
 
 def _money(x):
@@ -44,8 +45,21 @@ def _k(x):
     return f"${x/1e6:.1f}M" if abs(x) >= 1e6 else f"${x/1e3:.0f}K"
 
 
+def _error_register():
+    """The audit's error register from the dbt warehouse (mart_dq_error_summary): for each
+    error and ERP table, the rows flagged and the rows in scope."""
+    import duckdb
+    con = duckdb.connect(str(WAREHOUSE), read_only=True)
+    reg = con.execute("select error_no, erp_table, rows_flagged, rows_in_scope from mart_dq_error_summary").fetchall()
+    con.close()
+    return {(int(n), t): (int(f), int(sc)) for n, t, f, sc in reg}
+
+
 def gather():
     d = {}
+    reg = _error_register()
+    flagged = lambda n, t=None: next(v[0] for k, v in reg.items() if k[0] == n and (t is None or k[1] == t))
+    scope = lambda n, t=None: next(v[1] for k, v in reg.items() if k[0] == n and (t is None or k[1] == t))
     im = pd.read_csv(RAW / "erp" / "item_master.csv", low_memory=False)
     tx = pd.read_csv(RAW / "erp" / "inventory_transactions.csv", low_memory=False)
     po = pd.read_csv(RAW / "erp" / "purchase_orders.csv", low_memory=False)
@@ -68,9 +82,9 @@ def gather():
     bom = pd.read_csv(RAW / "erp" / "bill_of_materials.csv", low_memory=False)
 
     dead_nums = set(dead_disp["item_number"])
-    n_master = len(im)
-    n_dead = len(dead_nums)
-    n_live = n_master - n_dead
+    n_master = scope(1)
+    n_dead = flagged(1)
+    n_live = scope(2)
 
     # ── scope: the ERP components examined ──────────────────────────────────
     def _rows(p):
@@ -122,7 +136,7 @@ def gather():
     # M3 / T1 phantom
     d["omit_products"] = len(cross.get("m3_affected_products", []))
     d["n_products"] = cross.get("n_products", 80)
-    d["omit_items"] = len(cross["m3_omitted_items"])
+    d["omit_items"] = flagged(7)
     t1 = [r for r in json.loads((TRUTH / "txn_defects.json").read_text()).get("t1", [])]
     d["t1_items"] = len(t1)
     d["t1_volume"] = int(sum(r.get("annual_unrecorded", 0) for r in t1))
@@ -130,12 +144,12 @@ def gather():
     # M4 duplicates
     d["dup_clusters"] = len(cross["duplicate_clusters"])
     d["dup_items"] = len(cross["duplicate_clusters"])
-    d["dup_records"] = sum(len(v["records"]) for v in cross["duplicate_clusters"].values())
+    d["dup_records"] = flagged(4)
 
     # M5 UOM, M6 suppliers, M7 blanks
-    d["uom_items"] = len(cross["m5_items"])
+    d["uom_items"] = flagged(5)
     d["sup_fragments"] = len(cross["supplier_fragments"])
-    d["sup_records"] = sum(1 + len(f["aliases"]) for f in cross["supplier_fragments"])
+    d["sup_records"] = flagged(8)
     live = im[im["item_number"].isin(live_nums)]
     d["blank_pct"] = float(live[["standard_cost", "reorder_point", "primary_supplier_id"]].isna().any(axis=1).mean())
     d["misc_pct"] = float((live["item_class"] == "MISC").mean())
@@ -152,14 +166,14 @@ def gather():
     d["ft_stocked"] = sum(1 for r in pod["t3"] if r.get("is_stocked"))
     d["ft_total"] = len(pod["t3"])
     txn = json.loads((TRUTH / "txn_defects.json").read_text())
-    d["t7_count"] = len(txn.get("t7", []))
-    d["t8_count"] = len(txn.get("t8", []))
-    d["t6_count"] = len(txn.get("t6", []))
+    d["t7_count"] = flagged(11)
+    d["t8_count"] = flagged(12)
+    d["t6_count"] = flagged(10)
 
     # on-order fiction (T5 open POs)
     op = po[po["status"] == "OPEN"].copy()
     op["fiction"] = (op["qty_ordered"] - op["qty_received"]).clip(lower=0) * op["unit_price"]
-    d["open_po_lines"] = len(op)
+    d["open_po_lines"] = flagged(16, "Purchase orders")
     d["open_po_value"] = float(op["fiction"].sum())
     d["chronic_items"] = len(chronic)
     d["chronic_on_bom"] = float(chronic["on_bom"].mean()) if len(chronic) else 0.0
@@ -178,7 +192,7 @@ def gather():
     old = params["old_reorder_point"].fillna(0)
     delta = (params["new_reorder_point"] - old).abs()
     changed = (delta >= 5) & (delta >= 0.30 * old.clip(lower=1))
-    d["params_changed"] = int(changed.sum())
+    d["params_changed"] = flagged(3)
     d["uom_added"] = len(uomc)
     d["bom_changes"] = len(bomlog)
     d["closed_po"] = int((closures["document_type"] == "PO").sum())
@@ -202,7 +216,7 @@ def gather():
 
     # ── standardized scale: rows affected per error ─────────────────────────
     prod = pd.read_csv(RAW / "erp" / "production_orders.csv", low_memory=False)
-    d["n_lead_off"] = int((diff > 3).sum())
+    d["n_lead_off"] = flagged(2)
     d["n_lead_items"] = int(len(diff))
     signed = (med - master_lead).dropna()
     signed = signed[[n in live_nums for n in signed.index]]
@@ -215,19 +229,17 @@ def gather():
     t4 = pd.DataFrame(pod.get("t4", []))
     d["t4_lag_mean"] = float((pd.to_datetime(t4["recorded_received_date"]) -
                               pd.to_datetime(t4["true_received_date"])).dt.days.mean()) if len(t4) else 0.0
-    d["n_blank"] = int(live[["standard_cost", "reorder_point", "primary_supplier_id"]].isna().any(axis=1).sum())
-    d["n_adj_rows"] = int(len(adj_rows))
-    d["n_adj_blank_rows"] = int((adj_rows["reason_code"].isna() |
-        adj_rows["reason_code"].astype(str).isin(["", "nan", "ADJ", "VAR", "MISC", "COUNT"])).sum())
+    d["n_blank"] = flagged(6)
+    d["n_adj_rows"] = scope(13)
+    d["n_adj_blank_rows"] = flagged(13)
     t1_nums = {r["item_number"] for r in txn.get("t1", [])}
     not_count = ~tx["reason_code"].astype(str).isin(["COUNT", "CYCLE"])
-    d["n_unrec_adj_rows"] = int(((tx["type"] == "ADJUST") & (tx["qty"] < 0) & not_count & tx["item_number"].isin(t1_nums)).sum())
-    d["n_ft_lines"] = int(len(ft))
-    d["n_batch_rows"] = int(len(pod.get("t4", [])))
-    d["n_tx"], d["n_po"], d["n_prod"] = int(len(tx)), int(len(po)), int(len(prod))
-    d["n_bom_rows"], d["n_sup_rows"] = int(len(bom)), int(len(sup))
-    open_jobs = prod[(prod["status"] == "OPEN") & (pd.to_datetime(prod["due_date"]) < pd.Timestamp(C.REMEDIATION_END))]
-    d["n_open_jobs"] = int(len(open_jobs))
+    d["n_unrec_adj_rows"] = flagged(9)
+    d["n_ft_lines"] = flagged(14)
+    d["n_batch_rows"] = flagged(15)
+    d["n_tx"], d["n_po"], d["n_prod"] = scope(9), scope(14), scope(16, "Production orders")
+    d["n_bom_rows"], d["n_sup_rows"] = scope(7) - flagged(7), scope(8)
+    d["n_open_jobs"] = flagged(16, "Production orders")
 
     # ── rows carrying at least one error, per ERP table (errors overlap, so
     #    each row is counted once) ────────────────────────────────────────────

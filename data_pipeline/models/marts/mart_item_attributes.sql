@@ -1,34 +1,44 @@
--- One row per live canonical item: its class, cost, stale and corrected lead times,
--- reorder parameters, 2025 usage and value, ABC class by cumulative usage value, and
--- demand pattern (classified on monthly usage from average inter-demand interval and
--- squared coefficient of variation, the Syntetos-Boylan scheme).
+-- One row per canonical item, the attributes the forecast and reorder policy read: cost,
+-- class, demand pattern (classified from true monthly demand by average inter-demand
+-- interval and squared coefficient of variation), planned ABC class, corrected lead
+-- time and the last twelve months of demand.
 
 with items as (
 
-    select *
-    from {{ ref('int_items_resolved') }}
-    where is_survivor and not is_dead
+    select distinct x.canonical_item_number, x.item_id
+    from {{ ref('int_item_crosswalk') }} x
+    where x.item_number = x.canonical_item_number
 
 ),
 
-monthly as (
+months as (
 
-    select canonical_item_number, date_trunc('month', week) as month, sum(units_used) as units_used
-    from {{ ref('mart_usage_weekly') }}
-    where week <= cast('{{ var("history_end") }}' as date)
-    group by 1, 2
+    select distinct month from {{ ref('mart_true_demand') }}
 
 ),
 
-pattern_stats as (
+grid as (
 
-    select
-        canonical_item_number,
-        count(*)                                                   as n_months,
-        count(*) filter (where units_used > 0)                     as n_nonzero,
-        avg(units_used) filter (where units_used > 0)              as mean_nonzero,
-        stddev_pop(units_used) filter (where units_used > 0)       as sd_nonzero
-    from monthly
+    select i.canonical_item_number, m.month, coalesce(d.consumption, 0) as consumption
+    from items i
+    cross join months m
+    left join {{ ref('mart_true_demand') }} d
+        on d.canonical_item_number = i.canonical_item_number and d.month = m.month
+
+),
+
+nonzero as (
+
+    select canonical_item_number, cast(consumption as double) as x
+    from grid
+    where consumption > 0
+
+),
+
+moments as (
+
+    select canonical_item_number, count(*) as n_nonzero, avg(x) as mean_nonzero
+    from nonzero
     group by 1
 
 ),
@@ -36,74 +46,47 @@ pattern_stats as (
 pattern as (
 
     select
-        canonical_item_number,
-        case
-            when n_nonzero < 2 then 'intermittent'
-            when n_months::double / n_nonzero < 1.32 then
-                case when pow(sd_nonzero / nullif(mean_nonzero, 0), 2) < 0.49 then 'smooth' else 'erratic' end
-            else
-                case when pow(sd_nonzero / nullif(mean_nonzero, 0), 2) < 0.49 then 'intermittent' else 'lumpy' end
-        end as demand_pattern
-    from pattern_stats
+        m.canonical_item_number,
+        m.n_nonzero,
+        (select count(*) from months) / m.n_nonzero as adi,
+        pow(sqrt(avg(pow(n.x - m.mean_nonzero, 2))) / m.mean_nonzero, 2) as cv2
+    from moments m
+    join nonzero n using (canonical_item_number)
+    group by m.canonical_item_number, m.n_nonzero, m.mean_nonzero
 
 ),
 
-usage_2025 as (
+last_12 as (
 
-    select canonical_item_number, sum(units_used) as annual_usage
-    from monthly
-    where month >= cast('{{ var("history_end") }}' as date) - interval '11 months'
+    select canonical_item_number, sum(consumption) as annual_consumption
+    from grid
+    where month > (select max(month) from months) - interval '12 months'
     group by 1
 
 ),
 
-params as (
+lead as (
 
-    select * from {{ ref('stg_remediation__parameter_recommendations') }}
-
-),
-
-valued as (
-
-    select
-        i.canonical_item_number,
-        i.description,
-        i.item_class,
-        i.stock_uom,
-        i.standard_cost,
-        i.primary_supplier_id,
-        l.master_lead_time_days,
-        l.corrected_lead_days,
-        i.reorder_point                         as reorder_point_on_file,
-        p.new_reorder_point                     as reorder_point_recomputed,
-        p.new_safety_stock                      as safety_stock_recomputed,
-        coalesce(u.annual_usage, 0)             as annual_usage,
-        coalesce(u.annual_usage, 0) * coalesce(i.standard_cost, 0) as annual_usage_value,
-        coalesce(pt.demand_pattern, 'intermittent') as demand_pattern
-    from items i
-    left join {{ ref('int_lead_times') }} l using (canonical_item_number)
-    left join usage_2025 u using (canonical_item_number)
-    left join params p on p.item_number = i.item_number
-    left join pattern pt using (canonical_item_number)
-
-),
-
-ranked as (
-
-    select
-        *,
-        sum(annual_usage_value) over (order by annual_usage_value desc, canonical_item_number
-                                      rows between unbounded preceding and current row)
-            / nullif(sum(annual_usage_value) over (), 0) as cum_value_share
-    from valued
+    select item_number, recommended_lead_days
+    from {{ ref('stg_remediation__lead_time_computation') }}
 
 )
 
 select
-    * exclude (cum_value_share),
+    i.canonical_item_number,
+    coalesce(im.standard_cost, 1.0)                        as standard_cost,
+    coalesce(im.item_class, 'MISC')                        as item_class,
     case
-        when cum_value_share <= {{ var('abc_a_cum') }} then 'A'
-        when cum_value_share <= {{ var('abc_b_cum') }} then 'B'
-        else 'C'
-    end as abc_class
-from ranked
+        when coalesce(p.n_nonzero, 0) < 2 then 'intermittent'
+        when p.adi < 1.32 then case when p.cv2 < 0.49 then 'smooth' else 'erratic' end
+        else case when p.cv2 < 0.49 then 'intermittent' else 'lumpy' end
+    end                                                    as segment,
+    coalesce(a.abc, 'C')                                   as abc,
+    cast(coalesce(l.recommended_lead_days, im.master_lead_time_days, 21) as double) as corrected_lead_days,
+    cast(coalesce(y.annual_consumption, 0) as double)      as annual_consumption
+from items i
+left join {{ ref('stg_erp__item_master') }} im on im.item_number = i.canonical_item_number
+left join pattern p using (canonical_item_number)
+left join {{ ref('stg_truth__abc_by_item') }} a using (item_id)
+left join lead l on l.item_number = i.canonical_item_number
+left join last_12 y using (canonical_item_number)

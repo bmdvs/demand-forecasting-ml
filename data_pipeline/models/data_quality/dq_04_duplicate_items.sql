@@ -3,7 +3,7 @@
 
 with crosswalk as (
 
-    select * from {{ ref('item_crosswalk') }}
+    select item_number, canonical_item_number from {{ ref('int_item_crosswalk') }}
 
 ),
 
