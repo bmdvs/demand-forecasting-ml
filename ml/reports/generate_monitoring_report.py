@@ -507,16 +507,15 @@ above their 2025 levels (Investigate).</p>
 
 {B.section("drift", "Section 2.2", "Drift")}
 <p>Drift compares each month's data with a fixed reference calculated using the Jensen-Shannon distance, flagged at
-{TH['drift']:.2f}. This calculation checks for statistical similarity: whether this month's values fall across the
-same ranges, in similar proportions, as the reference data (the 2024 training data for usage and features, and the
-held-out 2025 forecasts for the model's forecasts), where 0 means the two are identical and 1 means they do not
-overlap at all. It is checked three ways: on the targets (lead-time usage), on the model's forecasts, and on the
-model's features.</p>
-<p><strong>Target drift.</strong> Distance between each month's actual lead-time usage and the training rows. A
-shift would mean demand itself has moved away from what the model learned. <strong>Across the matured months target
-drift stays well under the threshold ({min(p['target_drift'] for p in matured):.3f} to
-{max(p['target_drift'] for p in matured):.3f}), meaning monthly demand resembles the demand the model was trained
-on.</strong></p>
+{TH['drift']:.2f}. This calculation checks for statistical similarity: whether this month's values are similar to the
+reference data (the 2024 training data for usage and features, and the held-out 2025 forecasts for the model's
+forecasts), where 0 means the two are identical and 1 means they do not overlap at all. It is checked three ways: on
+the targets (usage over the lead-time window), on the model's forecasts, and on the model's features.</p>
+<p><strong>Target drift.</strong> Distance between each month's actual usage over the lead-time window and the
+training rows. A shift would mean usage over the lead-time window has moved away from what the model learned.
+<strong>Across the matured months target drift stays well under the threshold
+({min(p['target_drift'] for p in matured):.3f} to {max(p['target_drift'] for p in matured):.3f}), meaning monthly usage
+over the lead-time window resembles the usage the model was trained on.</strong></p>
 {B.chart("Target Drift Distance by Month", charts["target"])}
 <p><strong>Prediction drift.</strong> Distance between each month's forecasts and the forecasts from the held-out
 2025 year. <strong>Prediction drift stays under the threshold every month (at most
