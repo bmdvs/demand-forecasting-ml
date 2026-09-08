@@ -106,11 +106,12 @@ python3 -m data_source.generate.export_truth
 cd data_pipeline && dbt build --profiles-dir . && cd ..
 python3 -m ml.src.export_marts
 
-# 4. Baselines, model selection and the weekly forecast and reorder policy
+# 4. Baselines, model selection, the weekly forecast and reorder policy, and explainability
 python3 -m ml.src.baselines
 python3 -m ml.src.training
 python3 -m ml.src.training_3way
 python3 -m ml.src.forward_policy
+python3 -m ml.src.explain_weekly
 
 # 5. Replay January to June 2026 on the model's reorder schedule
 python3 -m data_source.generate.run_generator
@@ -122,8 +123,7 @@ python3 -m ml.src.export_marts
 python3 -m ml.src.reliability
 python3 -m ml.src.financials
 
-# 6. Explainability and monitoring
-python3 -m ml.src.explain_weekly
+# 6. Monitoring
 python3 -m ml.src.monitor_weekly
 
 # 7. Client-facing deliverables
