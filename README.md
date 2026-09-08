@@ -1,4 +1,4 @@
-# ERP Data Quality Audit & Inventory Forecasting
+# ERP Data Quality Audit & Demand Forecasting
 
 **A comprehensive data quality audit of an industrial equipment manufacturer's ERP system. The cleaned data feeds a machine learning model that sets the shop's reorder points and order quantities for all stocked items. As detailed in the deliverables, this model achieved significant improvements across production and purchasing KPIs while at the same time releasing working capital through a lower inventory balance.**
 
@@ -8,9 +8,9 @@ The machine learning model makes weekly reordering predictions for each of the s
 
 The model's reorder suggestions are embedded in the company's existing ERP purchasing screen, as shown below:
 
-[![ERP reorder queue with embedded demand forecasts](docs/screenshots/erp_queue.png)](https://brimsystems.github.io/mfg-inventory-forecast/docs/index.html)
+[![ERP reorder queue with embedded demand forecasts](docs/screenshots/erp_queue.png)](https://brimsystems.github.io/mfg-demand-forecasting/docs/index.html)
 
-> **[Open the live reorder queue &rarr;](https://brimsystems.github.io/mfg-inventory-forecast/docs/index.html)** &nbsp;·&nbsp; **[All five deliverables &rarr;](https://brimsystems.github.io/mfg-inventory-forecast/)**
+> **[Open the live reorder queue &rarr;](https://brimsystems.github.io/mfg-demand-forecasting/docs/index.html)** &nbsp;·&nbsp; **[All five deliverables &rarr;](https://brimsystems.github.io/mfg-demand-forecasting/)**
 
 ---
 
@@ -28,11 +28,11 @@ The work had two parts. First, a full data quality audit of the ERP found 16 typ
 
 | # | Deliverable | What it is | Links |
 |---|---|---|---|
-| 1 | ERP reorder queue | The demand model embedded in the ERP's purchasing screen: each item's on-hand, allocated, on-order and available stock, forecast usage over its lead time, safety stock, reorder point and suggested order quantity, with its criticality, ranked by urgency. | [View](https://brimsystems.github.io/mfg-inventory-forecast/docs/index.html) |
-| 2 | Data quality audit | Every type of error found across the ERP's master and transaction tables, its scale, the remediation performed and its evidence, the before-and-after results, and the process changes that stop each error recurring. | [View](https://brimsystems.github.io/mfg-inventory-forecast/docs/reports/data_quality_audit.html) |
-| 3 | ML model overview & performance report | A high-level summary of the model: what it does, the usage it learns from, how it sets each reorder, and its results against 2025 and the status quo. | [View](https://brimsystems.github.io/mfg-inventory-forecast/docs/reports/model_overview.html) |
-| 4 | ML technical report | The model card, training data and time-based split, model selection and performance, SHAP feature importance, the rules that turn a forecast into a reorder decision, known limitations, and deployment. | [View](https://brimsystems.github.io/mfg-inventory-forecast/docs/reports/technical_report.html) |
-| 5 | MLOps monitoring report | Monthly monitoring of the live model against Investigate and Retrain thresholds: forecast error and bias overall and by demand pattern, drift, data quality and business KPIs, with a rules-based retraining decision. | [View](https://brimsystems.github.io/mfg-inventory-forecast/docs/reports/monitoring_report.html) |
+| 1 | ERP reorder queue | The demand model embedded in the ERP's purchasing screen: each item's on-hand, allocated, on-order and available stock, forecast usage over its lead time, safety stock, reorder point and suggested order quantity, with its criticality, ranked by urgency. | [View](https://brimsystems.github.io/mfg-demand-forecasting/docs/index.html) |
+| 2 | Data quality audit | Every type of error found across the ERP's master and transaction tables, its scale, the remediation performed and its evidence, the before-and-after results, and the process changes that stop each error recurring. | [View](https://brimsystems.github.io/mfg-demand-forecasting/docs/reports/data_quality_audit.html) |
+| 3 | ML model overview & performance report | A high-level summary of the model: what it does, the usage it learns from, how it sets each reorder, and its results against 2025 and the status quo. | [View](https://brimsystems.github.io/mfg-demand-forecasting/docs/reports/model_overview.html) |
+| 4 | ML technical report | The model card, training data and time-based split, model selection and performance, SHAP feature importance, the rules that turn a forecast into a reorder decision, known limitations, and deployment. | [View](https://brimsystems.github.io/mfg-demand-forecasting/docs/reports/technical_report.html) |
+| 5 | MLOps monitoring report | Monthly monitoring of the live model against Investigate and Retrain thresholds: forecast error and bias overall and by demand pattern, drift, data quality and business KPIs, with a rules-based retraining decision. | [View](https://brimsystems.github.io/mfg-demand-forecasting/docs/reports/monitoring_report.html) |
 
 ---
 
