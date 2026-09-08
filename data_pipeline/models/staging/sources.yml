@@ -1,18 +1,27 @@
 version: 2
 
-# Raw extracts are read directly from CSV via DuckDB. Paths are relative to the
-# data_pipeline directory (the dbt working directory), so the project is portable
-# across environments without editing absolute locations.
+# Raw extracts are read directly from CSV through DuckDB. Paths are relative to the
+# data_pipeline directory (the dbt working directory).
 
 sources:
   - name: erp
+    description: The shop's ERP, one extract per module.
     tables:
       - name: item_master
         meta:
           external_location: "read_csv_auto('../data_source/raw/erp/item_master.csv')"
-      - name: suppliers
+      - name: supplier_master
         meta:
-          external_location: "read_csv_auto('../data_source/raw/erp/suppliers.csv')"
+          external_location: "read_csv_auto('../data_source/raw/erp/supplier_master.csv')"
+      - name: bill_of_materials
+        meta:
+          external_location: "read_csv_auto('../data_source/raw/erp/bill_of_materials.csv')"
+      - name: production_orders
+        meta:
+          external_location: "read_csv_auto('../data_source/raw/erp/production_orders.csv')"
+      - name: service_orders
+        meta:
+          external_location: "read_csv_auto('../data_source/raw/erp/service_orders.csv')"
       - name: purchase_orders
         meta:
           external_location: "read_csv_auto('../data_source/raw/erp/purchase_orders.csv')"
@@ -21,7 +30,54 @@ sources:
           external_location: "read_csv_auto('../data_source/raw/erp/inventory_transactions.csv')"
 
   - name: wms
+    description: Warehouse cycle and annual counts.
     tables:
       - name: cycle_counts
         meta:
           external_location: "read_csv_auto('../data_source/raw/wms/cycle_counts.csv')"
+
+  - name: purchasing
+    description: The purchasing manager's own tracking spreadsheet.
+    tables:
+      - name: buyer_spreadsheet
+        meta:
+          external_location: "read_csv_auto('../data_source/raw/purchasing/buyer_spreadsheet.csv')"
+
+  - name: remediation
+    description: >
+      The records the ten-week cleanup left behind: every merge, correction,
+      deactivation and recomputed parameter, so each change to the history is auditable.
+    tables:
+      - name: dead_item_dispositions
+        meta:
+          external_location: "read_csv_auto('../data_source/raw/remediation/dead_item_dispositions.csv')"
+      - name: duplicate_crosswalk
+        meta:
+          external_location: "read_csv_auto('../data_source/raw/remediation/duplicate_crosswalk.csv')"
+      - name: supplier_crosswalk
+        meta:
+          external_location: "read_csv_auto('../data_source/raw/remediation/supplier_crosswalk.csv')"
+      - name: uom_conversions
+        meta:
+          external_location: "read_csv_auto('../data_source/raw/remediation/uom_conversions.csv')"
+      - name: lead_time_computation
+        meta:
+          external_location: "read_csv_auto('../data_source/raw/remediation/lead_time_computation.csv')"
+      - name: parameter_recommendations
+        meta:
+          external_location: "read_csv_auto('../data_source/raw/remediation/parameter_recommendations.csv')"
+      - name: chronic_adjustment_list
+        meta:
+          external_location: "read_csv_auto('../data_source/raw/remediation/chronic_adjustment_list.csv')"
+      - name: bom_change_log
+        meta:
+          external_location: "read_csv_auto('../data_source/raw/remediation/bom_change_log.csv')"
+      - name: posting_corrections
+        meta:
+          external_location: "read_csv_auto('../data_source/raw/remediation/posting_corrections.csv')"
+      - name: open_document_closures
+        meta:
+          external_location: "read_csv_auto('../data_source/raw/remediation/open_document_closures.csv')"
+      - name: free_text_attribution
+        meta:
+          external_location: "read_csv_auto('../data_source/raw/remediation/free_text_attribution.csv')"

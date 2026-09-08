@@ -18,7 +18,7 @@ import numpy as np
 import pandas as pd
 from xgboost import XGBRegressor
 
-from .resolution import REPO
+REPO = Path(__file__).resolve().parents[2]
 from .features import _row_features, FEATURE_COLS, VAL_ORIGINS
 
 MARTS = REPO / "ml" / "data" / "marts"

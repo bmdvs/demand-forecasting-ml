@@ -25,7 +25,7 @@ from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import StandardScaler
 from xgboost import XGBRegressor
 
-from .resolution import REPO
+REPO = Path(__file__).resolve().parents[2]
 from .features import build_feature_frame, FEATURE_COLS, _row_features
 
 warnings.filterwarnings("ignore")

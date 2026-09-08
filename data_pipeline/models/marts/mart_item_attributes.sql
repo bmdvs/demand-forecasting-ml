@@ -1,81 +1,90 @@
--- Canonical item attributes for the forecast, policy and reorder queue. Grain:
--- one row per canonical item. Carries the demand segment (classified from the
--- cleaned series by average inter-demand interval and squared CV), the ABC class
--- by consumption value, and both the stale master and corrected lead times.
+-- One row per live canonical item: its class, cost, stale and corrected lead times,
+-- reorder parameters, 2025 usage and value, ABC class by cumulative usage value, and
+-- demand pattern (classified on monthly usage from average inter-demand interval and
+-- squared coefficient of variation, the Syntetos-Boylan scheme).
 
-with monthly as (
+with items as (
 
-    select * from {{ ref('mart_consumption_monthly') }}
-
-),
-
-survivor as (
-
-    select * from {{ ref('int_items_resolved') }} where is_survivor
+    select *
+    from {{ ref('int_items_resolved') }}
+    where is_survivor and not is_dead
 
 ),
 
-leads as (
+monthly as (
 
-    select * from {{ ref('int_lead_times') }}
-
-),
-
-annual as (
-
-    select canonical_item_number, sum(consumption) as annual_consumption
-    from monthly
-    where month >= (select max(month) from monthly) - interval '11 month'
-    group by 1
+    select canonical_item_number, date_trunc('month', week) as month, sum(units_used) as units_used
+    from {{ ref('mart_usage_weekly') }}
+    where week <= cast('{{ var("history_end") }}' as date)
+    group by 1, 2
 
 ),
 
-seg_stats as (
+pattern_stats as (
 
     select
         canonical_item_number,
-        count(*)                                    as n_months,
-        count(*) filter (where consumption > 0)     as nz,
-        avg(consumption) filter (where consumption > 0)         as mean_nz,
-        stddev_pop(consumption) filter (where consumption > 0)  as sd_nz
+        count(*)                                                   as n_months,
+        count(*) filter (where units_used > 0)                     as n_nonzero,
+        avg(units_used) filter (where units_used > 0)              as mean_nonzero,
+        stddev_pop(units_used) filter (where units_used > 0)       as sd_nonzero
     from monthly
     group by 1
 
 ),
 
-seg as (
+pattern as (
 
     select
         canonical_item_number,
         case
-            when nz < 2 then 'intermittent'
-            when (n_months::double / nz) < 1.32 then
-                case when pow(coalesce(sd_nz, 0) / nullif(mean_nz, 0), 2) < 0.49
-                     then 'smooth' else 'erratic' end
+            when n_nonzero < 2 then 'intermittent'
+            when n_months::double / n_nonzero < 1.32 then
+                case when pow(sd_nonzero / nullif(mean_nonzero, 0), 2) < 0.49 then 'smooth' else 'erratic' end
             else
-                case when pow(coalesce(sd_nz, 0) / nullif(mean_nz, 0), 2) < 0.49
-                     then 'intermittent' else 'lumpy' end
-        end as segment
-    from seg_stats
+                case when pow(sd_nonzero / nullif(mean_nonzero, 0), 2) < 0.49 then 'intermittent' else 'lumpy' end
+        end as demand_pattern
+    from pattern_stats
 
 ),
 
-base as (
+usage_2025 as (
+
+    select canonical_item_number, sum(units_used) as annual_usage
+    from monthly
+    where month >= cast('{{ var("history_end") }}' as date) - interval '11 months'
+    group by 1
+
+),
+
+params as (
+
+    select * from {{ ref('stg_remediation__parameter_recommendations') }}
+
+),
+
+valued as (
 
     select
-        s.canonical_item_number,
-        s.item_class,
-        s.standard_cost,
-        s.master_lead_time_days,
-        coalesce(l.corrected_lead_days, s.master_lead_time_days) as corrected_lead_days,
-        coalesce(a.annual_consumption, 0)                        as annual_consumption,
-        coalesce(a.annual_consumption, 0)
-            * coalesce(s.standard_cost, (select median(standard_cost) from survivor)) as annual_value,
-        coalesce(g.segment, 'intermittent')                     as segment
-    from survivor s
-    left join annual a on s.canonical_item_number = a.canonical_item_number
-    left join leads l  on s.canonical_item_number = l.canonical_item_number
-    left join seg g    on s.canonical_item_number = g.canonical_item_number
+        i.canonical_item_number,
+        i.description,
+        i.item_class,
+        i.stock_uom,
+        i.standard_cost,
+        i.primary_supplier_id,
+        l.master_lead_time_days,
+        l.corrected_lead_days,
+        i.reorder_point                         as reorder_point_on_file,
+        p.new_reorder_point                     as reorder_point_recomputed,
+        p.new_safety_stock                      as safety_stock_recomputed,
+        coalesce(u.annual_usage, 0)             as annual_usage,
+        coalesce(u.annual_usage, 0) * coalesce(i.standard_cost, 0) as annual_usage_value,
+        coalesce(pt.demand_pattern, 'intermittent') as demand_pattern
+    from items i
+    left join {{ ref('int_lead_times') }} l using (canonical_item_number)
+    left join usage_2025 u using (canonical_item_number)
+    left join params p on p.item_number = i.item_number
+    left join pattern pt using (canonical_item_number)
 
 ),
 
@@ -83,25 +92,18 @@ ranked as (
 
     select
         *,
-        sum(annual_value) over (order by annual_value desc
-            rows between unbounded preceding and current row)
-            / nullif(sum(annual_value) over (), 0) as cum_value_share
-    from base
+        sum(annual_usage_value) over (order by annual_usage_value desc, canonical_item_number
+                                      rows between unbounded preceding and current row)
+            / nullif(sum(annual_usage_value) over (), 0) as cum_value_share
+    from valued
 
 )
 
 select
-    canonical_item_number,
-    item_class,
-    standard_cost,
-    master_lead_time_days,
-    corrected_lead_days,
-    annual_consumption,
-    annual_value,
-    segment,
+    * exclude (cum_value_share),
     case
         when cum_value_share <= {{ var('abc_a_cum') }} then 'A'
         when cum_value_share <= {{ var('abc_b_cum') }} then 'B'
         else 'C'
-    end as abc
+    end as abc_class
 from ranked

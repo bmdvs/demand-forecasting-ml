@@ -1,30 +1,31 @@
 name: 'inventory_forecast'
-version: '1.0.0'
+version: '2.0.0'
 profile: 'inventory_forecast'
 
 model-paths: ["models"]
-analysis-paths: ["analyses"]
-test-paths: ["tests"]
 seed-paths: ["seeds"]
+test-paths: ["tests"]
 macro-paths: ["macros"]
-snapshot-paths: ["snapshots"]
 
 clean-targets:
   - "target"
   - "dbt_packages"
 
 vars:
-  # Observation window and reference date — keep in sync with the data generator.
-  start_date: '2023-04-01'
-  end_date: '2026-08-31'
-  as_of_date: '2026-08-31'
-  # ABC segmentation cut points (cumulative share of annual consumption value).
+  # Observation window, kept in sync with data_source/generate/config.py.
+  start_date: '2023-01-01'
+  history_end: '2025-12-31'        # last day of the history; end of the remediation period
+  remediation_start: '2025-10-22'  # the ten-week cleanup that closed the history
+  as_of_date: '2026-06-30'         # "today" for the inventory position
+  # Detection thresholds used by the data-quality models, as documented in the audit.
+  dead_lookback_months: 24         # no more than one movement in this window marks a dead record
+  stale_lead_gap_days: 3           # actual lead time differs from the master by more than this
+  stale_rop_min_units: 5           # recomputed reorder point differs by at least this many units
+  stale_rop_min_share: 0.30        # ...and by at least this share of the point on file
+  duplicate_gap_days: 1            # an identical posting within this many days is a duplicate
+  # ABC cut points on cumulative annual usage value.
   abc_a_cum: 0.80
   abc_b_cum: 0.95
-  # Detection thresholds for the data-quality models, documented in the audit.
-  stale_lead_gap_days: 5          # actual lead exceeds master by at least this
-  uom_price_ratio: 8              # purchase price this many times unit cost = box buy
-  phantom_variance: 0.10          # count vs system variance that flags phantom stock
 
 models:
   inventory_forecast:

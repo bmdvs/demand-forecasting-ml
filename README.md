@@ -2,7 +2,7 @@
 
 **An end-to-end data platform for a mid-sized manufacturer, spanning data engineering, data quality and machine learning, applied to inventory forecasting and ERP data quality.**
 
-It starts with a **data pipeline** that integrates the shop's item, supplier, bill-of-materials, production, service, purchasing, inventory and cycle-count records, finds and remediates the errors in them, and models the cleaned history into marts.
+It starts with a **data pipeline** in dbt on DuckDB that integrates the shop's item, supplier, bill-of-materials, production, service, purchasing, inventory and cycle-count records, flags the errors in them through one data-quality model per error type, applies the remediation, and models the cleaned history into marts.
 
 A **data quality and ML layer** is then built on top of that cleaned dataset, including:
 
@@ -48,17 +48,23 @@ flowchart LR
     WMS["WMS<br/>cycle counts"]
     SS["Buyer spreadsheet"]
   end
-  ERP --> DQ
-  WMS --> DQ
-  SS --> DQ
-  DQ["Data quality audit<br/>16 error types"] --> REM["Remediation<br/>merges, corrections, deactivations"]
-  REM --> MARTS[("Cleaned marts<br/>weekly usage, item attributes")]
+  ERP --> STG
+  WMS --> STG
+  SS --> STG
+  STG["dbt staging"] --> DQ["16 data-quality models<br/>one per error type"]
+  DQ --> REM["Remediation records<br/>merges, corrections, deactivations"]
+  REM --> INT["dbt intermediate<br/>resolved items, corrected ledger"]
+  STG --> INT
+  INT --> MARTS[("Cleaned marts<br/>weekly usage, item attributes,<br/>inventory, suppliers, error register")]
   MARTS --> ML["Demand model<br/>weekly forecast &rarr; reorder policy"]
+  DQ --> AUD["Data quality audit"]
   ML --> QUEUE["ERP reorder queue"]
   ML --> MON["MLOps monitoring"]
 ```
 
-Raw extracts from the ERP, the warehouse system and the buyers' spreadsheet are checked for 16 types of data quality error, from dead and duplicate item records and stale lead times to free-text purchases and purchase orders never closed. The errors are remediated through auditable merges, corrections and deactivations, and the cleaned history is modeled into weekly usage and item-attribute marts.
+Raw extracts from the ERP, the warehouse system and the buyers' spreadsheet are typed in dbt staging models on DuckDB. Sixteen data-quality models, one per error in the audit, flag the affected records, from dead and duplicate item records and stale lead times to free-text purchases and purchase orders never closed; a summary mart turns them into the audit's error register. The remediation is recorded as auditable merges, corrections and deactivations, which the intermediate models apply without overwriting the source: duplicate records resolve to one canonical item, confirmed ledger corrections are applied, and lead times are recomputed from actual receipts. The marts then hold cleaned weekly usage, item attributes (demand pattern, ABC class, corrected lead time), the inventory position and supplier performance.
+
+Because the data is generated, the model's training marts are built by [`ml/src/prep_marts.py`](ml/src/prep_marts.py), which also produces raw, partly cleaned and fully cleaned versions of the history and scores each against the generator's true demand. The dbt marts cover the same 1,300 items and match their total usage to within 0.2%.
 
 The demand model is a random forest, selected over XGBoost and ridge regression on a 2024 validation window and tested on the full 2025 year. Every Monday it forecasts each item's usage over its supplier lead time. That forecast is bias-corrected by demand pattern and combined with a safety buffer, sized from the model's own errors to each item type's fill-rate target, and a cost-based order quantity. The result is loaded into the ERP's reorder queue. The model is retrained monthly and monitored each month against its 2025 performance.
 
@@ -96,25 +102,29 @@ python3 -m data_source.generate.validate
 python3 -m data_source.generate.remediation
 python3 -m ml.src.prep_marts
 
-# 3. Baselines, model selection and the weekly forecast and reorder policy
+# 3. Warehouse: staging, data-quality models, intermediate models and marts
+cd data_pipeline && dbt build --profiles-dir . && cd ..
+
+# 4. Baselines, model selection and the weekly forecast and reorder policy
 python3 -m ml.src.baselines
 python3 -m ml.src.training
 python3 -m ml.src.training_3way
 python3 -m ml.src.forward_policy
 
-# 4. Replay January to June 2026 on the model's reorder schedule
+# 5. Replay January to June 2026 on the model's reorder schedule
 python3 -m data_source.generate.run_generator
 python3 -m data_source.generate.validate
 python3 -m data_source.generate.remediation
 python3 -m ml.src.prep_marts
 python3 -m ml.src.reliability
 python3 -m ml.src.financials
+cd data_pipeline && dbt build --profiles-dir . && cd ..
 
-# 5. Explainability and monitoring
+# 6. Explainability and monitoring
 python3 -m ml.src.explain_weekly
 python3 -m ml.src.monitor_weekly
 
-# 6. Client-facing deliverables
+# 7. Client-facing deliverables
 python3 ml/reports/generate_data_quality_audit.py
 python3 -m ml.reports.generate_reorder_queue
 python3 -m ml.reports.generate_model_overview
@@ -130,8 +140,9 @@ The report generators write standalone HTML to [`docs/`](docs/), which GitHub Pa
 
 | Layer | Tools |
 |---|---|
-| Data generation & transformation | Python, pandas, NumPy |
-| Data quality & remediation | Python, pandas: crosswalks, corrections and auditable review logs |
+| Integration & transformation | dbt, DuckDB |
+| Data quality & remediation | dbt data-quality models, Python, pandas |
+| Data generation | Python, pandas, NumPy |
 | Modeling | scikit-learn (random forest, ridge regression), XGBoost, Optuna, SHAP |
 | Monitoring | SciPy (Jensen-Shannon distance), pandas |
 | Reporting | matplotlib, HTML/CSS |

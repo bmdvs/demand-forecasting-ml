@@ -53,7 +53,9 @@ import numpy as np
 import optuna
 import pandas as pd
 
-from .resolution import REPO
+from pathlib import Path
+
+REPO = Path(__file__).resolve().parents[2]
 from . import training as tr
 from .training import _make, _fit_predict, _space, _wape
 from data_source.generate import config as C
