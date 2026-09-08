@@ -1,30 +1,29 @@
 # Manufacturing Data Platform: Inventory Forecasting & ERP Data Quality
 
-**An end-to-end data platform for a mid-sized manufacturer, spanning data engineering, analytics and machine learning, applied to inventory forecasting and ERP data quality.**
+**An end-to-end data platform for a mid-sized manufacturer, spanning data engineering, data quality and machine learning, applied to inventory forecasting and ERP data quality.**
 
-It starts with a **data pipeline** that integrates item, transaction, purchasing and supplier records, resolves duplicate items and stale reference data, and models it into clean marts.
+It starts with a **data pipeline** that integrates the shop's item, supplier, bill-of-materials, production, service, purchasing, inventory and cycle-count records, finds and remediates the errors in them, and models the cleaned history into marts.
 
-An **analytics and ML layer** is then built on top of that cleaned dataset, including:
+A **data quality and ML layer** is then built on top of that cleaned dataset, including:
 
-1. **Data quality audit** that quantifies every defect in the item master and the operational cost it carries
-2. **Analytics diagnostics** that show where inventory dollars sit and what a corrected, forecast-driven policy would change
-3. **Machine learning model** that forecasts each item's demand over its lead time and turns it into reorder suggestions, supported by technical documentation and MLOps monitoring in production
+1. **Data quality audit** that finds every type of error in the ERP, remediates it, and sets the process changes that stop it recurring
+2. **Machine learning model** that forecasts each item's usage over its supplier lead time and turns it into a reorder point and order quantity, supported by technical documentation and MLOps monitoring in production
 
-The demand model's reorder suggestions are embedded into the company's existing ERP purchasing screen, as shown below:
+The model's reorder suggestions are embedded into the company's existing ERP purchasing screen, as shown below:
 
-[![ERP reorder queue with embedded demand forecasts](docs/screenshots/reorder_queue.png)](https://brimsystems.github.io/mfg-inventory-forecast/docs/index.html)
+[![ERP reorder queue with embedded demand forecasts](docs/screenshots/erp_queue.png)](https://brimsystems.github.io/mfg-inventory-forecast/docs/index.html)
 
-> **[Open the live reorder queue &rarr;](https://brimsystems.github.io/mfg-inventory-forecast/docs/index.html)** &nbsp;·&nbsp; **[All seven deliverables &rarr;](https://brimsystems.github.io/mfg-inventory-forecast/)**
+> **[Open the live reorder queue &rarr;](https://brimsystems.github.io/mfg-inventory-forecast/docs/index.html)** &nbsp;·&nbsp; **[All five deliverables &rarr;](https://brimsystems.github.io/mfg-inventory-forecast/)**
 
 ---
 
 ## Business Context
 
-A precision machining shop (~$25M revenue, three buyers, about 800 active purchased items) ran purchasing on reorder points set in the ERP years ago and rarely revisited. Buyers kept their own spreadsheets because they did not trust the on-hand numbers. Expedite fees and stockouts on common material were frequent while slow-moving stock accumulated, and nobody could say how much inventory the shop actually needed.
+An industrial equipment builder, making conveyors and material-handling modules, industrial mixers and agitators, and custom enclosures and frames, stocks about 1,300 purchased items from 40 suppliers. Its products carry multi-level bills of materials, and material is consumed by production jobs, service and spare-parts orders, and manual issues.
 
-The data that could fix this was already being captured, but it was dirty in two ways. The item master carried structural defects: the same physical item under two or three numbers (splitting its consumption history), lead times that had drifted upward for one supplier without being updated, boxes purchased but issued by the each, one vendor fragmented across spellings and IDs, and records missing a reorder point, cost, or supplier. The daily ledger carried its own, harder problems: buyers keyed non-stock lines with free-text descriptions instead of the part number, which hid real demand; quantities were fat-fingered by an order of magnitude; purchase orders were left open long after they would ever be received, so the system believed material was inbound that never arrived; and some material was consumed without ever being issued.
+Two buyers and a purchasing manager reordered by hand. They could not trust the ERP: its lead times and reorder points were years out of date, the same part sat under several item numbers, dead items were still flagged active, and receipts were posted late and in batches. So they kept their own spreadsheet, padded safety stock well beyond what usage required, and relied on rush orders to cover the shortfalls. The shop carried roughly 160 days of usage in inventory, yet still logged frequent stockouts, jobs held for missing material and rush freight spend.
 
-Master defects can be stated as fact once found, while most transaction defects are probabilistic findings a person must confirm, so the two are detected and reported differently. Resolving the duplicate records, attributing the free-text purchases back to real items, recalculating lead times from actual receipts, and forecasting demand over each item's true lead time turns that mess into a right-sized reorder policy. The shop can now see what to order and how much, which losses are worth fixing first, and how much working capital a forecast-driven policy frees at the same service level.
+The work had two parts. First, a full data quality audit of the ERP found 16 types of error across its master and transaction tables, remediated them, and put process changes in place so they would not recur. Second, a demand model was trained on the cleaned history. Every week it forecasts how much of each item the shop will use before a new order could arrive, and turns that forecast into a reorder point and an order quantity loaded straight into the ERP's purchasing screen. The model has set every reorder decision since January 2026.
 
 ---
 
@@ -32,13 +31,11 @@ Master defects can be stated as fact once found, while most transaction defects 
 
 | # | Deliverable | What it is | Links |
 |---|---|---|---|
-| 1 | ERP reorder queue | The demand model embedded in a JobBOSS-style purchasing screen: each item's forecast demand over its lead time, on-hand, suggested order and reason, with merged records and corrected lead times flagged. | [View](https://brimsystems.github.io/mfg-inventory-forecast/docs/index.html) |
-| 2 | Data quality audit | Every defect class in the item master, the records affected, the evidence, and the operational cost, ending in the remediation performed. | [View](https://brimsystems.github.io/mfg-inventory-forecast/docs/reports/data_quality_audit.html) |
-| 3 | Analytics diagnostic report | Where inventory dollars sit, the demand-pattern distribution, supplier lead-time performance, and the three-policy comparison of service and working capital. | [View](https://brimsystems.github.io/mfg-inventory-forecast/docs/reports/analytics_report.html) |
-| 4 | KPI dashboard | The recurring view of inventory value and turns, fill rate, stockouts, expedites and supplier lead time, by week and month. | [View](https://brimsystems.github.io/mfg-inventory-forecast/docs/reports/dashboard.html) |
-| 5 | ML model overview & performance report | A high-level model card: what the model predicts over the lead time, how it performs by segment against the baselines, and the working capital it helps unlock. | [View](https://brimsystems.github.io/mfg-inventory-forecast/docs/reports/model_overview.html) |
-| 6 | ML technical report | Demand segmentation, feature engineering, the rolling-origin backtest, metric choices, results by segment and ABC, and the safety-stock calibration. | [View](https://brimsystems.github.io/mfg-inventory-forecast/docs/reports/technical_report.html) |
-| 7 | MLOps monitoring report | Monitoring across periods on four drift layers with a rules-based retraining decision. | [View](https://brimsystems.github.io/mfg-inventory-forecast/docs/reports/monitoring_report.html) |
+| 1 | ERP reorder queue | The demand model embedded in the ERP's purchasing screen: each item's on-hand, allocated, on-order and available stock, forecast usage over its lead time, safety stock, reorder point and suggested order quantity, with its criticality, ranked by urgency. | [View](https://brimsystems.github.io/mfg-inventory-forecast/docs/index.html) |
+| 2 | Data quality audit | Every type of error found across the ERP's master and transaction tables, its scale, the remediation performed and its evidence, the before-and-after results, and the process changes that stop each error recurring. | [View](https://brimsystems.github.io/mfg-inventory-forecast/docs/reports/data_quality_audit.html) |
+| 3 | ML model overview & performance report | A high-level summary of the model: what it does, the usage it learns from, how it sets each reorder, and its results against 2025 and the status quo. | [View](https://brimsystems.github.io/mfg-inventory-forecast/docs/reports/model_overview.html) |
+| 4 | ML technical report | The model card, training data and time-based split, model selection and performance, SHAP feature importance, the rules that turn a forecast into a reorder decision, known limitations, and deployment. | [View](https://brimsystems.github.io/mfg-inventory-forecast/docs/reports/technical_report.html) |
+| 5 | MLOps monitoring report | Monthly monitoring of the live model against Investigate and Retrain thresholds: forecast error and bias overall and by demand pattern, drift, data quality and business KPIs, with a rules-based retraining decision. | [View](https://brimsystems.github.io/mfg-inventory-forecast/docs/reports/monitoring_report.html) |
 
 ---
 
@@ -47,21 +44,23 @@ Master defects can be stated as fact once found, while most transaction defects 
 ```mermaid
 flowchart LR
   subgraph SRC["Source systems"]
-    ERP["ERP<br/>items, transactions, POs, suppliers"]
+    ERP["ERP<br/>items, suppliers, BOMs, production,<br/>service, purchasing, inventory"]
     WMS["WMS<br/>cycle counts"]
+    SS["Buyer spreadsheet"]
   end
-  ERP --> DBT
-  WMS --> DBT
-  DBT["dbt on DuckDB<br/>staging, data-quality models"] --> RES["Entity resolution<br/>crosswalks"]
-  RES --> MARTS[("Cleaned marts")]
-  DBT --> MARTS
-  MARTS --> AN["Audit + diagnostic<br/>+ dashboard"]
-  MARTS --> ML["ML pipeline<br/>segment &rarr; forecast &rarr; policy"]
-  ML --> QUEUE["ERP reorder queue<br/>with model suggestions"]
+  ERP --> DQ
+  WMS --> DQ
+  SS --> DQ
+  DQ["Data quality audit<br/>16 error types"] --> REM["Remediation<br/>merges, corrections, deactivations"]
+  REM --> MARTS[("Cleaned marts<br/>weekly usage, item attributes")]
+  MARTS --> ML["Demand model<br/>weekly forecast &rarr; reorder policy"]
+  ML --> QUEUE["ERP reorder queue"]
   ML --> MON["MLOps monitoring"]
 ```
 
-Raw extracts from the ERP and the warehouse are typed in dbt staging, run through first-class data-quality models (one per defect class), and combined into cleaned marts. Entity resolution merges duplicate items through an auditable crosswalk (nothing is deleted), and lead times are recalculated from actual receipts. The marts feed the audit and diagnostic reports and the ML pipeline: items are classified by demand pattern, a global model forecasts demand over each item's lead time, and an inventory policy simulation turns forecast accuracy into service and working capital. Each period is monitored against training references.
+Raw extracts from the ERP, the warehouse system and the buyers' spreadsheet are checked for 16 types of data quality error, from dead and duplicate item records and stale lead times to free-text purchases and purchase orders never closed. The errors are remediated through auditable merges, corrections and deactivations, and the cleaned history is modeled into weekly usage and item-attribute marts.
+
+The demand model is a random forest, selected over XGBoost and ridge regression on a 2024 validation window and tested on the full 2025 year. Every Monday it forecasts each item's usage over its supplier lead time. That forecast is bias-corrected by demand pattern and combined with a safety buffer, sized from the model's own errors to each item type's fill-rate target, and a cost-based order quantity. The result is loaded into the ERP's reorder queue. The model is retrained monthly and monitored each month against its 2025 performance.
 
 ---
 
@@ -69,17 +68,17 @@ Raw extracts from the ERP and the warehouse are typed in dbt staging, run throug
 
 All figures below are read directly from the pipeline in this repository.
 
-- **Master-level data quality:** the item master resolved from 855 records to 800 physical items at 100% precision and 100% recall on the known duplicate clusters (365 genuinely similar pairs correctly held apart). One supplier's recorded lead time (12 days) understated its actual receipts, which had drifted toward 27 days on about 120 items; the duplicate records had split roughly $718K of annual consumption across separate numbers.
-- **Transaction-level data quality:** free-text non-stock lines were attributed back to real items at 99% precision and recall, recovering about 15% of hidden demand on the affected items; 25 items showed material consumed without being issued; 816 never-closed purchase orders were left believing phantom material was inbound. Because these are probabilistic findings, roughly half are reported as confirmed and the rest are flagged for human review, which is how a real data-quality engagement reports transactional work.
-- **Forecast, decomposed by cleaning tier:** the same model, features and rolling origins run on three inputs isolate what each tier of cleaning is worth. Forecast error (WAPE against true demand over the lead time) falls from 47.3% on raw data, to 45.8% after master-level cleaning, to 44.0% after transaction cleaning. Master-level cleaning is worth about +3.4% overall and rescues the duplicate items from about 61% to 26% WAPE; transaction cleaning is worth a further +3.8% overall and about +9.7% on the free-text items.
-- **Inventory:** at an equal ~96% service level, the forecast-driven policy holds about $528K (28%) less inventory than a corrected policy without a forecast. Against the current stale reorder points it lifts fill rate from 86% to 96% and cuts expedite cost from about $299K to $119K, and about 10% of stockouts trace to the phantom on-order left by never-closed POs. Expedite and carrying costs are stated assumptions.
-- **Monitoring:** across the monitored periods the model held within every threshold, and defect rates are tracked as their own monitored series, so the standing decision is no action.
+- **Data quality:** over 228K records across eight ERP tables were audited, and 16 types of error were found. The largest were dead records (40% of item master records were inactive but still flagged active), stale lead times (56% of live items) and stale reorder points (77% of live items). After remediation, 100% of live items carry a lead time matching actual deliveries and a reorder point reflecting real usage, up from 4% and 23%.
+- **Operations:** in its first six months (January to June 2026), the model cut stockout events by 34%, jobs held for material by 32% and rush spend by 38% against the 2025 monthly averages.
+- **Working capital:** inventory fell 10%, about $340K, from December 31, 2025 to June 30, 2026, alongside those improvements. The entire reduction is a release of working capital.
+- **Forecast accuracy:** live forecast error (WAPE) of 46%, against 45.7% on the held-out 2025 year and 50% for the best simple forecasting method.
+- **Monitoring:** the monitoring report recommends a full retrain on data through June 2026, because forecast error and bias on intermittent items rose above their Retrain thresholds in March and April. Separately, the safety buffers should be recalibrated, since fill rates ran more than 1 point below target from January to May.
 
 ---
 
 ## Data
 
-The datasets were generated to represent typical records from a manufacturing ERP and warehouse, with defect types and rates constructed to reflect patterns commonly documented in these systems, so the full workflow can be demonstrated on data that is safe to share publicly; the [generators are in `data_source/generate/`](data_source/generate/).
+The datasets were generated to represent typical records from a manufacturing ERP, its warehouse system and a buyer's spreadsheet, with error types and rates constructed to reflect patterns commonly documented in these systems, so the full workflow can be demonstrated on data that is safe to share publicly. The [generators are in `data_source/generate/`](data_source/generate/).
 
 ---
 
@@ -91,33 +90,39 @@ python3 -m venv .venv
 source .venv/bin/activate          # Windows: .venv\Scripts\activate
 pip install -e .
 
-# 2. Generate the source data
+# 2. Generate the source data, remediate it and build the marts
 python3 -m data_source.generate.run_generator
+python3 -m data_source.generate.validate
+python3 -m data_source.generate.remediation
+python3 -m ml.src.prep_marts
 
-# 3. Entity resolution (writes the crosswalk seeds), then build the warehouse
-python3 -m ml.src.resolution
-cd data_pipeline && dbt build && cd ..
-
-# 4. Data quality, marts, forecasting and policy
-python3 -m ml.src.data_quality
-python3 -m ml.src.marts
+# 3. Baselines, model selection and the weekly forecast and reorder policy
 python3 -m ml.src.baselines
 python3 -m ml.src.training
-python3 -m ml.src.scoring
-python3 -m ml.src.policy
-python3 -m ml.src.monitoring
+python3 -m ml.src.training_3way
+python3 -m ml.src.forward_policy
 
-# 5. Client-facing deliverables
+# 4. Replay January to June 2026 on the model's reorder schedule
+python3 -m data_source.generate.run_generator
+python3 -m data_source.generate.validate
+python3 -m data_source.generate.remediation
+python3 -m ml.src.prep_marts
+python3 -m ml.src.reliability
+python3 -m ml.src.financials
+
+# 5. Explainability and monitoring
+python3 -m ml.src.explain_weekly
+python3 -m ml.src.monitor_weekly
+
+# 6. Client-facing deliverables
+python3 ml/reports/generate_data_quality_audit.py
 python3 -m ml.reports.generate_reorder_queue
-python3 -m ml.reports.generate_data_quality_audit
-python3 -m ml.reports.generate_analytics_report
-python3 -m ml.reports.generate_dashboard
 python3 -m ml.reports.generate_model_overview
 python3 -m ml.reports.generate_technical_report
 python3 -m ml.reports.generate_monitoring_report
 ```
 
-The report generators write standalone HTML; the copies served by GitHub Pages live under [`docs/`](docs/).
+The report generators write standalone HTML to [`docs/`](docs/), which GitHub Pages serves.
 
 ---
 
@@ -125,11 +130,11 @@ The report generators write standalone HTML; the copies served by GitHub Pages l
 
 | Layer | Tools |
 |---|---|
-| Integration & transformation | dbt, DuckDB |
-| Data quality & entity resolution | Python, dbt models, string similarity + blocking |
-| Analytics & reporting | Python, pandas, matplotlib, HTML/CSS |
-| Modeling | XGBoost, scikit-learn, Optuna, SHAP, Croston/SBA baselines |
-| MLOps | MLflow, Evidently, Prefect |
+| Data generation & transformation | Python, pandas, NumPy |
+| Data quality & remediation | Python, pandas: crosswalks, corrections and auditable review logs |
+| Modeling | scikit-learn (random forest, ridge regression), XGBoost, Optuna, SHAP |
+| Monitoring | SciPy (Jensen-Shannon distance), pandas |
+| Reporting | matplotlib, HTML/CSS |
 | Delivery | Static HTML, GitHub Pages |
 
 ---
