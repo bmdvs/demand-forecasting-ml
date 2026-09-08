@@ -44,7 +44,7 @@ def build_queue():
     im = pd.read_csv(RAW / "erp" / "item_master.csv", low_memory=False).set_index("item_number")
     sup = pd.read_csv(RAW / "erp" / "supplier_master.csv").set_index("supplier_id")
     po = pd.read_csv(RAW / "erp" / "purchase_orders.csv", low_memory=False)
-    xw = pd.read_csv(REPO / "data_pipeline" / "seeds" / "item_crosswalk.csv").set_index("item_number")["canonical_item_number"].to_dict()
+    xw = pd.read_csv(REPO / "ml" / "data" / "marts" / "item_crosswalk.csv").set_index("item_number")["canonical_item_number"].to_dict()
     lead = pd.read_csv(REM / "lead_time_computation.csv")
     bom = pd.read_csv(REM / "bom_change_log.csv")
     ft = pd.read_csv(REM / "free_text_attribution.csv")

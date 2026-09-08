@@ -23,7 +23,6 @@ from .features import _row_features, FEATURE_COLS, VAL_ORIGINS
 
 MARTS = REPO / "ml" / "data" / "marts"
 BACKTEST = REPO / "ml" / "data" / "backtest"
-SEEDS = REPO / "data_pipeline" / "seeds"
 TRUTH = REPO / "data_source" / "truth"
 
 PARAMS = dict(n_estimators=450, max_depth=6, learning_rate=0.05, subsample=0.85,
@@ -80,7 +79,7 @@ def run():
     true_wide = _wide("true")
     months = list(true_wide.columns)
 
-    cw = pd.read_csv(SEEDS / "item_crosswalk.csv")
+    cw = pd.read_csv(MARTS / "item_crosswalk.csv")
     clusters = cw.groupby("canonical_item_number")["item_number"].count()
     dup_items = set(clusters[clusters > 1].index)
     txn = json.loads((TRUTH / "txn_defects.json").read_text())
