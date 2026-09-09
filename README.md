@@ -1,6 +1,6 @@
-# ERP Data Quality Audit & Demand Forecasting
+# ERP Data Quality Audit & Demand Forecasting Model
 
-A comprehensive data quality audit of an industrial equipment manufacturer's ERP system. The cleaned data feeds a machine learning model that forecasts demand for every stocked item and sets the shop's reorder points and order quantities.
+**A comprehensive data quality audit of an industrial equipment manufacturer's ERP system. The cleaned data feeds a machine learning model that forecasts demand for every stocked item and sets the shop's reorder points and order quantities.**
 
 The data quality audit covered all of the records across the ERP's eight tables and found 16 types of recurring data quality errors. It details the remediation process, which resolved the majority of these errors, as well as the process changes that will keep the ERP system clean going forward.
 
@@ -18,11 +18,13 @@ The model's reorder suggestions are embedded in the company's existing ERP purch
 
 ## Business Context
 
-An industrial equipment manufacturer, making conveyors and material-handling modules, industrial mixers and agitators, and custom enclosures and frames, stocks about 1,300 purchased items from 40 suppliers. Its products carry multi-level bills of materials, and material is consumed by production jobs, service and spare-parts orders, and manual issues.
+An industrial equipment manufacturer (~$30mm revenue) produces conveyors and material-handling modules, industrial mixers and agitators, and custom enclosures and frames. It stocks about 1,300 items purchased from 40 suppliers. Its products carry multi-level bills of materials, and material is consumed by production jobs, service and spare-parts orders.
 
-Two buyers and a purchasing manager reordered by hand. They could not trust the ERP: its lead times and reorder points were years out of date, the same part sat under several item numbers, dead items were still flagged active, and receipts were posted late and in batches. So they kept their own spreadsheet, padded safety stock well beyond what usage required, and relied on rush orders to cover the shortfalls. The shop carried roughly 160 days of usage in inventory, yet still logged frequent stockouts, jobs held for missing material and rush freight spend.
+Historically, the shop's reordering was done manually and ran on data that was messy and couldn't be trusted. Much of the reordering process was labor-intensive and imprecise: stock levels and lead times were stale, stock on hand was unverified, safety stock was inflated, and rush orders were relied upon to compensate for shortfalls. The result was the shop carrying excess inventory, roughly 160 days of usage, yet still logging elevated stockout events, held jobs for missing material and rush freight spend.
 
-The work had two parts. First, a full data quality audit of the ERP found 16 types of error across its master and transaction tables, remediated them, and put process changes in place so they would not recur. Second, a demand model was trained on the cleaned history. Every week it forecasts how much of each item the shop will use before a new order could arrive, and turns that forecast into a reorder point and an order quantity loaded straight into the ERP's purchasing screen. The model has set every reorder decision since January 2026.
+This project consists of two parts. First, a full data quality audit of the ERP. We found 16 types of error across the system's eight master and transaction tables, remediated them, and put process changes in place so they would not recur. Second, a demand forecasting model was trained on the cleaned history. Every week it forecasts how much of each item the shop will use before a new order could arrive, and turns that forecast into a reorder point and an order quantity loaded straight into the ERP's purchasing screen.
+
+The model has set every reorder decision since January 2026. As a result, the shop has achieved significant improvements in stockout events, jobs held for material and rush spend. These outcomes were achieved alongside a reduction in inventory, which freed up significant cash used to run the business.
 
 ---
 
