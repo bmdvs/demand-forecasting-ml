@@ -24,7 +24,7 @@ import numpy as np
 import pandas as pd
 from scipy.spatial.distance import jensenshannon
 
-from .forward_policy import build_frame, FEATS, _monday, MARTS, BACKTEST, OUT as POLICY
+from .demand_model import build_frame, FEATS, _monday, MARTS, BACKTEST, OUT as POLICY
 from data_source.generate import config as C
 
 MON = BACKTEST.parent / "monitoring"

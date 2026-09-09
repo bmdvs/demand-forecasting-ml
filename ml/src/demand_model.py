@@ -42,7 +42,7 @@ size, so the difference between the two is the model.
 
 Writes ml/data/policy/rop_schedule.json (model), rule_schedule.json (rule) and
 ml/data/backtest/weekly_backtest.parquet, weekly_metrics.json.
-Run:  python -m ml.src.forward_policy
+Run:  python -m ml.src.demand_model
 """
 from __future__ import annotations
 
