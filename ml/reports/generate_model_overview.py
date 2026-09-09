@@ -652,9 +652,9 @@ toc = ('<a href="#summary">Executive Summary</a><hr>'
 
 body = f"""
 {B.section("summary", "Section 1", "Executive Summary")}
-<p>The demand forecasting model sets the reorder decisions for each of the shop's {n_items:,} stocked items. Every week
-it forecasts each item's demand, meaning how much the shop will use before a new order could arrive, and then turns
-that forecast into a reorder point and order quantity. It has been live for the past six months, from January through
+<p>The demand forecasting model sets the reorder decisions for each of the shop's {n_items:,} stocked items. The model
+forecasts demand for each item to understand how much the shop will use before a new order could arrive, and then
+turns that forecast into a reorder point and order quantity. It has been live for the past six months, from January through
 June 2026. Its reorder points and order quantities are loaded straight into the ERP's purchasing screen, where the
 buyers release the suggested orders.</p>
 <p>Before the model, reordering was done manually and ran on data that was messy and couldn't be trusted. Much of
