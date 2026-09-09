@@ -1,6 +1,6 @@
 """Explainability and diagnostics for the weekly demand model, for the technical report.
 
-Rebuilds the weekly training frame exactly as forward_policy does, refits the
+Rebuilds the weekly training frame exactly as demand_model does, refits the
 selected model on train + validation, and writes:
 
   ml/data/backtest/explain/split_summary.json   window, rows, items and target stats per split
@@ -20,7 +20,7 @@ from datetime import date, timedelta
 import numpy as np
 import pandas as pd
 
-from .forward_policy import build_frame, FEATS, _monday, MARTS, BACKTEST
+from .demand_model import build_frame, FEATS, _monday, MARTS, BACKTEST
 from . import training as tr
 from .training import _make, _wape
 from data_source.generate import config as C

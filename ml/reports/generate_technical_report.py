@@ -6,7 +6,7 @@ the section this case needs: how a usage forecast becomes a reorder point and an
 order quantity. Every figure is read from the weekly backtest, the explainability
 step, the reorder-point schedule and the forward replay.
 
-    python -m ml.src.explain_weekly        (once, after forward_policy)
+    python -m ml.src.explain_weekly        (once, after demand_model)
     PYTHONIOENCODING=utf-8 "../mfg-oee-maintenance/.venv/Scripts/python.exe" -m ml.reports.generate_technical_report
 """
 import json
@@ -41,7 +41,7 @@ attrs = pd.read_parquet(MARTS / "item_attributes.parquet").set_index("canonical_
 weekly = pd.read_parquet(MARTS / "consumption_weekly.parquet")
 
 WIN = metrics["winner"]
-N_TRIALS = 12          # Optuna trials per candidate (forward_policy.N_TRIALS)
+N_TRIALS = 12          # Optuna trials per candidate (demand_model.N_TRIALS)
 from data_source.generate import config as _GC
 SEASONAL_SHARE = _GC.SEASONAL_ITEM_SHARE
 LABEL = {"Linear": "Linear regression (ridge)", "RandomForest": "Random forest", "XGBoost": "XGBoost"}
@@ -461,7 +461,7 @@ def ops_table():
         ["Outputs", "rop_schedule.json: per item and week, the reorder level, safety stock, forecast, horizon, "
                     "reorder point and order quantity, loaded into the ERP reorder queue"],
         ["Data lineage", "ERP and WMS extracts &rarr; dbt staging, intermediate and data-quality models &rarr; weekly "
-                         "usage and item attribute marts &rarr; forward_policy.py (train, forecast, policy) &rarr; "
+                         "usage and item attribute marts &rarr; demand_model.py (train, forecast, policy) &rarr; "
                          "rop_schedule.json &rarr; ERP reorder queue"],
         ["Retraining triggers", "Judged on matured months (at least 80% of forecasts scored). Investigate when live "
                                 "WAPE is above its 2025 level, overall or for any demand pattern. Full re-tune when "
