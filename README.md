@@ -44,10 +44,10 @@ Over the past six months, the demand forecasting model has been used to set ever
 
 | Layer | What it is, does and contains |
 |---|---|
-| Staging | One model per source table (ERP, WMS and the buyers' spreadsheet), plus the cleanup's remediation records and the generator's ground truth. Each types and cleans the raw data into a consistent shape and format. |
-| Data quality | One model per error in the audit, sixteen in all, each flagging the records affected: dead and duplicate item records, stale lead times and reorder points, UOM mismatches, missing fields, BOM omissions, fragmented suppliers, and the ledger and purchasing errors. |
-| Intermediate | Applies the remediation without overwriting the source: resolves duplicate records to one canonical item, applies the confirmed ledger corrections, and assembles recorded usage and its corrections by item, month and week. |
-| Marts | The analysis-ready tables the audit and model read: raw, master-cleaned and fully cleaned usage, true demand, weekly usage, item attributes (demand pattern, ABC class, corrected lead time), inventory position, supplier performance, and the audit's error register. |
+| Staging | One model per source table (ERP, WMS and the buyers' spreadsheet). Each inputs and cleans the raw data into a consistent shape and format. |
+| Data quality | One model for each of the 16 error types identified in the audit. Flags the records affected across the staging tables. |
+| Intermediate | Applies the cleanup to the staged data without altering the source. Builds the shared pieces the marts are assembled from, including the item crosswalk and cleaned item master and inventory ledger. |
+| Marts | The analysis-ready tables the audit and model read: cleaned demand, weekly usage, item attributes, inventory position, supplier performance, and the audit's error register. |
 
 ### Data cleaning: [`data_pipeline/models/data_quality/`](data_pipeline/models/data_quality/) and [`data_source/generate/remediation.py`](data_source/generate/remediation.py)
 
@@ -64,10 +64,9 @@ Over the past six months, the demand forecasting model has been used to set ever
 | File | What it does |
 |---|---|
 | `export_marts.py` | Exports the dbt marts the model reads to parquet. |
-| `baselines.py` | Simple forecasting methods (naive, seasonal naive, moving averages, exponential smoothing, Croston) and the rolling-origin backtest harness. |
-| `features.py`, `training.py` | Feature building, the model candidates and the evaluation helpers the weekly model shares. |
-| `training_3way.py` | Runs the same model on raw, master-cleaned and fully cleaned history to measure what each tier of cleaning is worth. |
-| `demand_model.py` | The production model: builds the weekly features, tunes random forest, XGBoost and ridge regression with Optuna, selects the winner, retrains it monthly, and turns each week's forecast into bias-corrected reorder points, safety buffers and order quantities for the ERP. |
+| `baselines.py` | Simple forecasting methods (naive, seasonal naive, moving averages, exponential smoothing, Croston) to serve as baselines. |
+| `features.py`, `training.py` | Feature building and evaluation of the three model candidates. |
+| `demand_model.py` | The production model: builds the weekly features, tunes and selects best model, retrains it monthly,  converts forecasts into reorder points, safety buffers, and order quantities for the ERP. |
 | `explain_weekly.py` | SHAP feature importance, the learning curve, feature correlations and the train, validation and test summary for the technical report. |
 | `monitor_weekly.py` | Monthly monitoring against Investigate and Retrain thresholds: forecast error and bias overall and by demand pattern, target, prediction and feature drift, data quality and business KPIs. |
 
@@ -96,7 +95,7 @@ flowchart LR
   ML --> MON["MLOps monitoring"]
 ```
 
-Raw extracts from the ERP, its warehouse system and the buyers' spreadsheet, with the data quality problems that come with them (dead and duplicate item records, stale lead times and reorder points, free-text purchases, keying errors and documents never closed), are combined by a tested dbt pipeline into conformed marts. Along the way, one data-quality model per error type flags the affected records and feeds the audit's error register, and the remediation is applied through auditable merges and corrections without overwriting the source data. The cleaned marts then feed the demand forecasting model, whose weekly reorder points and order quantities are loaded into the ERP's reorder queue and monitored each month.
+Raw extracts from the ERP, its warehouse system, and the buyers' spreadsheet, and are then combined by a tested dbt pipeline into conformed marts. Along the way, one data-quality model per error type flags the affected records and feeds the audit's error register, and the remediation is applied through auditable merges. The cleaned marts then feed the demand forecasting model, whose weekly reorder points and order quantities are loaded into the ERP's reorder queue.
 
 ---
 
