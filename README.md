@@ -1,8 +1,10 @@
 # ERP Data Quality Audit & Demand Forecasting Model
 
-The data quality audit covered all of the data records captured in the ERP over the past three years. The audit report details the findings, including the 16 types of recurring data quality errors, as well as the error remediation process and the process changes that will keep the ERP system clean going forward.
+This project consists of two parts. 
 
-The machine learning model forecasts demand and makes weekly reordering predictions for each of the shop's 1,300 stocked items. It forecasts each item's expected usage over its supplier lead time and turns this into a reorder point and order quantity. It was calibrated to ensure minimal stockouts, jobs held for material and expedited freight, while keeping working capital low. 
+First, a full data quality audit of the ERP. We found 16 types of error across the system's eight master and transaction tables, remediated them, and put process changes in place so they would not recur. 
+
+Second, a demand forecasting model was trained on the cleaned history. Every week it forecasts demand and makes weekly reordering predictions for each of the shop's 1,300 stocked items. It forecasts each item's expected usage over its supplier lead time and turns this into a reorder point and order quantity. It was calibrated to ensure minimal stockouts, jobs held for material and expedited freight, while keeping working capital as low as possible. 
 
 The model is supported by technical documentation and MLOps monitoring in production.
 
@@ -16,13 +18,11 @@ The model's reorder suggestions are embedded in the company's existing ERP purch
 
 ## Business Context
 
-An industrial equipment manufacturer (~$30mm revenue) produces conveyors and material-handling modules, industrial mixers and agitators, and custom enclosures and frames. It stocks about 1,300 items purchased from 40 suppliers. Its products carry multi-level bills of materials, and material is consumed by production jobs, service and spare-parts orders.
+An industrial equipment manufacturer (~$30mm revenue) produces conveyors and material-handling modules, industrial mixers and agitators, and custom enclosures and frames. It stocks about 1,300 items purchased from 40 suppliers. Its products carry multi-level bills of materials, and material is consumed by production jobs, service, and spare-parts orders.
 
 Historically, the shop's reordering was done manually and ran on data that was messy and couldn't be trusted. Much of the reordering process was labor-intensive and imprecise: stock levels and lead times were stale, stock on hand was unverified, safety stock was inflated, and rush orders were relied upon to compensate for shortfalls. The result was the shop carrying excess inventory, roughly 160 days of usage, yet still logging elevated stockout events, held jobs for missing material and rush freight spend.
 
-This project consists of two parts. First, a full data quality audit of the ERP. We found 16 types of error across the system's eight master and transaction tables, remediated them, and put process changes in place so they would not recur. Second, a demand forecasting model was trained on the cleaned history. Every week it forecasts how much of each item the shop will use before a new order could arrive, and turns that forecast into a reorder point and an order quantity loaded straight into the ERP's purchasing screen.
-
-The model has set every reorder decision since January 2026. As a result, the shop has achieved significant improvements in stockout events, jobs held for material and rush spend. These outcomes were achieved alongside a reduction in inventory, which freed up significant cash used to run the business.
+Over the past six months, the demand forecasting model has been used to set every reorder decision for the shop. The ML model overview and performance report below details the findings across this period. Relying on the model's forecasts, the shop was able to achieve significant improvements across production and purchasing KPIs, while also reducing its inventory balance and freeing up cash tied in working capital.
 
 ---
 
