@@ -8,7 +8,7 @@ Second, a demand forecasting model was trained on the cleaned history. Every wee
 
 The model is supported by technical documentation and MLOps monitoring in production.
 
-The model's reorder suggestions are embedded in the company's existing ERP purchasing screen, as shown below:
+The model's reorder suggestions are embedded in the shop's existing ERP purchasing screen, as shown below:
 
 [![ERP reorder queue with embedded demand forecasts](docs/screenshots/erp_queue.png)](https://brimsystems.github.io/mfg-demand-forecasting/docs/index.html)
 
