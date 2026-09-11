@@ -759,7 +759,7 @@ stock: fewer stockouts and held jobs, less spent rushing orders in, and less inv
 """
 
 OUT.parent.mkdir(parents=True, exist_ok=True)
-html = B.page("ML Model Overview and Performance: Demand Forecasting", "", toc, body)
+html = B.page("ML Model Overview and Performance: Demand Forecasting", "", toc, body, credit="Created by Brian Davis, 2026")
 html = html.replace("</style></head>", ".section-title-block.sub .section-title{font-size:18px;font-weight:700;}</style></head>", 1)
 OUT.write_text(html, encoding="utf-8")
 print(f"Model overview written to {OUT}  ({len(html)//1024} KB)")

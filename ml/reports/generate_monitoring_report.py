@@ -556,5 +556,5 @@ end of July of the May and June forecasts once they have matured.</p>
 """
 
 OUT.parent.mkdir(parents=True, exist_ok=True)
-OUT.write_text(B.page("MLOps Monitoring Report: Demand Forecasting", "", toc, body), encoding="utf-8")
+OUT.write_text(B.page("MLOps Monitoring Report: Demand Forecasting", "", toc, body, credit="Created by Brian Davis, 2026"), encoding="utf-8")
 print(f"Monitoring report written to {OUT}")

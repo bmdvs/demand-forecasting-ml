@@ -8,6 +8,8 @@
   .page-header { background:#322B4B; color:#fff; padding:14px 40px; }
   .page-header h1 { font-size:21px; font-weight:700; letter-spacing:-0.3px; }
   .page-header .sub { font-size:13px; color:#D5DCE1; margin-top:3px; }
+  .page-header.credited { display:flex; justify-content:space-between; align-items:center; gap:24px; }
+  .page-header .credit { font-size:11px; color:#fff; white-space:nowrap; }
   .layout { display:flex; max-width:1200px; margin:0 auto; padding:0 40px; }
   .toc { width:210px; flex-shrink:0; padding:36px 20px 40px 0; position:sticky; top:0;
     height:100vh; overflow-y:auto; border-right:1px solid #D5DCE1; }
@@ -72,7 +74,7 @@
   .trigger-list li { font-size:14px; margin-bottom:5px; line-height:1.5; }
 .section-title-block.sub .section-title{font-size:18px;font-weight:700;}</style></head>
 <body>
-<div class="page-header"><h1>ML Model Overview and Performance: Demand Forecasting</h1></div>
+<div class="page-header credited"><div><h1>ML Model Overview and Performance: Demand Forecasting</h1></div><div class="credit">Created by Brian Davis, 2026</div></div>
 <div class="layout">
   <nav class="toc"><div class="toc-title">Contents</div><a href="#summary">Executive Summary</a><hr><a href="#modeloverview">Model Overview</a><a href="#what" class="sub">What This Model Does</a><a href="#data" class="sub">Training Data Overview</a><hr><a href="#performance">Model Performance</a><a href="#scoring" class="sub">Scoring Summary</a><a href="#accuracy" class="sub">Accuracy and Validation</a><a href="#limits" class="sub">Assumptions &amp; Limitations</a></nav>
   <main class="content">

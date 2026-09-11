@@ -8,6 +8,8 @@
   .page-header { background:#322B4B; color:#fff; padding:14px 40px; }
   .page-header h1 { font-size:21px; font-weight:700; letter-spacing:-0.3px; }
   .page-header .sub { font-size:13px; color:#D5DCE1; margin-top:3px; }
+  .page-header.credited { display:flex; justify-content:space-between; align-items:center; gap:24px; }
+  .page-header .credit { font-size:11px; color:#fff; white-space:nowrap; }
   .layout { display:flex; max-width:1200px; margin:0 auto; padding:0 40px; }
   .toc { width:210px; flex-shrink:0; padding:36px 20px 40px 0; position:sticky; top:0;
     height:100vh; overflow-y:auto; border-right:1px solid #D5DCE1; }
@@ -72,7 +74,7 @@
   .trigger-list li { font-size:14px; margin-bottom:5px; line-height:1.5; }
 </style></head>
 <body>
-<div class="page-header"><h1>ML Model Technical Overview: Demand Forecasting</h1></div>
+<div class="page-header credited"><div><h1>ML Model Technical Overview: Demand Forecasting</h1></div><div class="credit">Created by Brian Davis, 2026</div></div>
 <div class="layout">
   <nav class="toc"><div class="toc-title">Contents</div><a href="#card">Model Card</a><hr><a href="#data">Training Data</a><hr><a href="#modelperf">Model Selection &amp; Performance</a><a href="#selection" class="sub">Model Selection</a><a href="#performance" class="sub">Model Performance</a><hr><a href="#shap">Feature Importance</a><hr><a href="#policy">From Forecast to Reorder Decision</a><hr><a href="#limits">Known Limitations</a><hr><a href="#ops">Deployment &amp; Operations</a></nav>
   <main class="content">
