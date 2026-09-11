@@ -18,9 +18,9 @@ The model's reorder suggestions are embedded in the shop's existing ERP purchasi
 
 ## Business Context
 
-An industrial equipment manufacturer (~$30mm revenue) produces conveyors and material-handling modules, industrial mixers and agitators, and custom enclosures and frames. It stocks about 1,300 items purchased from 40 suppliers. Its products carry multi-level bills of materials, and material is consumed by production jobs, service, and spare-parts orders.
+An industrial equipment manufacturer (~$30mm revenue) produces conveyors and material-handling modules, industrial mixers and agitators, and custom enclosures and frames. It stocks about 1,300 items purchased from 40 suppliers. 
 
-Historically, the shop's reordering was done manually and ran on data that was messy and couldn't be trusted. Much of the reordering process was labor-intensive and imprecise: stock levels and lead times were stale, stock on hand was unverified, safety stock was inflated, and rush orders were relied upon to compensate for shortfalls. The result was the shop carrying excess inventory, roughly 160 days of usage, yet still logging elevated stockout events, held jobs for missing material and rush freight spend.
+Historically, the shop's inventory reordering was done manually and ran on data that was messy and couldn't be trusted. Much of the reordering process was labor-intensive and imprecise: stock levels and lead times were stale, stock on hand was unverified, safety stock was inflated, and rush orders were relied upon to compensate for shortfalls. The result was the shop carrying excess inventory, roughly 160 days of usage, yet still logging elevated stockout events, held jobs for missing material and rush freight spend.
 
 Over the past six months, the demand forecasting model has been used to set every reorder decision for the shop. The ML model overview and performance report below details the findings across this period. Relying on the model's forecasts, the shop was able to achieve significant improvements across production and purchasing KPIs, while also reducing its inventory balance and freeing up cash tied in working capital.
 
