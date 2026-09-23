@@ -372,6 +372,59 @@ def chart_reliability(d):
     ax.invert_yaxis()
     return B.b64(fig)
 
+def chart_erd(d):
+    """Entity relationship diagram: the eight ERP tables, their row counts, and
+    which tables depend on which. An arrow points from the table relied on to the
+    table that depends on it; two-headed where each updates the other."""
+    import matplotlib.pyplot as plt
+    from matplotlib.patches import FancyBboxPatch, FancyArrowPatch
+    rows = dict(d["master_comp"] + d["txn_comp"])
+    fig, ax = plt.subplots(figsize=(10.5, 5.0))
+    ax.set_xlim(0, 100); ax.set_ylim(0, 58); ax.axis("off")
+
+    def box(x, y, w, h, title, key, master):
+        face = B.DARK_BLUE if master else B.MED_GREY
+        ax.add_patch(FancyBboxPatch((x, y), w, h, boxstyle="round,pad=0,rounding_size=0.8",
+                                    facecolor=face, edgecolor=face, linewidth=1.2))
+        ax.text(x + w / 2, y + h * 0.64, title, ha="center", va="center", fontsize=9.6, color="white", fontweight="bold")
+        ax.text(x + w / 2, y + h * 0.30, f"{rows[key]:,} records", ha="center", va="center", fontsize=8, color="white")
+
+    def seg(pts):
+        xs, ys = zip(*pts)
+        ax.plot(xs, ys, color=B.MED_GREY, linewidth=1.1, zorder=0, solid_capstyle="round")
+
+    def head(p0, p1):
+        ax.add_patch(FancyArrowPatch(p0, p1, arrowstyle="-|>", mutation_scale=13, color=B.MED_GREY,
+                                     linewidth=1.1, shrinkA=0, shrinkB=0, zorder=1))
+
+    # masters on top, transactions below
+    box(5, 42, 24, 11, "Supplier master", "Supplier master", True)
+    box(38, 42, 24, 11, "Item master", "Item master", True)
+    box(71, 42, 24, 11, "Bill of materials", "Bill of materials", True)
+    box(0.5, 6, 19, 11, "Cycle counts", "Cycle counts", False)
+    box(20.5, 6, 19, 11, "Purchase orders", "Purchase order lines", False)
+    box(40.5, 6, 19, 11, "Inventory ledger", "Inventory ledger", False)
+    box(60.5, 6, 19, 11, "Production orders", "Production orders", False)
+    box(80.5, 6, 19, 11, "Service orders", "Service order lines", False)
+
+    # masters that other masters rely on
+    head((29, 47.5), (38, 47.5))
+    head((62, 47.5), (71, 47.5))
+    # every table keyed on the item number
+    seg([(50, 42), (50, 30)]); seg([(10, 30), (90, 30)])
+    for x in (10, 30, 50, 90):
+        head((x, 30), (x, 17))
+    # the supplier on a purchase order, the bill a job is built from
+    seg([(15, 42), (15, 36), (24, 36), (24, 30)]); head((24, 30), (24, 17))
+    seg([(85, 42), (85, 36), (76, 36), (76, 30)]); head((76, 30), (76, 17))
+    # documents and the ledger update each other
+    seg([(34, 20), (34, 21.5), (46, 21.5), (46, 20)]); head((34, 21.5), (34, 17)); head((46, 21.5), (46, 17))
+    seg([(54, 20), (54, 21.5), (66, 21.5), (66, 20)]); head((54, 21.5), (54, 17)); head((66, 21.5), (66, 17))
+    seg([(90, 3), (90, 2), (50, 2), (50, 3)]); head((90, 3), (90, 6)); head((50, 3), (50, 6))
+    ax.text(99.5, 57, "An arrow points from the table relied on to the table that depends on it; "
+            "two-headed where each updates the other.", ha="right", va="top", fontsize=7.6, color=B.DARK_GREY)
+    return B.b64(fig)
+
 
 def _err_block(num, name, what, location, headers, rows):
     """One error type: number and name, a plain sentence on what it is, where in
@@ -421,55 +474,63 @@ def build(d):
         '<a href="#results">Results</a>',
         '<a href="#found">Findings</a>',
         '<a class="sub" href="#errors">Data Quality Errors</a>',
-        '<a class="sub" href="#costs">Operational and Financial Costs</a>',
-        '<a href="#did">Actions</a>',
-        '<a class="sub" href="#remediation">Error Remediation</a>',
-        '<a class="sub" href="#process">Process Changes</a>',
-        '<a href="#remains">What remains</a>',
+        '<a class="sub" href="#costs">Costs</a>',
+        '<a href="#did">Error Remediation</a>',
+        '<a href="#process">Go-Forward Changes</a>',
     ])
 
     trust_before = d["rel_before"]["reliable"]["pct"]
     trust_after = d["rel_after"]["reliable"]["pct"]
     fin = d["fin"]
     YR = fin["year"]
-    ex, wc, sh, ph = fin["expedites"], fin["working_capital"], fin["shortages"], fin["phantom_on_order"]
-    cf = sh["counterfactual"]
-    ex_after = ex["counterfactual_total"]
+    ex, sh, ph, du, un, ps, dd, su, ftx, bf, uo, adj, rc = (fin[k] for k in
+        ["expedites", "shortages", "phantom_on_order", "duplicates", "unrecorded", "postings", "dead_items",
+         "suppliers", "free_text", "blank_fields", "uom", "adjustments", "remediation_counts"])
+    # the three situations the record can tie a rush or a shortage to: a delivery
+    # past the promised date its stale lead time set, a shelf emptied by a pull
+    # that was never recorded, a reorder held back by a phantom on-order balance
+    TRACED = ["stale_lead_time", "unrecorded_consumption", "phantom_on_order"]
+    bc, sbc, jbc = ex["by_cause"], sh["by_cause"], sh["jobs_by_cause"]
+    rl = {c: int(bc.get(c, {}).get("lines", 0)) for c in TRACED}
+    rush_traced_lines = sum(rl.values())
+    rush_traced = ex["attributable_total"]
+    rush_other = ex["rush_lines"] - rush_traced_lines
+    short_traced = sum(sbc.get(c, 0) for c in TRACED)
+    jobs_traced = sum(jbc.get(c, 0) for c in TRACED)
 
     results = f"""
 {B.section("results", "Section 1", "Results")}
 <p>Over ten weeks we audited the purchasing item master and the inventory ledger,
 corrected what could be corrected, and changed the ERP settings that let the
-problems recur. This section is the outcome, in the terms the shop runs on: what
-the errors cost in {YR}, the last full year, and what the same year looks like
-when the same reorder rule runs on the corrected records. Every figure is labeled
-<em>measured</em> (read from the records), <em>simulated</em> (from a replay of
-{YR} on the corrected records) or <em>estimated</em> (resting on an assumption,
-stated where it is used). The sections that follow show what we found, what we
-did, and what still needs an owner.</p>
+problems recur. This section is the outcome, in the terms the shop runs on. Every
+dollar figure in it is measured from the {YR} record and traceable to a specific
+error; where the record does not support that attribution, no share is claimed.
+What clean data is worth going forward is a forecast rather than a measurement,
+and it is left to the reorder-policy work that follows this audit. The sections
+that follow show what we found, what we did, and what still needs an owner.</p>
 
 {B.kpi_row(
-    B.kpi_card(f"{_k(ex['total'])} &rarr; {_k(ex_after)}", "Expedite spend", f"{YR} measured; corrected replay simulated", B.DARK_BLUE),
-    B.kpi_card(f"{sh['episodes']:,} &rarr; {cf['shortage_episodes']:,}", "Shortage episodes", f"on {sh['items']} items; measured, simulated", B.GREEN),
-    B.kpi_card(f"{sh['jobs_delayed']:,} &rarr; {cf['jobs_delayed']:,}", "Jobs delayed for material", f"{sh['delay_days']:,} days lost &rarr; {cf['job_delay_days']:,}", B.GREEN),
-    B.kpi_card(f"{trust_before:.0f}% &rarr; {trust_after:.0f}%", "Balances trustworthy", "share of live items; measured", B.DARK_GREY),
+    B.kpi_card(_k(rush_traced), "Expedite spend traced to the errors", f"{rush_traced_lines} of {ex['rush_lines']} rush lines in {YR}", B.DARK_BLUE),
+    B.kpi_card(_k(du["value_while_sibling_held_stock"]), "Bought while a duplicate held the stock", f"{du['lines_while_sibling_held_stock']} purchase lines in {YR}", B.DARK_BLUE),
+    B.kpi_card(_k(ph["stale_value"]), "On order that will never arrive", f"{ph['stale_lines']:,} lines, now closed", B.DARK_BLUE),
+    B.kpi_card(f"{trust_before:.0f}% &rarr; {trust_after:.0f}%", "Balances trustworthy", "share of live items", B.DARK_GREY),
 )}
 
-<p>The money is in the expedites and the line stops, not in the stock. In {YR} the shop
-paid {_money(ex['total'])} in rush freight and price premiums on {ex['rush_lines']} rush lines;
-{_money(ex['attributable_total'])} of that sits on lines whose cause is in the record (a reorder
-placed on a stale lead time, a pull that was never recorded, an order held back for material that
-was never coming), and the rest were demand spikes the stale reorder points did not cover. Those
-shortages delayed {sh['jobs_delayed']} of {sh['jobs']:,} jobs, typically by {sh['delay_days_median']:.0f} days
-and by {sh['delay_days']:,} days in total.
-Replaying the year with the same reorder rule on the corrected records, rush spend falls to
-{_money(ex_after)}, the shortage episodes to {cf['shortage_episodes']} and the delayed jobs to
-{cf['jobs_delayed']}. The cleanup does not release much cash from inventory, and it would be wrong to
-claim it does: the corrected replay holds {_money(wc['corrected_avg'])} of stock on average against
-{_money(wc['as_is_avg'])} as recorded. {_money(wc['excess'])} of excess disappears, almost all of it
-duplicate records that each reordered against one shared pile, but {_money(wc['shortfall'])} of
-shortfall is filled on items whose stale reorder points and lead times had been running them short,
-and the net, {_money(abs(wc['net']))} {'less' if wc['net'] > 0 else 'more'} held, is inside the noise of the simulation.</p>
+<p>The money is in the expedites and the stopped lines, not in a stock reduction. In {YR} the shop
+placed {ex['rush_lines']} rush orders costing {_money(ex['total'])} in freight and price premiums.
+{rush_traced_lines} of them, {_money(rush_traced)}, were placed in one of three situations the errors
+create: a delivery running past a promised date that a stale lead time had set
+({rl['stale_lead_time']}), a shelf emptied by a pull that was never recorded
+({rl['unrecorded_consumption']}), or a reorder held back by an on-order balance that was never
+coming ({rl['phantom_on_order']}). The other {rush_other} rush lines are not attributed to the errors
+and are not claimed. The same three situations account for {short_traced} of the {sh['episodes']}
+shortage episodes in the year, which held {jobs_traced} jobs at the moment they ran short. Inventory tells a
+different story: the errors did not so much inflate the stock as put it in the wrong places.
+{du['lines_while_sibling_held_stock']} purchase lines worth {_money(du['value_while_sibling_held_stock'])}
+were placed on one item number while its duplicate record already held the quantity ordered, and
+{_money(ph['stale_value'])} sat on order against lines that would never arrive, holding real
+reorders back. The cleanup returns none of that as cash. What it changes is that the next purchase,
+and the next count, are made against a number that is right.</p>
 
 {B.chart("Inventory book value by balance reliability, before and after", chart_reliability(d))}
 <p>Before the cleanup, only {trust_before:.0f}% of live items had a book balance we would
@@ -479,16 +540,15 @@ cycle-count program and the master fixes, {trust_after:.0f}% are reliable and th
 unreliable share is down to {d['rel_after']['unreliable']['pct']:.0f}%, each with a stated reason.</p>
 
 {B.data_table(
-    ["Measure", f"{YR} as recorded", "Corrected", "Basis"],
+    ["Measure", "Before", "After"],
     [
-        ["Expedite freight and price premiums", _money(ex["total"]), _money(ex_after), "measured; simulated"],
-        ["Of which on lines with a recorded cause", _money(ex["attributable_total"]), "", "measured"],
-        ["Shortage episodes", f"{sh['episodes']:,}", f"{cf['shortage_episodes']:,}", "measured; simulated"],
-        ["Jobs delayed for material (days lost)", f"{sh['jobs_delayed']:,} ({sh['delay_days']:,})", f"{cf['jobs_delayed']:,} ({cf['job_delay_days']:,})", "measured; simulated"],
-        ["Average inventory held", _money(wc["as_is_avg"]), _money(wc["corrected_avg"]), "simulated"],
-        ["On-order value that will never arrive, now closed", _money(ph["stale_value"]), _money(0), "measured"],
-        ["Book value at a trustworthy balance", _money(d["rel_before"]["reliable"]["val"]), _money(d["rel_after"]["reliable"]["val"]), "measured"],
-        ["Adjustment share of quantity moved", _pct(d["adj_share"], 0), "3&ndash;6% run-rate (target)", "measured"],
+        ["Book value at a trustworthy balance", _money(d["rel_before"]["reliable"]["val"]), _money(d["rel_after"]["reliable"]["val"])],
+        ["Live items with a trustworthy balance", f"{trust_before:.0f}%", f"{trust_after:.0f}%"],
+        ["On-order value that will never arrive", _money(ph["stale_value"]), _money(0)],
+        ["Dead records still active", f"{d['n_dead']:,}", f"{d['n_dead'] - d['dead_deactivated']:,}"],
+        ["Duplicate records, each with its own reorder point", f"{d['dup_records']}", f"{d['dup_records'] - d['dup_merged']}"],
+        ["Items bought and stocked in different units with no conversion", f"{d['uom_items']}", "0"],
+        ["Adjustment share of quantity moved", _pct(d["adj_share"], 0), "3&ndash;6% run-rate (target)"],
     ], right=[1, 2])}
 
 {B.callout(f"<strong>One item the buyer knows.</strong> A high-volume gearmotor was carried under two "
@@ -632,42 +692,6 @@ unreliable share is down to {d['rel_after']['unreliable']['pct']:.0f}%, each wit
     TXN_ERRORS.sort(key=lambda e: ORDER_T.index(e[0]))
     W2 = [4, 19, 40, 16, 21]          # #, Error, Description, ERP table, Scale
     W3 = [4, 19, 42, 18, 17]          # #, Error, Remediation, Evidence, Remediated
-    OPCOST = {
-        "Dead Records Never Deactivated": "Clutter every report and trigger purchase suggestions for material nobody needs.",
-        "Stale Lead Times": "Reorders are placed too late, causing line stops and expedites.",
-        "Stale Reorder Points": "Fast movers stock out while slow movers pile up.",
-        "Duplicate Item Records": "Split demand history makes neither record forecastable, and each carries its own reorder point.",
-        "UOM Mismatch": "On-hand and demand are misstated, so the true stock position is unknown without a count.",
-        "Missing and Placeholder Fields": "The item cannot be planned, costed or reported until the blank is filled by hand.",
-        "BOM Omissions": "Omitted components are consumed but never subtracted, leaving phantom on-hand.",
-        "Supplier Fragmentation": "A vendor's spend and delivery performance are understated in every report.",
-        "Unrecorded Consumption": "Balances drift upward until the count, then arrive as a run of write-offs.",
-        "Wrong References": "One item looks short and another long, and job costs land in the wrong place.",
-        "Quantity and Unit Errors": "A single keystroke distorts an item's demand and on-hand by ten times or more.",
-        "Duplicate Postings": "The balance is misstated by the doubled movement until it is caught.",
-        "Adjustments as a Catch-All": "The cause of a movement is unknowable, so write-offs hide the real problems.",
-        "Free-Text Purchases": "The item's demand history is understated, so its forecast and reorder point are too low.",
-        "Batched and Backdated Postings": "Computed lead times read longer than they are, biasing reorder decisions.",
-        "Open Documents Never Closed": "The buyer holds back real orders believing material is inbound, and the shop stocks out.",
-    }
-    FINCOST = {
-        "Dead Records Never Deactivated": "No direct cost, unless a false purchase suggestion is acted upon.",
-        "Stale Lead Times": "Expedite freight, to recover from late reorders.",
-        "Stale Reorder Points": "Cash tied up in excess stock on slow movers; expedites on fast movers.",
-        "Duplicate Item Records": "Excess inventory, when stock is held under one number while the other triggers a purchase.",
-        "UOM Mismatch": "Inventory misvalued, since a box and an each are counted alike.",
-        "Missing and Placeholder Fields": "No direct cost, unless the blank is a standard cost, which misvalues inventory.",
-        "BOM Omissions": "Inventory overstated until the phantom on-hand is written off.",
-        "Supplier Fragmentation": "No direct cost; weaker pricing leverage from understated vendor spend.",
-        "Unrecorded Consumption": "Inventory overstated until the count, then written off to cost of goods sold.",
-        "Wrong References": "No net cost; inventory and job cost are misallocated between items and jobs.",
-        "Quantity and Unit Errors": "Inventory misstated by the keyed quantity, or cash spent on an over-purchase.",
-        "Duplicate Postings": "Inventory misstated by the doubled movement; a doubled receipt can create a duplicate payable.",
-        "Adjustments as a Catch-All": "Write-offs to cost of goods sold with no traceable cause.",
-        "Free-Text Purchases": "No net cost; the spend is real but unattributed to the item.",
-        "Batched and Backdated Postings": "No net cost; receipts across a month-end shift inventory and payables between periods.",
-        "Open Documents Never Closed": "Expedites and stockouts while waiting on material that never arrives.",
-    }
     hdr = ["", "Error", "Description", "ERP table", "Scale<br><em style=\"font-weight:400;text-transform:none;\">(rows affected)</em>"]
     master_table = _widths(B.data_table(hdr, [[numcell(i), n, desc, loc, sc] for i, (n, desc, loc, sc, _t, _f, _c) in enumerate(MASTER_ERRORS, 1)], right=[]), W2)
     txn_table = _widths(B.data_table(hdr, [[numcell(i), n, desc, loc, sc] for i, (n, desc, loc, sc, _t, _f, _c) in enumerate(TXN_ERRORS, len(MASTER_ERRORS) + 1)], right=[]), W2)
@@ -743,262 +767,249 @@ unreliable share is down to {d['rel_after']['unreliable']['pct']:.0f}%, each wit
         for i, e in enumerate(MASTER_ERRORS, 1)], right=[]), W3)
     rem_txn_table = _widths(B.data_table(rem_hdr, [[numcell(i), e[0], *REM_TXN[e[0]]]
         for i, e in enumerate(TXN_ERRORS, len(MASTER_ERRORS) + 1)], right=[]), W3)
-    # what each error came to in the last full year, from ml/src/financials.py,
-    # each tagged with the kind of money it is and how the figure was reached
-    NUM = {e[0]: i for i, e in enumerate(MASTER_ERRORS + TXN_ERRORS, 1)}
-    hashes = lambda *names: ", ".join(f"#{NUM[n]}" for n in names)
-    adj, un, dd, du, ftx, su, bf, uo, ps, bt = (fin[k] for k in
-        ["adjustments", "unrecorded", "dead_items", "duplicates", "free_text", "suppliers", "blank_fields",
-         "uom", "postings", "batched"])
-    bc = ex["by_cause"]
-    ag = adj["by_group"]
-    def grp(name):
-        return ag.get(name, {"rows": 0, "write_off": 0.0, "write_up": 0.0})
-    def val(text, kind, basis):
-        return f"{text}<br><em>{kind}; {basis}</em>"
-    VALUE = {
-        "Dead Records Never Deactivated": val(
-            f"{dd['with_reorder_point']} reorder points on dead items would suggest {_money(dd['suggestion_value'])} "
-            f"of purchases; {dd['po_lines_ever']} were placed", "exposure", "measured"),
-        "Stale Lead Times": val(
-            f"{_money(bc.get('stale_lead_time', {}).get('total', 0))} of rush freight and premium on "
-            f"{int(bc.get('stale_lead_time', {}).get('lines', 0))} lines placed after a late reorder; "
-            f"{sh['by_cause'].get('stale_lead_time', 0)} shortage episodes", "incurred", "measured"),
-        "Stale Reorder Points": val(
-            f"{_money(wc['by_group'].get('Stale Reorder Points', {}).get('excess', 0))} of excess and "
-            f"{_money(wc['by_group'].get('Stale Reorder Points', {}).get('shortfall', 0))} of shortfall against the "
-            f"recomputed points, on {int(wc['by_group'].get('Stale Reorder Points', {}).get('items', 0))} items",
-            "working capital", "simulated"),
-        "Duplicate Item Records": val(
-            f"{du['lines_while_sibling_held_stock']} purchase lines ({_money(du['value_while_sibling_held_stock'])}) "
-            f"placed while the other number held the stock; {_money(wc['by_group'].get('Duplicate Item Records', {}).get('excess', 0))} "
-            f"of excess stock", "working capital", "measured; excess simulated"),
-        "UOM Mismatch": val(
-            f"{uo['negative_or_zero_balances']} of {uo['items']} items at a zero or negative book balance; "
-            f"{_money(grp('UOM Mismatch')['write_off'] + grp('UOM Mismatch')['write_up'])} of count corrections",
-            "misstatement", "measured"),
-        "Missing and Placeholder Fields": val(
-            f"{bf['blank_cost_items']} items with no standard cost carry {bf['blank_cost_units']:,.0f} units on the "
-            f"books at $0, about {_money(bf['blank_cost_value'])} at the class median cost", "misstatement",
-            "estimated (class median cost)"),
-        "BOM Omissions": val(
-            f"{_money(un['backflush_value'])} of component cost consumed on {un['products_affected']} products and "
-            f"never charged to them", "misstatement", "measured"),
-        "Supplier Fragmentation": val(
-            f"{_money(su['alias_spend'])} of the {_money(su['vendor_spend'])} spent with the {su['vendors']} vendors "
-            f"sits under alias records", "exposure", "measured"),
-        "Unrecorded Consumption": val(
-            f"{_money(un['value'])} of pulls never recorded on {un['items']} items; "
-            f"{_money(grp('Unrecorded Consumption')['write_off'])} written off at counts on those items",
-            "misstatement", "measured"),
-        "Wrong References": val(
-            f"{ps['wrong_reference_rows']} issues ({_money(ps['wrong_reference_value'])}) posted to the wrong item",
-            "misstatement", "measured"),
-        "Quantity and Unit Errors": val(
-            f"{ps['keying_rows']} rows keyed {_money(ps['keying_value'])} away from the true quantity",
-            "misstatement", "measured"),
-        "Duplicate Postings": val(
-            f"{ps['duplicate_rows']} rows double-counted, {_money(ps['duplicate_value'])}", "misstatement", "measured"),
-        "Adjustments as a Catch-All": val(
-            f"{adj['generic_rows']:,} adjustments ({_money(adj['generic_abs_value'])}) with no traceable cause",
-            "misstatement", "measured"),
-        "Free-Text Purchases": val(
-            f"{ftx['lines']} lines and {_money(ftx['spend'])} of spend unattributed to an item, "
-            f"{ftx['confirmed_lines']} of the lines ({_money(ftx['confirmed_spend'])}) for items the shop stocks, "
-            f"whose demand history never saw them", "exposure", "measured"),
-        "Batched and Backdated Postings": val(
-            f"{bt['lines']:,} receipts posted a mean {bt['mean_lag_days']:.1f} days late; no dollar effect",
-            "timing", "measured"),
-        "Open Documents Never Closed": val(
-            f"{_money(ph['stale_value'])} on order on {ph['stale_lines']:,} lines older than 90 days that will never "
-            f"arrive; {ph['shortages_caused']} shortage episodes", "misstatement", "measured"),
-    }
-    cost_table = _widths(B.data_table(["", "Error", "Operational cost", "Financial cost", f"Value in {YR}"],
-        [[numcell(i), e[0], OPCOST[e[0]], FINCOST[e[0]], VALUE[e[0]]]
-         for i, e in enumerate(MASTER_ERRORS + TXN_ERRORS, 1)], right=[]), [4, 16, 27, 25, 28])
-
-    # the same values bucketed by the line item they land on
-    mis_groups = ["Duplicate Item Records", "UOM Mismatch", "Unrecorded Consumption", "Wrong References",
-                  "Quantity and Unit Errors", "Duplicate Postings"]
-    LINE_ITEMS = [
-        ("Expedite freight and price premiums<br><em>operating expense</em>",
-         hashes("Stale Lead Times", "Unrecorded Consumption", "Open Documents Never Closed"),
-         f"{_money(ex['total'])} in total, {_money(ex['attributable_total'])} of it on lines with a recorded cause; "
-         f"{_money(ex_after)} in the corrected replay",
-         "measured; simulated",
-         "Cash the shop spent. Stopping it is a recurring saving once reorders fire on time."),
-        ("Write-offs and write-ups at count<br><em>cost of goods sold</em>",
-         hashes("Duplicate Item Records", "UOM Mismatch", "Unrecorded Consumption", "Wrong References",
-                "Quantity and Unit Errors", "Duplicate Postings", "Adjustments as a Catch-All"),
-         f"{_money(adj['write_off'])} written off and {_money(adj['write_up'])} written up across "
-         f"{adj['rows']:,} adjustments, {_money(sum(grp(g)['write_off'] + grp(g)['write_up'] for g in mis_groups))} "
-         f"of it on items carrying one of these errors",
-         "measured",
-         "Corrections of a misstatement; no cash comes back. The churn falls as the cycle-count program "
-         "replaces the annual physical."),
-        ("Product cost understated<br><em>cost of goods sold, margin</em>",
-         hashes("BOM Omissions"),
-         f"{_money(un['backflush_value'])} of material consumed on {un['products_affected']} products and never charged to them",
-         "measured",
-         "The products carried less material cost than they used, so their margins read high. A pricing "
-         "review, not a saving."),
-        ("Inventory carrying value<br><em>balance sheet</em>",
-         hashes("Stale Lead Times", "Stale Reorder Points", "Duplicate Item Records", "Missing and Placeholder Fields"),
-         f"{_money(wc['excess'])} of excess against {_money(wc['shortfall'])} of shortfall, a net "
-         f"{_money(abs(wc['net']))} {'less' if wc['net'] > 0 else 'more'} held; "
-         f"about {_money(bf['blank_cost_value'])} held at $0 under blank costs",
-         "simulated; estimated",
-         "Little cash. The excess sells through as the shortfalls are filled, and the blank-cost stock is "
-         "revalued, not recovered."),
-        ("Purchases while the stock sat under another number<br><em>cash timing</em>",
-         hashes("Duplicate Item Records"),
-         f"{_money(du['value_while_sibling_held_stock'])} on {du['lines_while_sibling_held_stock']} lines",
-         "measured",
-         "Cash spent early. It comes back as the excess sells through."),
-        ("On-order commitments overstated<br><em>open purchase orders</em>",
-         hashes("Open Documents Never Closed"),
-         f"{_money(ph['stale_value'])} on {ph['stale_lines']:,} lines",
-         "measured",
-         "No cash; the balances were fiction and were closed. The cost was the orders held back against them."),
-        ("Spend not visible for negotiation or planning<br><em>purchasing</em>",
-         hashes("Supplier Fragmentation", "Free-Text Purchases"),
-         f"{_money(su['alias_spend'])} under supplier aliases; {_money(ftx['spend'])} on free-text lines",
-         "measured",
-         "An exposure. It costs nothing until a negotiation or a forecast depends on the number."),
-        ("Purchase suggestions never acted on<br><em>none</em>",
-         hashes("Dead Records Never Deactivated"),
-         f"{_money(dd['suggestion_value'])} suggested; {dd['po_lines_ever']} orders placed",
-         "measured",
-         "An exposure that was never acted on, and now cannot be."),
-        ("Shortages and delayed jobs<br><em>not costed</em>",
-         hashes("Stale Lead Times", "Unrecorded Consumption", "Open Documents Never Closed"),
-         f"{sh['episodes']:,} episodes; {sh['jobs_delayed']:,} jobs delayed {sh['delay_days']:,} days; "
-         f"{cf['shortage_episodes']} episodes and {cf['jobs_delayed']} jobs in the corrected replay",
-         "measured; simulated",
-         "Counted, not costed. What a late job costs depends on the customer, so we do not put a number on it."),
+    op_rows = [
+        ("Expedited purchasing",
+         "A reorder fires late when the lead time on file is shorter than the real one, when the balance reads "
+         "high because a pull was never recorded, or when a balance shown on order is never coming. The buyer "
+         "recovers with a rush order, at a price premium and with freight.",
+         f"{ex['rush_lines']} rush lines in {YR}. {rush_traced_lines} of them were placed in one of those three "
+         f"situations: {rl['stale_lead_time']} while a delivery had run past its promised date, "
+         f"{rl['unrecorded_consumption']} after an unrecorded pull emptied the shelf, {rl['phantom_on_order']} while "
+         f"a phantom on-order balance held the reorder back. The other {rush_other} are not attributed."),
+        ("Lines waiting for material",
+         "A job that calls for a component the shelf does not hold waits until it arrives. Components missing "
+         "from the bill of materials are the usual case, because the ERP never saw their demand coming.",
+         f"{sh['episodes']} shortage episodes on {sh['items']} items, {short_traced} of them in the three "
+         f"situations above, holding {jobs_traced} jobs. In all, {sh['jobs_delayed']} of the {sh['jobs']:,} jobs "
+         f"due in {YR} waited for material, typically for {sh['delay_days_median']:.0f} days."),
+        ("Working around the system",
+         "When the numbers cannot be trusted, people keep their own. The purchasing manager tracks her critical "
+         "components in a spreadsheet, the floor corrects balances by sight, and the annual physical restates "
+         "most of the master.",
+         f"{d['spreadsheet_rows']} components tracked outside the ERP; the spreadsheet disagreed with the system "
+         f"on {d['recon_disagree']} of them and was closer to the truth on {d['recon_buyer_right']}. "
+         f"{adj['rows']:,} balance corrections were posted in {YR}, and the remediation counts restated "
+         f"{_money(rc['write_down'] + rc['write_up'])} of book value across {rc['counts']} items."),
+        ("Effort on records that should not exist",
+         "Dead records appear in every report, count and purchase suggestion; duplicates split a part's history "
+         "and count twice; free-text lines must be matched to items by hand; open documents must be reviewed "
+         "one by one.",
+         f"{d['n_dead']:,} dead records ({d['dead_with_rop']} still carrying a reorder point), {d['dup_records']} "
+         f"duplicate records across {du['clusters']} parts, {d['n_ft_lines']:,} free-text lines over the three years, "
+         f"{ph['stale_lines']:,} purchase order lines open past 90 days and {ph['open_jobs_past_due']} jobs open "
+         f"past their due date."),
+        ("Planning blind",
+         "Requirements planning sees only recorded demand. Components missing from a bill, purchases made under "
+         "a generic code and history split across duplicate records are invisible to it, so the reorder points "
+         "and forecasts computed from that history are wrong before they start.",
+         f"{d['omit_items']} components missing from the bills of {un['products_affected']} of {un['n_products']} "
+         f"products; {d['ft_confirmed']:,} free-text lines over the three years that were in fact stocked items; {d['dup_records']} "
+         f"records splitting the history of {du['clusters']} parts."),
     ]
-    line_item_table = _widths(B.data_table(["Line item", "Errors", f"Value in {YR}", "Basis", "What it means"],
-        [list(r) for r in LINE_ITEMS], right=[]), [20, 9, 27, 12, 32])
+    op_table = _widths(B.data_table(["Operational cost", "How the errors produce it", f"What the {YR} record shows"],
+                                    [list(r) for r in op_rows], right=[]), [20, 38, 42])
+
+    fin_rows = [
+        ("Expedite freight and price premiums<br><em>operating expense; cash spent</em>",
+         "The rush orders above carry freight and a price premium the regular order would not.",
+         f"{_money(rush_traced)} on the {rush_traced_lines} rush lines traced to the errors, out of "
+         f"{_money(ex['total'])} of rush spend in {YR}. The remainder is not attributed."),
+        ("Purchases made while the stock was on the shelf<br><em>cash committed early; working capital</em>",
+         "Each duplicate record reorders on its own point against one shared pile, so a purchase fires on one "
+         "number while the other already holds the part.",
+         f"{du['lines_while_sibling_held_stock']} purchase lines, {_money(du['value_while_sibling_held_stock'])}, "
+         f"placed in {YR} while the duplicate record held at least the quantity ordered. The cash went out "
+         f"months before it needed to, and the stock sat until it was consumed."),
+        ("On-order commitments overstated<br><em>misstatement</em>",
+         "A line received short and never followed up keeps its balance on order. The ERP counts it as inbound "
+         "and holds the real reorder back.",
+         f"{ph['stale_lines']:,} lines older than 90 days with {_money(ph['stale_value'])} still shown on order at "
+         f"the audit date; across the three years, {ph['never_closed_lines']:,} lines were received short and never "
+         f"followed up. No cash was lost; the commitment was fiction, and it has been closed."),
+        ("Inventory balances misstated<br><em>misstatement; balance sheet</em>",
+         "Material pulled without a transaction stays on the books; an issue posted to the wrong item moves "
+         "value between parts; a keyed quantity or a duplicate posting moves it out of nothing; a box received "
+         "against an each balance leaves a number in no unit at all; a blank cost values a balance at zero.",
+         f"In {YR}: {_money(un['value'])} of pulls never recorded on {un['items']} items; {_money(ps['wrong_reference_value'])} "
+         f"posted to the wrong item on {ps['wrong_reference_rows']} issues; {_money(ps['keying_value'])} of keyed "
+         f"quantity error on {ps['keying_rows']} rows; {_money(ps['duplicate_value'])} double-counted on "
+         f"{ps['duplicate_rows']} rows; {uo['negative_or_zero_balances']} of the {uo['items']} conversion-less items "
+         f"at a zero or negative book balance; {bf['blank_cost_items']} items with no cost holding about "
+         f"{_money(bf['blank_cost_value'])} at the class median cost, an estimate. The counts caught these as "
+         f"{_money(adj['write_off'])} written off and {_money(adj['write_up'])} written up in the year."),
+        ("Product cost understated<br><em>misstatement; cost of goods sold and margin</em>",
+         "A component missing from the bill is consumed but never charged to the product, so the product's "
+         "material cost and its margin are both wrong.",
+         f"{_money(un['backflush_value'])} of component cost consumed on {un['products_affected']} products in {YR} "
+         f"and never charged to them. Their margins are overstated by that amount. It calls for a pricing "
+         f"review, not a write-off."),
+        ("Spend invisible to reporting<br><em>exposure</em>",
+         "A vendor split across alias records shows a fraction of its real spend; a purchase under a generic "
+         "code is spend with no item behind it.",
+         f"{_money(su['alias_spend'])} of the {_money(su['vendor_spend'])} spent with the {su['vendors']} fragmented "
+         f"vendors sat under alias records; {_money(ftx['spend'])} was bought on {ftx['lines']} free-text lines. "
+         f"No cost until a negotiation or a forecast relies on the number."),
+        ("Purchase suggestions on dead items<br><em>exposure</em>",
+         "A reorder point on an item nobody uses generates a purchase suggestion whenever the balance is low, "
+         "which for a dead item is always.",
+         f"{dd['with_reorder_point']} reorder points on dead items would generate {_money(dd['suggestion_value'])} "
+         f"of suggestions. None were acted on in the history."),
+    ]
+    fin_table = _widths(B.data_table(["Financial cost", "How the errors produce it", f"What the {YR} record shows"],
+                                     [list(r) for r in fin_rows], right=[]), [20, 34, 46])
 
     found = f"""
 {B.section("found", "Section 2", "Findings")}
-<p>This audit examined one company's ERP system end to end. On the master side, the records that
-define what the shop buys and builds: the {mc}. On the transaction side, the history those masters
-govern: the {tc}. That is {len(d['master_comp'])} master-level components holding
-{d['master_rows']:,} records and {len(d['txn_comp'])} transaction-level components holding
-{d['txn_rows']:,} records: {d['total_rows']:,} records in all across 36 months, plus the purchasing
-manager's spreadsheet of the {d['spreadsheet_rows']} line-stopping components she tracks outside
-the system.</p>
+<p>This data quality audit examined the shop's entire ERP system end to end. The system consists of
+three master-level tables (Item, Supplier and Bill of Materials) and five transaction-level tables
+(Inventory Ledger, Purchase Orders, Service Orders, Production Orders and Cycle Counts), related as
+shown below.</p>
 
-{B.kpi_row(
-    B.kpi_card(f"{len(d['master_comp'])}", "Master-level components", f"{d['master_rows']:,} records"),
-    B.kpi_card(f"{len(d['txn_comp'])}", "Transaction-level components", f"{d['txn_rows']:,} records"),
-    B.kpi_card(f"{d['total_rows']:,}", "Records examined", "36 months of history"),
-    B.kpi_card("16", "Error types tested", "8 master-level, 8 transaction-level"),
-)}
+{B.chart("ERP Tables", chart_erd(d))}
+
+<p>Over the past 36 months, over <strong>{d['total_rows'] // 1000}K</strong> individual records were
+produced across the eight ERP tables. This audit covered all of them. It found <strong>16</strong>
+different types of data quality error recurring over this period. Taken together, these errors
+inflated costs, disrupted operational workflows, and distorted financial visibility.</p>
 
 {B.section("errors", "Section 2.1", "Data Quality Errors")}
 
-<p style="font-size:18px;font-weight:700;color:{B.DARK_GREY};margin-top:30px;">Master-level errors</p>
-{master_table}
+<p>The tables below present the 16 different data quality error types that were found to recur over
+the three-year audit period, with a description of each, the ERP table in which it was found, and
+its prevalence within that table. Three findings stand out for their scale. The item master is
+silted up: {d['dead_pct']*100:.0f}% of its records ({d['n_dead']:,} of {d['n_master']:,}) are items
+with no movement in two years or more that are still flagged active, and {d['dead_with_rop']} of
+them still carry a reorder point. The parameters the ERP reorders on are stale: the lead times on
+{d['n_lead_off']/d['n_live']*100:.0f}% of live items no longer match how long deliveries take, and
+the reorder points on {d['params_changed']/d['n_live']*100:.0f}% were never recomputed as usage and
+lead times changed. And receipts are posted in batches: {d['n_batch_rows']/d['n_po']*100:.0f}% of
+purchase order lines carry a posting date days after the material arrived, which biases every lead
+time computed from them.</p>
 
-<p style="font-size:18px;font-weight:700;color:{B.DARK_GREY};margin-top:34px;">Transaction-level errors</p>
-{txn_table}
+<p>Two of the errors describe the same weakness in the ledger from opposite ends. Unrecorded
+consumption (#9) is material leaving the stockroom with no transaction, so the balance drifts above
+what is on the shelf until a count or a shelf-empty correction writes it down. Adjustments as a
+catch-all (#13) is the habit of fixing every discrepancy with an adjustment and no reason code, so
+those write-downs cannot be told apart from damage, receiving errors and count errors. The
+{d['n_unrec_adj_rows']:,} chronic write-offs that evidence #9 are therefore a subset of the
+{d['n_adj_blank_rows']:,} unexplained adjustments counted under #13: one is the leak, the other is
+why the leak went unnoticed. The remaining errors are data entry. The same part is carried under
+two or more numbers ({d['dup_records']} records) and the same supplier under several
+({d['sup_records']} records); costs, suppliers and reorder points are left blank ({d['n_blank']}
+items); issues are posted against the wrong item ({d['t6_count']:,}), quantities keyed an order of
+magnitude off ({d['t7_count']}) and postings entered twice ({d['t8_count']}); and purchases are typed
+in under a generic code instead of the item number ({d['n_ft_lines']:,} lines). Each is small on its
+own, and together they are why a balance cannot be trusted without a count.</p>
 
 <p>Two of the counts are rows that should exist rather than rows that do. For unrecorded consumption
 the affected rows are the write-off adjustments that stand in for the issues that were never entered;
 for BOM omissions they are the component rows missing from the bill of materials, counted against
 the complete bill.</p>
 
-{B.section("costs", "Section 2.2", "Operational and Financial Costs")}
+<p style="font-size:18px;font-weight:700;color:{B.DARK_GREY};margin-top:30px;">Master-level Table Errors</p>
+{master_table}
 
-<p>These errors cost the shop in two ways. Operationally, they turn into line stops and expedites on
-the components that matter, into write-offs at the annual count, and into buyers who work around
-the system rather than through it: in {YR} the shop placed {ex['rush_lines']} rush orders, ran short
-{sh['episodes']:,} times on {sh['items']} items, and carried {_money(ph['stale_value'])} of on-order
-value that existed only on paper. Financially, the same errors misstate the balance sheet and the
-cost of goods sold: {d['rel_before']['unreliable']['val']/d['inv_value_total']*100:.0f}% of the book
-value ({_money(d['rel_before']['unreliable']['val'])}) sat on balances no one could trust, and
-material consumed without a transaction was carried as an asset until the count wrote it off. The
-first table gives, for each error, what it does to the operation, which line item it touches, and
-what that came to in {YR}. Each value carries two tags. The first is the kind of money: <em>incurred</em>
-is cash the shop actually spent, and stopping it is a recurring saving; <em>working capital</em> is
-stock held above or below what the same rule would hold on corrected data, where only the net is
-cash; <em>misstatement</em> means the books were wrong and were later corrected, so no cash comes back;
-<em>exposure</em> is a wrong number that costs nothing until someone acts on it, reported with how
-often anyone did. The second is how the figure was reached: <em>measured</em> from the records,
-<em>simulated</em> by replaying {YR} with the same reorder rule on the corrected records, or
-<em>estimated</em> on a stated assumption. Not every error is a loss: a few are misattributions or
-timing errors that net to zero at the total and only distort where the cost sits.</p>
+<p style="font-size:18px;font-weight:700;color:{B.DARK_GREY};margin-top:34px;">Transaction-level Table Errors</p>
+{txn_table}
 
-{cost_table}
+{B.section("costs", "Section 2.2", "Costs")}
 
-<p>Several errors land on the same line item, so the second table adds them up where they belong. The
-kinds of money are kept apart because they do not add: the expedite line is cash the shop can stop
-spending, the write-off line is money already gone, and the exposure lines are risks rather than
-costs. Where a row leans on the corrected replay rather than on the records, its basis says so.</p>
+<p>Operationally, the sixteen errors do not act one at a time. A stale lead time, an unrecorded pull
+and a phantom on-order balance each push the same reorder late; a duplicate record and a free-text
+buy each hide the same demand; a blank cost and a wrong item code each leave the same report
+unusable. What the shop experiences is their sum: rush orders, lines waiting for material, buyers
+keeping their own books, and effort spent on records that should not exist. The table below lays
+out those costs, how the errors produce each one, and what the {YR} record shows. Where a figure can
+be tied to a specific error it is given; where it cannot, the total is stated and no share of it is
+claimed.</p>
 
-{line_item_table}
+{op_table}
+
+<p>Financially, the errors reach the books in four ways, and the four do not add. Some are cash
+spent: the freight and price premiums on rush orders. Some are cash committed early: purchases made
+while the same part sat on the shelf under another number. Most are misstatement: balances, on-order
+commitments and product costs the books had wrong and later corrected, where no cash comes back but
+every decision made on the wrong number was made blind. And some are exposure: wrong numbers that
+nobody has yet acted on. The table gives each, how the errors produce it, and what the {YR} record
+shows. Quantities are valued at the item's standard cost, with the class median where the cost is
+blank, and only figures that trace to a specific error are stated as costs of the errors.</p>
+
+{fin_table}
+
+<p>The figures above are the parts that can be traced. The larger cost is collective and does not
+reduce to a line item. Management ran on an inventory value, a set of product margins, a supplier
+scorecard and an on-order position that were all wrong at once, and every decision that leaned on
+them, on pricing, on purchasing, on capacity and at the year-end close, leaned on numbers that
+needed a physical count to believe. That, more than any single line, is the cost the go-forward
+changes in Section 4 are meant to end.</p>
 """
 
     did = f"""
-{B.section("did", "Section 3", "Actions")}
-{B.section("remediation", "Section 3.1", "Error Remediation")}
-<p>The remediation ran in a fixed order. We began by exploring and profiling every component of the
-ERP: row counts by year, fill rates by column, the distinct values in every code field and the date
-ranges, which surfaced the blank fields and placeholder classes before any test was written. We then
-ran one test for each of the sixteen error types, written as queries against the extracted tables so
-that each finding traces to a stated rule and can be rerun. Where the ERP could not settle a finding
-on its own, we brought in evidence from outside it: the physical cycle counts against the system's
-on-hand balances, the purchasing manager's spreadsheet against the ERP for the components she tracks,
-and expected consumption from jobs and bills of materials against what was actually issued, with
-crosswalks built for the duplicate items and the fragmented suppliers. Findings that rested on
-judgment rather than fact, such as duplicate pairs, free-text attributions, dead-item dispositions
-and BOM additions, went to the people who own them, the buyer, the stockroom lead, the engineering
-manager and the assembly supervisor, for confirmation before anything was changed. Lead times were
-recomputed with a method robust to batched receipt dates, and every correction was recorded in a
-reference table rather than written over the source, so each one is auditable and reversible. The
-tables below give, for each error, how it was remediated and whose input that took, the evidence it
-rested on, and how many of the affected rows were remediated.</p>
-<p style="font-size:18px;font-weight:700;color:{B.DARK_GREY};margin-top:30px;">Master-level errors</p>
+{B.section("did", "Section 3", "Error Remediation")}
+<p>Remediation ran in a fixed order. We profiled every table first (row counts by year, fill rates
+by column, the values in each code field, the date ranges), then ran one rerunnable test for each of
+the sixteen error types. Where the ERP could not settle a finding on its own we brought in evidence
+from outside it: the cycle counts against the book balances, the purchasing manager's spreadsheet
+against the ERP, and the consumption expected from jobs and bills of materials against what was
+actually issued. Findings that rested on judgment, such as duplicate pairs, free-text matches,
+dead-item dispositions and BOM additions, went to the people who own them for confirmation before
+anything was changed, and every correction was recorded in a reference table rather than written
+over the source, so each one is auditable and reversible.</p>
+<p>The tables below give, for each error, how it was remediated and whose input that took, the
+evidence it rested on, and how many of the affected rows were remediated.</p>
+<p style="font-size:18px;font-weight:700;color:{B.DARK_GREY};margin-top:30px;">Master-level error remediation</p>
 {rem_master_table}
 
-<p style="font-size:18px;font-weight:700;color:{B.DARK_GREY};margin-top:34px;">Transaction-level errors</p>
+<p style="font-size:18px;font-weight:700;color:{B.DARK_GREY};margin-top:34px;">Transaction-level error remediation</p>
 {rem_txn_table}
 
 """
 
-    who_rows = [[r.role.title(), r.consulted_on, r.topic] for r in d["interviews"].itertuples(index=False)]
     CONFIG_DESC = {
         "reason codes required on adjustments":
             "The ERP now refuses an adjustment without a reason code from a fixed list (count variance, damage, "
-            "scrap, receiving error, return). Every write-off carries its cause, so a chronic pattern can be "
-            "traced to its source instead of hiding in a catch-all. Closes #13 and exposes #9.",
+            "scrap, receiving error, return), so every write-off carries its cause.",
         "required fields enforced on item creation":
             "A new item cannot be saved without a standard cost, a primary supplier, a unit of measure and a "
-            "reorder point, or an explicit not-stocked flag. Blanks and MISC placeholders can no longer enter "
-            "the master. Closes #6.",
+            "reorder point, or an explicit not-stocked flag.",
         "UOM conversions added for box/spool/length items":
             "Each item bought and stocked in different units now carries a conversion factor, and receipts "
-            "convert to stock units automatically: a box of 100 lands as 100 each. Closes #5 and the box/each "
-            "keying errors in #11.",
+            "convert to stock units automatically: a box of 100 lands as 100 each.",
         "generic item codes restricted":
             "NONSTOCK, MISC and SHOPSUPPLY can no longer be used on a purchase line for anything that exists in "
-            "the item master. The buyer is prompted to search the master first, and a generic code needs a "
-            "one-line justification. Closes #14.",
+            "the item master; the buyer is prompted to search the master first, and a generic code needs a "
+            "one-line justification.",
         "negative on-hand blocked":
-            "An issue that would take a balance below zero is rejected at entry, so a missing receipt or a "
-            "wrong item is caught the moment it happens rather than at the annual count. Surfaces #9, #10 and #11.",
+            "An issue that would take a balance below zero is rejected at entry, so a missing receipt, a wrong "
+            "item or a keyed quantity is caught the moment it happens rather than at the annual count.",
         "individual logins issued for floor and receiving":
             "The shared ASSY1, FAB1 and RECV logins were retired and every floor and receiving user has their "
-            "own, so each transaction names who posted it. Makes #10, #12 and #15 attributable, and trainable.",
+            "own, so each transaction names who posted it.",
         "part-creation approval routing enabled":
             "A request to create an item routes to the item-master owner, who checks for an existing record "
-            "before approving. Stops new duplicates (#4) and blank-field items at the source.",
+            "before approving.",
     }
-    config_rows = [[r.change[0].upper() + r.change[1:], CONFIG_DESC.get(r.change, ""), r.effective_date]
+    # closes: the error can no longer occur; addresses: the error is caught or
+    # reduced, but not prevented
+    CONFIG_IMPACT = {
+        "reason codes required on adjustments":
+            "Closes #13. Addresses #9: a chronic write-off now names its cause, so the pattern is visible.",
+        "required fields enforced on item creation":
+            "Closes #6 for every item created from now on; the existing blanks were filled in remediation.",
+        "UOM conversions added for box/spool/length items":
+            "Closes #5. Addresses #11: a box keyed as eaches can no longer distort a balance.",
+        "generic item codes restricted":
+            "Closes #14.",
+        "negative on-hand blocked":
+            "Addresses #9, #10 and #11: each is caught at entry instead of at the count.",
+        "individual logins issued for floor and receiving":
+            "Addresses #10, #12 and #15: every posting is attributable to a person, and so trainable.",
+        "part-creation approval routing enabled":
+            "Addresses #4 and #6: a new duplicate or blank-field item is stopped before it enters the master.",
+    }
+    config_rows = [[r.change[0].upper() + r.change[1:], CONFIG_DESC.get(r.change, ""), CONFIG_IMPACT.get(r.change, "")]
                    for r in d["config"].itertuples(index=False)]
-    config_table = _widths(B.data_table(["Change", "What it does", "Effective"], config_rows, right=[]), [22, 63, 15])
+    config_table = _widths(B.data_table(["Change", "What it does", "Impact"], config_rows, right=[]), [22, 48, 30])
 
     PROCESS = [
         ("A named owner for the item and supplier masters",
@@ -1018,7 +1029,8 @@ rested on, and how many of the affected rows were remediated.</p>
          "Purchasing manager, with the buyers", "Monthly"),
         ("A monthly open-document review",
          "Open PO lines older than twice the supplier's lead time and jobs past their due date are listed, "
-         "then closed or chased. Keeps on-order honest and stops the phantom-inbound stockouts (#16).",
+         "then closed or chased. Keeps on-order honest and stops orders being held back against material "
+         "that is not coming (#16).",
          "Buyer (PO lines); production scheduler (jobs)", "Monthly"),
         ("A quarterly dead-item review",
          "Items with no issue or receipt in 24 months are listed each quarter and deactivated unless the "
@@ -1044,33 +1056,30 @@ rested on, and how many of the affected rows were remediated.</p>
                                          [list(r) for r in PROCESS], right=[]), [20, 46, 18, 16])
 
     keep = f"""
-{B.section("process", "Section 3.2", "Process Changes")}
-<p>The sixteen errors trace back to two root conditions rather than sixteen separate causes. The
-first is that the ERP allowed them: it did not require a reason code on an adjustment or a cost on a
-new item, it offered generic item codes, it permitted a balance to go negative, it let anyone create
-a part, and it let the floor and receiving work under shared logins. The second is that nobody owned
-the routine upkeep: no one refreshed the parameters set at go-live, counted the shelves between annual
-physicals, closed documents, reviewed dead items or maintained the bills of materials as products
-changed. The corrections in Section 3.1 fix what those two conditions produced; the changes below stop
-them producing it again.</p>
+{B.section("process", "Section 4", "Go-Forward Changes")}
+<p>The sixteen errors trace back to two root conditions rather than sixteen separate causes: the ERP
+allowed them, and nobody owned the routine upkeep that would have caught them. The corrections in
+Section 3 fix what those two conditions produced; the changes in this section stop them producing it
+again, and they fall into two groups that are different kinds of work. The first group are settings.
+Each was changed by the ERP administrator during the engagement, took effect for every user at once,
+and stops the error at the point of entry. This is the easier lift: the changes are already in place,
+they hold on their own, and they need nothing further from the shop. The table gives what each one
+does and which errors it <em>closes</em> (the error can no longer occur) or <em>addresses</em> (the
+error is caught or reduced, but not prevented).</p>
 
-<p>We separated the changes on that line because they are different kinds of work. The first group
-are settings. Each was changed by the ERP administrator during the engagement, took effect for every
-user at once on the date shown, and stops the error at the point of entry, so they are already
-holding and need nothing further from the shop. The second group are habits. No setting can make
-someone count a shelf, review a bill of materials or refresh a reorder point, so each of these needs
-a named owner and a cadence, and each will lapse without them. The shop has committed to the owners
-and cadences below; keeping them is what protects the results in Section 1.</p>
-
-<p style="font-size:18px;font-weight:700;color:{B.DARK_GREY};margin-top:30px;">Implemented in the system</p>
+<p style="font-size:18px;font-weight:700;color:{B.DARK_GREY};margin-top:30px;">Changes Easily Implemented in the ERP</p>
 {config_table}
 
-<p style="font-size:18px;font-weight:700;color:{B.DARK_GREY};margin-top:34px;">Requires process and ownership</p>
-{process_table}
-"""
+<p>The second group are habits. No setting can make someone count a shelf, review a bill of materials,
+close a purchase order or refresh a reorder point, so each of these needs a named owner and a cadence,
+and each will lapse without them. That makes this the harder lift: it depends on organizational
+alignment and on the owners' buy-in rather than on a configuration screen. The shop has committed to
+the owners and cadences below, and keeping them is what protects the results in Section 1.</p>
 
-    remains = f"""
-{B.section("remains", "Section 4", "What remains")}
+<p style="font-size:18px;font-weight:700;color:{B.DARK_GREY};margin-top:34px;">Changes Requiring Ongoing Processes and Ownership</p>
+{process_table}
+
+<p style="font-size:18px;font-weight:700;color:{B.DARK_GREY};margin-top:34px;">What remains</p>
 <p>Not everything was resolved, and it would be dishonest to imply otherwise.</p>
 <ul class="limitation-list">
   <li><strong>Items still unreliable.</strong> {d['rel_after']['unreliable']['pct']:.0f}% of live items still
@@ -1081,14 +1090,14 @@ and cadences below; keeping them is what protects the results in Section 1.</p>
       high percentile to stay safe rather than precise.</li>
   <li><strong>What the shop declined.</strong> A small set of dead items were kept active at the buyer's
       insistence as insurance spares, against the recommendation to deactivate them.</li>
-  <li><strong>The corrected-year figures are a simulation.</strong> The {YR} replay on corrected records
-      holds demand, suppliers and the reorder rule fixed and changes only the data the rule saw. It does
-      not model the buyers learning the new numbers or a customer's reaction to a late job, so the
-      expedite, shortage and inventory figures under "corrected" are the size of the effect, not a
-      forecast of next year.</li>
+  <li><strong>What the cleanup is worth going forward is not measured here.</strong> This report claims
+      only costs that trace to a specific error in the {YR} record. How much of the untraced rush spend
+      and how many of the shortages clean data would have prevented is a forecast, and it belongs to
+      the reorder-policy work that follows this audit.</li>
 </ul>
 """
 
+    remains = ""
     return results + found + did + keep + remains, toc
 
 
