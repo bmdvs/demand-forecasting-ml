@@ -275,6 +275,18 @@ def gather():
     shorts = pd.read_csv(TRUTH / "shortages.csv"); shorts = shorts[shorts["date"].str[:4] == "2025"]
     d["shortages25"] = int(len(shorts)); d["shortages25_on_omitted"] = int(shorts["item_number"].isin(t1_nums).sum())
     d["threeway"] = json.loads((BACKTEST / "threeway_overall.json").read_text())
+    # the same model on the merged duplicate items only, raw history vs fully cleaned
+    dup_items = set(pd.read_parquet(BACKTEST / "clean_before_after.parquet")["item"])
+    def _wape(path):
+        t = pd.read_parquet(path)
+        if "split" in t.columns and (t["split"] == "test").any():
+            t = t[t["split"] == "test"]
+        t = t[t["item"].isin(dup_items)]
+        return float((t["target"] - t["pred"]).abs().sum() / max(1e-9, t["target"].abs().sum()))
+    d["threeway_dups"] = {"raw": _wape(BACKTEST / "threeway_raw.parquet"),
+                          "master": _wape(BACKTEST / "threeway_master.parquet"),
+                          "fully": _wape(BACKTEST / "threeway_fully.parquet"), "n": len(dup_items)}
+    d["model"] = json.loads((BACKTEST / "model_metrics.json").read_text())
     d["n_posting_corrections"] = d["t6_count"] + d["t7_count"] + d["t8_count"]
     d["samples"] = _samples(im, tx, po, sup, cross, txn, pod, lead, params, chronic, dead_nums)
     return d
@@ -376,6 +388,48 @@ def _samples(im, tx, po, sup, cross, txn, pod, lead, params, chronic, dead_nums)
 
 
 # ── charts ───────────────────────────────────────────────────────────────────
+def chart_threeway(d):
+    """The same model, the same features, three versions of the history."""
+    fig, ax = B.make_fig(3.6)
+    tw, td = d["threeway"], d["threeway_dups"]
+    groups = ["All live items", f"The {td['n']} merged duplicate items"]
+    tiers = [("As recorded", "raw", B.MED_GREY), ("Records merged", "master", B.LIGHT_BLUE),
+             ("Fully cleaned", "fully", B.DARK_BLUE)]
+    x = np.arange(len(groups)); w = 0.26
+    for k, (label, key, color) in enumerate(tiers):
+        vals = [tw[key] * 100, td[key] * 100]
+        bars = ax.bar(x + (k - 1) * w, vals, width=w, color=color, label=label)
+        for b_, v in zip(bars, vals):
+            ax.text(b_.get_x() + b_.get_width() / 2, v + 0.8, f"{v:.0f}%", ha="center", fontsize=9, fontweight="bold")
+    ax.set_xticks(x); ax.set_xticklabels(groups)
+    ax.set_ylabel("Forecast error, WAPE (%)")
+    ax.set_ylim(0, max(tw["raw"], td["raw"]) * 100 * 1.25)
+    B.chart_style(ax)
+    ax.legend(loc="lower center", bbox_to_anchor=(0.5, 1.0), frameon=False, ncol=3, fontsize=9)
+    return B.b64(fig)
+
+
+def chart_model_vs_baseline(d):
+    """The chosen model against the best simple method, by demand pattern, on the cleaned history."""
+    fig, ax = B.make_fig(3.6)
+    segs = d["model"]["segments"]
+    names = [s_["segment"].capitalize() for s_ in segs] + ["All items"]
+    model = [s_["wape_model"] * 100 for s_ in segs] + [d["model"]["overall"]["model"] * 100]
+    base = [s_["wape_baseline"] * 100 for s_ in segs] + [d["model"]["overall"]["baseline"] * 100]
+    x = np.arange(len(names)); w = 0.36
+    b1 = ax.bar(x - w / 2, base, width=w, color=B.MED_GREY, label="Best simple method")
+    b2 = ax.bar(x + w / 2, model, width=w, color=B.DARK_BLUE, label="Demand model")
+    for bars, vals in ((b1, base), (b2, model)):
+        for b_, v in zip(bars, vals):
+            ax.text(b_.get_x() + b_.get_width() / 2, v + 0.8, f"{v:.0f}%", ha="center", fontsize=8.5)
+    ax.set_xticks(x); ax.set_xticklabels(names)
+    ax.set_ylabel("Forecast error, WAPE (%)")
+    ax.set_ylim(0, max(base) * 1.25)
+    B.chart_style(ax)
+    ax.legend(loc="lower center", bbox_to_anchor=(0.5, 1.0), frameon=False, ncol=2, fontsize=9)
+    return B.b64(fig)
+
+
 def chart_reliability(d):
     fig, ax = B.make_fig(3.4)
     cats = ["Before", "After"]
@@ -613,9 +667,45 @@ def build(d):
     results = f"""
 {B.section("results", "Section 3", "Results")}
 <p>As a result of the data quality audit, remediation of errors, and fresh cycle counts, numerous
-measures of the ERP system's accuracy and reliability improved significantly.</p>
+measures of the ERP system's accuracy and reliability improved significantly. Most importantly, the
+vast majority of active item records are actually live, 100% of most identified data errors were
+resolved, and {tr['reliable_value']['after']/tr['reliable_value']['after_total']*100:.0f}% of total
+inventory value is confirmed (up from {tr['reliable_value']['before']/tr['reliable_value']['before_total']*100:.0f}%).</p>
 
 {trust_table}
+
+{sub("What the clean data makes possible")}
+<p>The purpose of a trustworthy history is what can be built on it, and the first thing the shop
+wants to build is a demand forecast to set its reorder points. Before the cleanup that was not a
+realistic project, for reasons the findings make plain: the history a model would learn from was
+split across duplicate numbers for {d['dup_clusters']} parts and hidden under generic codes on
+{d['n_ft_lines']:,} purchase lines, so the series for a part was not the part's demand; the
+consumption of components missing from the bills never reached the ledger at all; and even a
+perfect forecast could not drive a reorder, because the on-hand balance it would be compared
+against and the lead time it would have to cover were both wrong. The two charts below show the
+difference the cleanup made, measured the same way throughout: forecast error over the lead time on
+a held-out year, as weighted absolute percentage error (WAPE), which reads like the familiar
+percentage error for a steady part but stays defined for the third of items whose demand has months
+of zero.</p>
+
+{B.chart("Forecast error of the same model on three versions of the history", chart_threeway(d))}
+<p>The first chart holds the model and its features fixed and changes only the history it reads.
+Across all live items the error falls from {d['threeway']['raw']*100:.1f}% on the history as recorded
+to {d['threeway']['master']*100:.1f}% once the duplicate records are merged and the free-text
+purchases returned to their items, and to {d['threeway']['fully']*100:.1f}% once the unrecorded
+consumption is restored. On the {d['threeway_dups']['n']} parts that had been carried under more
+than one number the effect is larger, from {d['threeway_dups']['raw']*100:.0f}% to
+{d['threeway_dups']['fully']*100:.0f}%, because on those parts the recorded history was not the
+demand at all.</p>
+
+{B.chart("Demand model against the best simple method, on the cleaned history", chart_model_vs_baseline(d))}
+<p>The second chart is the test that matters for the reorder work: on the cleaned history, a
+gradient-boosted model beats the best simple method for each demand pattern (a moving average or
+last year's month, whichever did better), from {d['model']['overall']['baseline']*100:.0f}% to
+{d['model']['overall']['model']*100:.0f}% error overall, with the largest gains on the erratic and lumpy
+parts that stop the line. A forecast at that accuracy, compared against a balance the shop now
+trusts and a lead time that matches delivery, is what the reorder-policy work that follows this
+audit is built on.</p>
 """
 
     mc = ", ".join(f"{n} ({r:,} records)" for n, r in d["master_comp"])
@@ -855,44 +945,23 @@ share of the ERP's total records, leaving it unreliable as the shop's central da
 movement in two years or more yet were still flagged as active, meaning reports, searches and reorder
 logic were polluted by inactive parts. Second, {d['n_lead_off']/d['n_live']*100:.0f}% of lead times
 and {d['params_changed']/d['n_live']*100:.0f}% of reorder points listed in the item master were stale,
-meaning that if they were relied upon when making reorder decisions, then they would be placed at the
-wrong time and in the wrong quantity. Third, the majority of receipts are posted in batches several
-days late: {d['n_batch_rows']/d['n_po']*100:.0f}% of purchase order lines carry a posting date
-{d['t4_lag_mean']:.0f} days on average after the material actually arrived, meaning every lead time
-or supplier delivery time calculated from these receipts is artificially long.</p>
+meaning that if they were relied upon when making reordering decisions, then they would be placed at
+the wrong time and in the wrong quantity. Third, the majority of receipts
+({d['n_batch_rows']/d['n_po']*100:.0f}%) are posted in batches (i.e., a large number of receipts held
+on to and inputted all at once) and are {d['t4_lag_mean']:.0f} days late on average, meaning every lead
+time or supplier delivery time calculated from these receipts is artificially long.</p>
 
 """
 
     did = f"""
 {B.section("did", "Section 2", "Error Remediation")}
-<p>Every error that the record could settle on its own was closed in full: all {d['n_lead_off']:,}
-stale lead times and {d['params_changed']:,} reorder points recomputed, all {d['uom_items']} missing
-conversions and {d['n_blank']} blank fields filled, all {d['bom_changes']} missing BOM rows restored,
-and every wrong reference, keyed quantity and duplicate posting in the ledger corrected
-({d['n_posting_corrections']:,} posting corrections). Two rows read short of 100% by decision rather
-than by omission: the purchasing manager kept {d['dead_kept']} dead records as insurance spares, and
-the buyer rejected {d['dup_rejected']} duplicate pairs as different parts, so those records stay
-separate. The genuinely partial results are the ones the record cannot support. Free-text lines were attributed
-only where the buyer confirmed a stocked item ({d['ft_confirmed']:,} of {d['n_ft_lines']:,}; the rest
-were real one-off buys). The {d['n_batch_rows']:,} batched receipt dates were left as posted, because
-the true dates are not recoverable, so any lead time computed from the raw history will stay biased
-and the computation was made robust to it instead. And the unrecorded consumption and catch-all
-adjustments were fixed at the source rather than in the history, so the ledger as posted still carries
-them; the corrected history lives in the reference tables, not in the ERP.</p>
+<p>Most of the data quality errors identified in Section 1 were closed in full, as shown below. A few were partially
+closed: {d['dead_kept']} dead records were kept in as insurance spares, and not all duplicate pair or
+free-text line attributions could be confirmed as correct. No remediation attempt was made on a few
+of the errors, namely batched receipts (dates not recoverable), as well as unrecorded consumption and
+catch-all adjustments (fixed at source rather than in the history), and so while the ledger still
+carries them, the records are cleaned going forward.</p>
 
-<p>Two results of the remediation do not appear in Section 3 and deserve to. First, the crosswalks
-and attributions make the 36-month history usable for planning: with duplicate records merged and
-free-text purchases returned to their items, the error of a demand forecast built on that history
-falls from {d['threeway']['raw']*100:.1f}% to {d['threeway']['master']*100:.1f}% (weighted absolute
-error over lead time, same model, same features), and to {d['threeway']['fully']*100:.1f}% once the
-small amount of unrecorded usage is restored. Second, the reconciliation of the purchasing manager's spreadsheet
-against the ERP on the {d['spreadsheet_rows']} line-critical components found the two disagreeing on
-{d['recon_disagree']}, and the spreadsheet closer to the truth on {d['recon_buyer_right']} of them.
-The shadow system was a better record than the system of record for half the parts that stop the
-line, which is the clearest case for the ownership changes in Section 4.</p>
-
-<p>The tables below give, for each error, how it was remediated and whose input that took, the
-evidence it rested on, and how many of the affected rows were remediated.</p>
 <p style="font-size:18px;font-weight:700;color:{B.DARK_GREY};margin-top:30px;">Master-level Table Error Remediation</p>
 {rem_master_table}
 
@@ -903,23 +972,23 @@ evidence it rested on, and how many of the affected rows were remediated.</p>
 
     CONFIG_DESC = {
         "reason codes required on adjustments":
-            "The ERP now refuses an adjustment without a reason code from a fixed list (count variance, damage, "
+            "The ERP refuses an adjustment without a reason code from a fixed list (count variance, damage, "
             "scrap, receiving error, return), so every write-off carries its cause.",
         "required fields enforced on item creation":
             "A new item cannot be saved without a standard cost, a primary supplier, a unit of measure and a "
             "reorder point, or an explicit not-stocked flag.",
         "UOM conversions added for box/spool/length items":
-            "Each item bought and stocked in different units now carries a conversion factor, and receipts "
+            "Each item bought and stocked in different units carries a conversion factor, and receipts "
             "convert to stock units automatically: a box of 100 lands as 100 each.",
         "generic item codes restricted":
-            "NONSTOCK, MISC and SHOPSUPPLY can no longer be used on a purchase line for anything that exists in "
-            "the item master; the buyer is prompted to search the master first, and a generic code needs a "
+            "NONSTOCK, MISC and SHOPSUPPLY cannot be used on a purchase line for anything that exists in the "
+            "item master; the buyer is prompted to search the master first, and a generic code needs a "
             "one-line justification.",
         "negative on-hand blocked":
             "An issue that would take a balance below zero is rejected at entry, so a missing receipt, a wrong "
             "item or a keyed quantity is caught the moment it happens rather than at the annual count.",
         "individual logins issued for floor and receiving":
-            "The shared ASSY1, FAB1 and RECV logins were retired and every floor and receiving user has their "
+            "The shared ASSY1, FAB1 and RECV logins are retired and every floor and receiving user has their "
             "own, so each transaction names who posted it.",
         "part-creation approval routing enabled":
             "A request to create an item routes to the item-master owner, who checks for an existing record "
@@ -929,11 +998,11 @@ evidence it rested on, and how many of the affected rows were remediated.</p>
     # reduced, but not prevented
     CONFIG_IMPACT = {
         "reason codes required on adjustments":
-            "Closes #13. Addresses #9: a chronic write-off now names its cause, so the pattern is visible.",
+            "Closes #13. Addresses #9: a chronic write-off names its cause, so the pattern is visible.",
         "required fields enforced on item creation":
-            "Closes #6 for every item created from now on; the existing blanks were filled in remediation.",
+            "Closes #6.",
         "UOM conversions added for box/spool/length items":
-            "Closes #5. Addresses #11: a box keyed as eaches can no longer distort a balance.",
+            "Closes #5. Addresses #11: a box keyed as each can no longer distort a balance.",
         "generic item codes restricted":
             "Closes #14.",
         "negative on-hand blocked":
@@ -950,67 +1019,72 @@ evidence it rested on, and how many of the affected rows were remediated.</p>
     PROCESS = [
         ("A named owner for the item and supplier masters",
          "The purchasing manager owns both masters. No item or supplier record is created, merged or "
-         "deactivated without her approval, and she clears the approval queue weekly. Prevents new duplicates "
-         "(#4, #8), blank-field items (#6) and dead records accumulating unnoticed (#1).",
+         "deactivated without her approval, and she clears the approval queue weekly.",
+         "Addresses #1, #4, #6 and #8: a new dead record, duplicate, blank-field item or supplier alias is "
+         "stopped at the approval queue.",
          "Purchasing manager", "Weekly queue; continuous"),
         ("A cycle-count program on the ABC schedule",
          "A items counted monthly, B items quarterly, C items annually, unreliable items first. Variances are "
-         "posted with a reason and investigated above a threshold, and the annual physical is retired. Keeps "
-         "balances trustworthy and catches unrecorded consumption (#9) as it happens rather than once a year.",
+         "posted with a reason and investigated above a threshold, and the annual physical is retired.",
+         "Addresses #9 and #13: unrecorded consumption is caught within the count cycle rather than once a "
+         "year, and every correction carries its cause.",
          "Stockroom lead", "Monthly / quarterly / annual by class"),
         ("A monthly parameter refresh from the forecast",
          "Lead times are recomputed from the last twelve months of receipts, and reorder points and safety "
          "stocks from the forecast at the ABC service level, then loaded. The buyers review the A-class "
-         "changes before they go live. Prevents lead times and reorder points going stale again (#2, #3).",
+         "changes before they go live.",
+         "Addresses #2 and #3: a lead time or reorder point can be no more than a month out of date.",
          "Purchasing manager, with the buyers", "Monthly"),
         ("A monthly open-document review",
          "Open PO lines older than twice the supplier's lead time and jobs past their due date are listed, "
-         "then closed or chased. Keeps on-order honest and stops orders being held back against material "
-         "that is not coming (#16).",
+         "then closed or chased.",
+         "Addresses #16: no line or job stays open unnoticed for more than a month, so on-order stays honest.",
          "Buyer (PO lines); production scheduler (jobs)", "Monthly"),
         ("A quarterly dead-item review",
          "Items with no issue or receipt in 24 months are listed each quarter and deactivated unless the "
-         "service parts coordinator or the production lead keeps them, with a reason recorded. Stops the "
-         "master silting up again (#1).",
+         "service parts coordinator or the production lead keeps them, with a reason recorded.",
+         "Closes #1: a dead record cannot stay active past the next quarterly review.",
          "Purchasing manager", "Quarterly"),
         ("A BOM review for every new product and option",
          "Engineering signs off a complete bill, including hardware, fittings, consumables and finishing, "
-         "before a product is released, and floor observation feeds corrections back. Stops backflush "
-         "omissions and the phantom inventory they create (#7, #9).",
+         "before a product is released, and floor observation feeds corrections back.",
+         "Closes #7 for new products. Addresses #9: a complete bill leaves nothing to be consumed unrecorded.",
          "Engineering manager", "Per product release"),
         ("Same-day posting of receipts and job completions",
          "Receiving posts each delivery the day it arrives and job completions are reported daily, with "
-         "supervisors spot-checking timeliness. Keeps computed lead times honest (#15).",
+         "supervisors spot-checking timeliness.",
+         "Closes #15.",
          "Stockroom lead; assembly supervisor", "Daily"),
         ("The data-quality measures tracked monthly",
          "The tests from this audit are rerun each month and the key shares (adjustments, blank reason codes, "
-         "free-text lines, open documents, duplicates created) are tracked against targets and reviewed. "
-         "Catches any of the sixteen errors returning before they compound.",
+         "free-text lines, open documents, duplicates created) are tracked against targets and reviewed.",
+         "Addresses all sixteen: any error that returns is caught before it compounds.",
          "ERP administrator; reviewed by the operations manager", "Monthly"),
     ]
-    process_table = _widths(B.data_table(["Change", "What it does", "Owner", "Cadence"],
-                                         [list(r) for r in PROCESS], right=[]), [20, 46, 18, 16])
+    process_table = _widths(B.data_table(["Change", "What it does", "Impact", "Owner", "Cadence"],
+                                         [list(r) for r in PROCESS], right=[]), [17, 33, 24, 14, 12])
 
     keep = f"""
 {B.section("process", "Section 4", "Process Changes")}
-<p>The sixteen errors trace back to two root conditions rather than sixteen separate causes: the ERP
-allowed them, and nobody owned the routine upkeep that would have caught them. The corrections in
-Section 2 fix what those two conditions produced; the changes in this section stop them producing it
-again, and they fall into two groups that are different kinds of work. The first group are settings.
-Each was changed by the ERP administrator during the engagement, took effect for every user at once,
-and stops the error at the point of entry. This is the easier lift: the changes are already in place,
-they hold on their own, and they need nothing further from the shop. The table gives what each one
-does and which errors it <em>closes</em> (the error can no longer occur) or <em>addresses</em> (the
-error is caught or reduced, but not prevented).</p>
+<p>The remediation efforts in Section 2 fixed the majority of the data quality issues identified
+through this audit. The changes in this section prevent them from reoccurring. These changes fall
+into two categories.</p>
 
-<p style="font-size:18px;font-weight:700;color:{B.DARK_GREY};margin-top:30px;">Changes Easily Implemented in the ERP</p>
+<p>The first category is the ERP system settings. These settings are administered once, take effect
+for every user immediately, and stop the errors at the point of entry. This category is a relatively
+easy lift: the changes hold on their own and nothing further will need to be done, though there can
+potentially be friction in the near term as users adjust to more limited data entry options within
+the ERP. The table below lists the settings changes, including what they do and the error(s) they
+<em>close</em> (the error can no longer occur) or <em>address</em> (the error is caught or reduced,
+but not prevented).</p>
+
+<p style="font-size:18px;font-weight:700;color:{B.DARK_GREY};margin-top:30px;">Changes to ERP System Settings</p>
 {config_table}
 
-<p>The second group are habits. No setting can make someone count a shelf, review a bill of materials,
-close a purchase order or refresh a reorder point, so each of these needs a named owner and a cadence,
-and each will lapse without them. That makes this the harder lift: it depends on organizational
-alignment and on the owners' buy-in rather than on a configuration screen. The shop has committed to
-the owners and cadences below, and keeping them is what protects the results in Section 3.</p>
+<p>The second group are process changes that will require ongoing ownership, organizational
+alignment, and a disciplined cadence of completion. That makes this category the harder lift. The
+shop has committed to the owners and cadences below, and keeping them is what protects the results
+in Section 3.</p>
 
 <p style="font-size:18px;font-weight:700;color:{B.DARK_GREY};margin-top:34px;">Changes Requiring Ongoing Processes and Ownership</p>
 {process_table}
