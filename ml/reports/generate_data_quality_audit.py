@@ -836,7 +836,7 @@ shown below.</p>
 {B.chart("ERP Tables", chart_erd(d))}
 
 <p>Over the past 36 months, over <strong>{d['total_rows'] // 1000}K</strong> individual records were
-produced across the eight ERP tables. This audit reviewed 100% of them and found <strong>16</strong>
+produced across the eight ERP tables. This audit reviewed all of these records and found <strong>16</strong>
 different types of data quality error recur over this period. These errors touched a significant
 share of the ERP's total records, leaving it unreliable as the shop's central data record.</p>
 
@@ -855,12 +855,11 @@ share of the ERP's total records, leaving it unreliable as the shop's central da
 movement in two years or more yet were still flagged as active, meaning reports, searches and reorder
 logic were polluted by inactive parts. Second, {d['n_lead_off']/d['n_live']*100:.0f}% of lead times
 and {d['params_changed']/d['n_live']*100:.0f}% of reorder points listed in the item master were stale,
-meaning that if they were relied upon, then reorders would be placed at the wrong time and in the
-wrong quantity. Third, the majority of receipts are posted in batches:
-{d['n_batch_rows']/d['n_po']*100:.0f}% of purchase order lines carry a posting date
+meaning that if they were relied upon when making reorder decisions, then they would be placed at the
+wrong time and in the wrong quantity. Third, the majority of receipts are posted in batches several
+days late: {d['n_batch_rows']/d['n_po']*100:.0f}% of purchase order lines carry a posting date
 {d['t4_lag_mean']:.0f} days on average after the material actually arrived, meaning every lead time
-computed from receipts reads {d['t4_lag_mean']:.0f} days longer than the delivery took, and every
-supplier's delivery measured on it looks slower than it is.</p>
+or supplier delivery time calculated from these receipts is artificially long.</p>
 
 """
 
