@@ -601,7 +601,7 @@ def build(d):
          "Reorders are placed at the right time",
          pc(t_["lead_matches"]["before"]), pc(t_["lead_matches"]["after"])],
         ["Live items whose reorder point reflects real usage",
-         "Buying decisions rest on consumption, not go-live guesses",
+         "Reorders are based on actual inventory levels",
          pc(t_["rop_reflects_usage"]["before"]), pc(t_["rop_reflects_usage"]["after"])],
         ["Live items with complete required fields",
          "Every item can be costed, sourced and reordered",
@@ -683,33 +683,12 @@ def build(d):
 
     results = f"""
 {B.section("results", "Section 3", "Results")}
-<p>As a result of the data quality audit, remediation of errors, and fresh cycle counts, numerous
-measures of the ERP system's accuracy and reliability improved significantly. Most importantly, the
-vast majority of active item records are actually live, 100% of most identified data errors were
-resolved, and {tr['reliable_value']['after']/tr['reliable_value']['after_total']*100:.0f}% of total
+<p>As a result of the error remediation and fresh cycle counts, numerous measures of the ERP
+system's accuracy and reliability improved significantly. Importantly, the vast majority of active
+item records are now actually live, 100% of most identified data errors were resolved, and {tr['reliable_value']['after']/tr['reliable_value']['after_total']*100:.0f}% of total
 inventory value is confirmed (up from {tr['reliable_value']['before']/tr['reliable_value']['before_total']*100:.0f}%).</p>
 
 {trust_table}
-
-{sub("What the clean data makes possible")}
-<p>The cleanup improved forecast accuracy modestly and improved the decisions built on the forecast
-substantially. Only three of the sixteen errors touch the demand history a model learns from
-(duplicate records, free-text purchases and unrecorded consumption), so on the corrected history the
-same model's error falls from <strong>{d['threeway']['raw']*100:.0f}% to {d['threeway']['fully']*100:.0f}%</strong>
-overall (weighted absolute percentage error over the lead time on a held-out year), and by half on
-the {d['threeway_dups']['n']} parts that had been carried under more than one number, from
-{d['threeway_dups']['raw']*100:.0f}% to {d['threeway_dups']['fully']*100:.0f}%. The other thirteen errors
-corrupt what the forecast is used for: before the cleanup, even a perfect forecast would have been
-applied to a stale lead time, a book balance that had drifted from the shelf, on-order that was never
-coming and a reorder point nobody trusted. Holding the forecast fixed and running the same reorder
-rule through the year twice, once through those dirty inputs and once through the cleaned ones, with
-demand and supplier delivery identical in both, the clean inputs lift the fill rate from
-{d['decision']['dirty']['fill_rate']*100:.0f}% to {d['decision']['clean']['fill_rate']*100:.0f}% and cut the
-weeks an item spends stocked out from {d['decision']['dirty']['stockout_item_weeks']:,} to
-{d['decision']['clean']['stockout_item_weeks']:,}, while holding
-{(d['decision']['clean']['avg_inventory_value']/d['decision']['dirty']['avg_inventory_value']-1)*100:.0f}% more
-inventory, because the dirty inputs had been running the shop short. The forecast on the old data
-would have been a good guess applied to fiction; on the new data it is a decision the shop can act on.</p>
 """
 
     mc = ", ".join(f"{n} ({r:,} records)" for n, r in d["master_comp"])
@@ -743,7 +722,7 @@ would have been a good guess applied to fiction; on the new data it is a decisio
          "Items where the gap exceeds a week, weighted by spend",
          "Late reorders, line stops, expedite freight"),
         ("Stale Reorder Points",
-         "Reorder points and safety stocks that were never recomputed as usage and lead times changed.",
+         "Reorder points and safety stocks on the item record that no longer match how much the shop actually uses and how long deliveries take.",
          IM_LIVE, rows_of(d["params_changed"], d["n_live"]),
          "Reorder point vs recent usage over actual lead time",
          "Items where the point is too low (stockouts) or too high (excess)",
@@ -846,43 +825,38 @@ would have been a good guess applied to fiction; on the new data it is a decisio
     W2 = [4, 19, 40, 16, 21]          # #, Error, Description, ERP table, Scale
     W3 = [4, 19, 42, 18, 17]          # #, Error, Remediation, Evidence, Remediated
     hdr = ["", "Error", "Description", "ERP table", "Scale<br><em style=\"font-weight:400;text-transform:none;\">(rows affected)</em>"]
-    master_table = _widths(B.data_table(hdr, [[numcell(i), n, desc, loc, sc] for i, (n, desc, loc, sc, _t, _f, _c) in enumerate(MASTER_ERRORS, 1)], right=[]), W2)
-    txn_table = _widths(B.data_table(hdr, [[numcell(i), n, desc, loc, sc] for i, (n, desc, loc, sc, _t, _f, _c) in enumerate(TXN_ERRORS, len(MASTER_ERRORS) + 1)], right=[]), W2)
+    master_table = _widths(B.data_table(hdr, [[numcell(i), n, desc.rstrip("."), loc, sc] for i, (n, desc, loc, sc, _t, _f, _c) in enumerate(MASTER_ERRORS, 1)], right=[]), W2)
+    txn_table = _widths(B.data_table(hdr, [[numcell(i), n, desc.rstrip("."), loc, sc] for i, (n, desc, loc, sc, _t, _f, _c) in enumerate(TXN_ERRORS, len(MASTER_ERRORS) + 1)], right=[]), W2)
     def rem_of(n, total):
         return f"{n:,} of {total:,} ({n / total * 100:.0f}%)" if total else f"{n:,}"
 
     # (remediation: what was done, how, and whose input it needed; evidence; rows remediated)
     ERP = "ERP records only"
     REM_MASTER = [
-        (f"Deactivated in the item master after a line-by-line review. The purchasing manager and the service "
-         f"parts coordinator kept {d['dead_kept']} as seasonal or safety-critical spares; the rest were deactivated, "
-         f"including those whose one recent posting the buyer confirmed as a misposting.",
+        (f"Deactivated in the item master after a line-by-line review. The purchasing manager kept {d['dead_kept']} "
+         f"as seasonal spares",
          ERP, rem_of(d["dead_deactivated"], d["n_dead"])),
-        ("Recomputed per item from receipt history using the median and a trimmed 80th percentile, then written "
-         "to the master. Mechanical, with no judgment needed; the tracked items were checked against the buyer's "
-         "spreadsheet.",
+        ("Recalculated per item from receipt history using the median and a trimmed 80th percentile, then written "
+         "to the master",
          "ERP purchase history, checked against the buyer's spreadsheet", rem_of(d["n_lead_off"], d["n_lead_off"])),
-        ("Recomputed from actual usage over the corrected lead time at the ABC service level and loaded; the "
-         "purchasing manager reviewed the A-class values before they went live.",
+        ("Recalculated from actual usage over the corrected lead time at the ABC service level and loaded; the "
+         "purchasing manager reviewed the A-class values before they went live",
          "ERP purchase and issue history, checked against the buyer's spreadsheet", rem_of(d["params_changed"], d["params_changed"])),
         (f"Missing components added back to the product and subassembly BOMs ({d['bom_changes']} change-log "
-         f"entries), each confirmed by the engineering manager from engineering review or by the assembly "
-         f"supervisor from floor observation.",
+         f"entries), each confirmed by the assembly supervisor",
          "Expected vs actual consumption (jobs &times; BOM against issues) and floor observation",
          rem_of(d["bom_changes"], d["omit_items"])),
         (f"Candidate pairs scored, then merged to one surviving number through a crosswalk. The buyer and the "
-         f"stockroom lead reviewed every pair: {d['dup_merged']} records retired to a survivor, {d['dup_rejected']} "
-         f"pairs rejected as genuinely different parts.",
+         f"stockroom lead reviewed and rejected {d['dup_rejected']} pairs as different parts",
          "ERP records, every pair reviewed by the buyer", rem_of(d["dup_merged"], d["dup_records"] - d["dup_clusters"])),
         ("A purchase-to-stock conversion factor added to each item, taken from the pack size on its receipts and "
-         "confirmed by the stockroom lead; on-hand restated in stock units.",
+         "confirmed by the stockroom lead; on-hand restated in stock units",
          "ERP records and the pack sizes on receipts", rem_of(d["uom_items"], d["uom_items"])),
         (f"Alias records mapped to one canonical supplier through a crosswalk ({d['sup_fragments']} vendors, "
-         f"{d['sup_records']} records); the buyer confirmed each grouping, and new orders book to the canonical record.",
+         f"{d['sup_records']} records); the buyer confirmed each grouping, and new orders book to the canonical record",
          ERP, rem_of(d["sup_records"] - d["sup_fragments"], d["sup_records"] - d["sup_fragments"])),
         ("Blocking blanks filled from the ordering history (cost from the last price paid, supplier from the "
-         "ordering record) and from the reorder-point recomputation; MISC items reclassified by the buyer; "
-         "required fields enforced from week 6.",
+         "ordering record) and from the reorder-point recalculation; MISC items reclassified by the buyer",
          ERP, rem_of(d["n_blank"], d["n_blank"])),
     ]
     REM_TXN = [
@@ -891,12 +865,11 @@ would have been a good guess applied to fiction; on the new data it is a decisio
          f"corrections stop the leak, and the cycle-count program corrected each balance as it was counted.",
          "ERP on-hand vs cycle counts; expected vs actual consumption",
          f"0 of {d['n_unrec_adj_rows']:,} (fixed at source)"),
-        ("Historic adjustments left as posted but classified by the chronic-adjustment analysis; reason codes made "
-         "mandatory by configuration change in week 5, so the share falls toward the run-rate target.",
+        ("Historic adjustments left as posted but classified by the chronic-adjustment analysis",
          ERP, f"0 of {d['n_adj_blank_rows']:,} (controlled at source)"),
         (f"Lines matched to stocked items by description similarity; the buyer settled every candidate "
          f"({d['ft_confirmed']:,} confirmed, {d['ft_rejected']:,} rejected as genuine non-stock buys) and the "
-         f"confirmed demand was attributed back to the item; generic codes restricted from week 7.",
+         f"confirmed demand was attributed back to the item",
          "ERP records, every candidate reviewed by the buyer", rem_of(d["ft_confirmed"], d["n_ft_lines"])),
         ("Not corrected line by line, because the true dates are not recoverable. The lead-time computation was "
          "made robust to it instead, and receiving moved to same-day posting under the new individual logins.",
@@ -910,15 +883,17 @@ would have been a good guess applied to fiction; on the new data it is a decisio
         ("Each outlier corrected to the true quantity after the stockroom lead reviewed the list; box/each keying "
          "closed off by the UOM conversions.",
          "ERP records and stockroom review", rem_of(d["t7_count"], d["t7_count"])),
-        ("The second posting reversed for every pair.",
+        ("The second posting reversed for every pair after the stockroom lead confirmed the two entries were one "
+         "movement",
          ERP, rem_of(d["t8_count"], d["t8_count"])),
     ]
     REM_MASTER = dict(zip(ORIG_MASTER, REM_MASTER))
     REM_TXN = dict(zip(ORIG_TXN, REM_TXN))
     rem_hdr = ["", "Error", "Remediation", "Evidence", "Remediated (rows)"]
-    rem_master_table = _widths(B.data_table(rem_hdr, [[numcell(i), e[0], *REM_MASTER[e[0]]]
+    strip = lambda t: (t[0].rstrip("."), *t[1:])
+    rem_master_table = _widths(B.data_table(rem_hdr, [[numcell(i), e[0], *strip(REM_MASTER[e[0]])]
         for i, e in enumerate(MASTER_ERRORS, 1)], right=[]), W3)
-    rem_txn_table = _widths(B.data_table(rem_hdr, [[numcell(i), e[0], *REM_TXN[e[0]]]
+    rem_txn_table = _widths(B.data_table(rem_hdr, [[numcell(i), e[0], *strip(REM_TXN[e[0]])]
         for i, e in enumerate(TXN_ERRORS, len(MASTER_ERRORS) + 1)], right=[]), W3)
     found = f"""
 {B.section("found", "Section 1", "Findings")}
@@ -1085,10 +1060,9 @@ but not prevented).</p>
 <p style="font-size:18px;font-weight:700;color:{B.DARK_GREY};margin-top:30px;">Changes to ERP System Settings</p>
 {config_table}
 
-<p>The second group are process changes that will require ongoing ownership, organizational
-alignment, and a disciplined cadence of completion. That makes this category the harder lift. The
-shop has committed to the owners and cadences below, and keeping them is what protects the results
-in Section 3.</p>
+<p>The second group are process changes that will require ongoing ownership and organizational
+alignment. That makes this category the harder lift. The shop has committed to the owners and
+cadences below, and keeping them is what protects the results in Section 3.</p>
 
 <p style="font-size:18px;font-weight:700;color:{B.DARK_GREY};margin-top:34px;">Changes Requiring Ongoing Processes and Ownership</p>
 {process_table}
