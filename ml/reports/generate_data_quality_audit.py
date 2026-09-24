@@ -695,23 +695,21 @@ inventory value is confirmed (up from {tr['reliable_value']['before']/tr['reliab
 <p>The cleanup improved forecast accuracy modestly and improved the decisions built on the forecast
 substantially. Only three of the sixteen errors touch the demand history a model learns from
 (duplicate records, free-text purchases and unrecorded consumption), so on the corrected history the
-same model's error falls from {d['threeway']['raw']*100:.0f}% to {d['threeway']['fully']*100:.0f}%
+same model's error falls from <strong>{d['threeway']['raw']*100:.0f}% to {d['threeway']['fully']*100:.0f}%</strong>
 overall (weighted absolute percentage error over the lead time on a held-out year), and by half on
 the {d['threeway_dups']['n']} parts that had been carried under more than one number, from
 {d['threeway_dups']['raw']*100:.0f}% to {d['threeway_dups']['fully']*100:.0f}%. The other thirteen errors
 corrupt what the forecast is used for: before the cleanup, even a perfect forecast would have been
 applied to a stale lead time, a book balance that had drifted from the shelf, on-order that was never
-coming and a reorder point nobody trusted. The chart below holds the forecast fixed and runs the same
-reorder rule through the year twice, once through those dirty inputs and once through the cleaned
-ones, with demand and supplier delivery identical in both. The clean inputs lift the fill rate from
+coming and a reorder point nobody trusted. Holding the forecast fixed and running the same reorder
+rule through the year twice, once through those dirty inputs and once through the cleaned ones, with
+demand and supplier delivery identical in both, the clean inputs lift the fill rate from
 {d['decision']['dirty']['fill_rate']*100:.0f}% to {d['decision']['clean']['fill_rate']*100:.0f}% and cut the
 weeks an item spends stocked out from {d['decision']['dirty']['stockout_item_weeks']:,} to
 {d['decision']['clean']['stockout_item_weeks']:,}, while holding
 {(d['decision']['clean']['avg_inventory_value']/d['decision']['dirty']['avg_inventory_value']-1)*100:.0f}% more
 inventory, because the dirty inputs had been running the shop short. The forecast on the old data
 would have been a good guess applied to fiction; on the new data it is a decision the shop can act on.</p>
-
-{B.chart("The same forecast through dirty inputs and through clean ones, over the holdout year", chart_decision(d))}
 """
 
     mc = ", ".join(f"{n} ({r:,} records)" for n, r in d["master_comp"])
@@ -933,7 +931,7 @@ shown below.</p>
 
 <p>Over the past 36 months, over <strong>{d['total_rows'] // 1000}K</strong> individual records were
 produced across the eight ERP tables. This audit reviewed all of these records and found <strong>16</strong>
-different types of data quality error recur over this period. These errors touched a significant
+different types of data quality errors recur over this period. These errors touched a significant
 share of the ERP's total records, leaving it unreliable as the shop's central data record.</p>
 
 
@@ -946,7 +944,7 @@ share of the ERP's total records, leaving it unreliable as the shop's central da
 <p style="font-size:18px;font-weight:700;color:{B.DARK_GREY};margin-top:34px;">Transaction-level Table Errors</p>
 {txn_table}
 
-<p>Three findings stand out for their scale. First, the item master was full of dead records:
+<p>Three errors stand out for their large scale within the ERP. First, the item master was full of dead records:
 {d['dead_pct']*100:.0f}% of its records ({d['n_dead']:,} of {d['n_master']:,}) were items with no
 movement in two years or more yet were still flagged as active, meaning reports, searches and reorder
 logic were polluted by inactive parts. Second, {d['n_lead_off']/d['n_live']*100:.0f}% of lead times
