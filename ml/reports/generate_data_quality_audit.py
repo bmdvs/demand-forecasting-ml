@@ -287,6 +287,20 @@ def gather():
                           "master": _wape(BACKTEST / "threeway_master.parquet"),
                           "fully": _wape(BACKTEST / "threeway_fully.parquet"), "n": len(dup_items)}
     d["model"] = json.loads((BACKTEST / "model_metrics.json").read_text())
+    xw_seed = pd.read_csv(REPO / "data_pipeline" / "seeds" / "item_crosswalk.csv").set_index("item_number")["canonical_item_number"].to_dict()
+    unrec_items = {xw_seed.get(n, n) for n in t1_nums}
+    def _wape_on(path, items):
+        t_ = pd.read_parquet(path)
+        t_ = t_[t_["item"].isin(items)]
+        return float((t_["target"] - t_["pred"]).abs().sum() / max(1e-9, t_["target"].abs().sum()))
+    d["threeway_unrec"] = {"raw": _wape_on(BACKTEST / "threeway_raw.parquet", unrec_items),
+                           "fully": _wape_on(BACKTEST / "threeway_fully.parquet", unrec_items), "n": len(unrec_items)}
+    d["decision"] = json.loads((REPO / "ml" / "data" / "policy" / "decision_summary.json").read_text())
+    # a part's history is complete when none of its demand was split across a
+    # duplicate number, hidden under a generic code or never recorded at all
+    ft_items = {r["true_item_number"] for r in pod.get("t3", []) if r.get("is_stocked")}
+    corrupted = (dup_members | ft_items | t1_nums) & live_nums
+    d["history_complete_before"] = 1 - len(corrupted) / n_live
     d["n_posting_corrections"] = d["t6_count"] + d["t7_count"] + d["t8_count"]
     d["samples"] = _samples(im, tx, po, sup, cross, txn, pod, lead, params, chronic, dead_nums)
     return d
@@ -388,45 +402,48 @@ def _samples(im, tx, po, sup, cross, txn, pod, lead, params, chronic, dead_nums)
 
 
 # ── charts ───────────────────────────────────────────────────────────────────
-def chart_threeway(d):
-    """The same model, the same features, three versions of the history."""
-    fig, ax = B.make_fig(3.6)
-    tw, td = d["threeway"], d["threeway_dups"]
-    groups = ["All live items", f"The {td['n']} merged duplicate items"]
-    tiers = [("As recorded", "raw", B.MED_GREY), ("Records merged", "master", B.LIGHT_BLUE),
-             ("Fully cleaned", "fully", B.DARK_BLUE)]
-    x = np.arange(len(groups)); w = 0.26
-    for k, (label, key, color) in enumerate(tiers):
-        vals = [tw[key] * 100, td[key] * 100]
-        bars = ax.bar(x + (k - 1) * w, vals, width=w, color=color, label=label)
-        for b_, v in zip(bars, vals):
-            ax.text(b_.get_x() + b_.get_width() / 2, v + 0.8, f"{v:.0f}%", ha="center", fontsize=9, fontweight="bold")
-    ax.set_xticks(x); ax.set_xticklabels(groups)
+def chart_accuracy(d):
+    """Forecast error before and after, overall and where the repairs concentrate."""
+    fig, ax = B.make_fig(3.4)
+    tw, td, tu = d["threeway"], d["threeway_dups"], d["threeway_unrec"]
+    groups = ["All live items", f"Items carried under\nduplicate numbers ({td['n']})",
+              f"Items with unrecorded\nconsumption ({tu['n']})"]
+    before = [tw["raw"] * 100, td["raw"] * 100, tu["raw"] * 100]
+    after = [tw["fully"] * 100, td["fully"] * 100, tu["fully"] * 100]
+    x = np.arange(len(groups)); w = 0.36
+    b1 = ax.bar(x - w / 2, before, width=w, color=B.MED_GREY, label="Before cleaning")
+    b2 = ax.bar(x + w / 2, after, width=w, color=B.DARK_BLUE, label="After cleaning")
+    for bars, vals in ((b1, before), (b2, after)):
+        for bar, v in zip(bars, vals):
+            ax.text(bar.get_x() + bar.get_width() / 2, v + 1, f"{v:.0f}%", ha="center", fontsize=9, fontweight="bold")
+    ax.set_xticks(x); ax.set_xticklabels(groups, fontsize=9.5)
     ax.set_ylabel("Forecast error, WAPE (%)")
-    ax.set_ylim(0, max(tw["raw"], td["raw"]) * 100 * 1.25)
+    ax.set_ylim(0, max(before) * 1.22)
     B.chart_style(ax)
-    ax.legend(loc="lower center", bbox_to_anchor=(0.5, 1.0), frameon=False, ncol=3, fontsize=9)
+    ax.legend(loc="lower center", bbox_to_anchor=(0.5, 1.0), frameon=False, ncol=2, fontsize=9)
     return B.b64(fig)
 
 
-def chart_model_vs_baseline(d):
-    """The chosen model against the best simple method, by demand pattern, on the cleaned history."""
-    fig, ax = B.make_fig(3.6)
-    segs = d["model"]["segments"]
-    names = [s_["segment"].capitalize() for s_ in segs] + ["All items"]
-    model = [s_["wape_model"] * 100 for s_ in segs] + [d["model"]["overall"]["model"] * 100]
-    base = [s_["wape_baseline"] * 100 for s_ in segs] + [d["model"]["overall"]["baseline"] * 100]
-    x = np.arange(len(names)); w = 0.36
-    b1 = ax.bar(x - w / 2, base, width=w, color=B.MED_GREY, label="Best simple method")
-    b2 = ax.bar(x + w / 2, model, width=w, color=B.DARK_BLUE, label="Demand model")
-    for bars, vals in ((b1, base), (b2, model)):
-        for b_, v in zip(bars, vals):
-            ax.text(b_.get_x() + b_.get_width() / 2, v + 0.8, f"{v:.0f}%", ha="center", fontsize=8.5)
-    ax.set_xticks(x); ax.set_xticklabels(names)
-    ax.set_ylabel("Forecast error, WAPE (%)")
-    ax.set_ylim(0, max(base) * 1.25)
-    B.chart_style(ax)
-    ax.legend(loc="lower center", bbox_to_anchor=(0.5, 1.0), frameon=False, ncol=2, fontsize=9)
+def chart_decision(d):
+    """The same forecast through dirty inputs and clean ones: what the reorder decision delivers."""
+    import matplotlib.pyplot as plt
+    dc = d["decision"]
+    fig, axes = plt.subplots(1, 3, figsize=(B.CHART_W, 3.3))
+    panels = [
+        ("Fill rate (%)", dc["dirty"]["fill_rate"] * 100, dc["clean"]["fill_rate"] * 100, "{:.1f}%"),
+        ("Stockout item-weeks", dc["dirty"]["stockout_item_weeks"], dc["clean"]["stockout_item_weeks"], "{:,.0f}"),
+        ("Average inventory ($000)", dc["dirty"]["avg_inventory_value"] / 1000, dc["clean"]["avg_inventory_value"] / 1000, "${:,.0f}K"),
+    ]
+    for ax, (title, dv, cv, fmt) in zip(axes, panels):
+        bars = ax.bar(["Dirty inputs", "Clean inputs"], [dv, cv], color=[B.MED_GREY, B.DARK_BLUE], width=0.6)
+        for bar, v in zip(bars, [dv, cv]):
+            ax.text(bar.get_x() + bar.get_width() / 2, v * 1.02, fmt.format(v), ha="center", fontsize=9, fontweight="bold")
+        ax.set_title(title, fontsize=10, color=B.DARK_GREY, pad=8)
+        ax.set_ylim(0, max(dv, cv) * 1.2)
+        B.chart_style(ax)
+        ax.tick_params(axis="x", labelsize=9)
+        ax.set_yticks([])
+    fig.tight_layout(w_pad=2.0)
     return B.b64(fig)
 
 
@@ -675,37 +692,26 @@ inventory value is confirmed (up from {tr['reliable_value']['before']/tr['reliab
 {trust_table}
 
 {sub("What the clean data makes possible")}
-<p>The purpose of a trustworthy history is what can be built on it, and the first thing the shop
-wants to build is a demand forecast to set its reorder points. Before the cleanup that was not a
-realistic project, for reasons the findings make plain: the history a model would learn from was
-split across duplicate numbers for {d['dup_clusters']} parts and hidden under generic codes on
-{d['n_ft_lines']:,} purchase lines, so the series for a part was not the part's demand; the
-consumption of components missing from the bills never reached the ledger at all; and even a
-perfect forecast could not drive a reorder, because the on-hand balance it would be compared
-against and the lead time it would have to cover were both wrong. The two charts below show the
-difference the cleanup made, measured the same way throughout: forecast error over the lead time on
-a held-out year, as weighted absolute percentage error (WAPE), which reads like the familiar
-percentage error for a steady part but stays defined for the third of items whose demand has months
-of zero.</p>
+<p>The cleanup improved forecast accuracy modestly and improved the decisions built on the forecast
+substantially. Only three of the sixteen errors touch the demand history a model learns from
+(duplicate records, free-text purchases and unrecorded consumption), so on the corrected history the
+same model's error falls from {d['threeway']['raw']*100:.0f}% to {d['threeway']['fully']*100:.0f}%
+overall (weighted absolute percentage error over the lead time on a held-out year), and by half on
+the {d['threeway_dups']['n']} parts that had been carried under more than one number, from
+{d['threeway_dups']['raw']*100:.0f}% to {d['threeway_dups']['fully']*100:.0f}%. The other thirteen errors
+corrupt what the forecast is used for: before the cleanup, even a perfect forecast would have been
+applied to a stale lead time, a book balance that had drifted from the shelf, on-order that was never
+coming and a reorder point nobody trusted. The chart below holds the forecast fixed and runs the same
+reorder rule through the year twice, once through those dirty inputs and once through the cleaned
+ones, with demand and supplier delivery identical in both. The clean inputs lift the fill rate from
+{d['decision']['dirty']['fill_rate']*100:.0f}% to {d['decision']['clean']['fill_rate']*100:.0f}% and cut the
+weeks an item spends stocked out from {d['decision']['dirty']['stockout_item_weeks']:,} to
+{d['decision']['clean']['stockout_item_weeks']:,}, while holding
+{(d['decision']['clean']['avg_inventory_value']/d['decision']['dirty']['avg_inventory_value']-1)*100:.0f}% more
+inventory, because the dirty inputs had been running the shop short. The forecast on the old data
+would have been a good guess applied to fiction; on the new data it is a decision the shop can act on.</p>
 
-{B.chart("Forecast error of the same model on three versions of the history", chart_threeway(d))}
-<p>The first chart holds the model and its features fixed and changes only the history it reads.
-Across all live items the error falls from {d['threeway']['raw']*100:.1f}% on the history as recorded
-to {d['threeway']['master']*100:.1f}% once the duplicate records are merged and the free-text
-purchases returned to their items, and to {d['threeway']['fully']*100:.1f}% once the unrecorded
-consumption is restored. On the {d['threeway_dups']['n']} parts that had been carried under more
-than one number the effect is larger, from {d['threeway_dups']['raw']*100:.0f}% to
-{d['threeway_dups']['fully']*100:.0f}%, because on those parts the recorded history was not the
-demand at all.</p>
-
-{B.chart("Demand model against the best simple method, on the cleaned history", chart_model_vs_baseline(d))}
-<p>The second chart is the test that matters for the reorder work: on the cleaned history, a
-gradient-boosted model beats the best simple method for each demand pattern (a moving average or
-last year's month, whichever did better), from {d['model']['overall']['baseline']*100:.0f}% to
-{d['model']['overall']['model']*100:.0f}% error overall, with the largest gains on the erratic and lumpy
-parts that stop the line. A forecast at that accuracy, compared against a balance the shop now
-trusts and a lead time that matches delivery, is what the reorder-policy work that follows this
-audit is built on.</p>
+{B.chart("The same forecast through dirty inputs and through clean ones, over the holdout year", chart_decision(d))}
 """
 
     mc = ", ".join(f"{n} ({r:,} records)" for n, r in d["master_comp"])
