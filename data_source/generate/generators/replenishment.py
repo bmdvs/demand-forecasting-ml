@@ -44,7 +44,7 @@ def draw_drift_rates(item_meta, rng):
 
 def simulate(events, item_master, item_meta, dup_map, plan, drift_supplier_id, sup_frag,
              buyer_nums, omitted_item_ids, rng, drift_rate=None, never_closed=None, actual_base=None,
-             fix_from=None, forward=None):
+             fix_from=None, forward=None, release_by_job=None, booked_by_job=None):
     """fix_from: the date the remediation's BOM corrections and controls take hold
     (chronic write-offs on omitted items stop). A world that never fixes them
     passes END_DATE.
@@ -100,27 +100,40 @@ def simulate(events, item_master, item_meta, dup_map, plan, drift_supplier_id, s
     for iid, g in ev[ev["recorded"]].groupby("item_id"):
         a = np.zeros(N); np.add.at(a, g["t"].to_numpy(), g["qty"].to_numpy())
         cum_by_iid[int(iid)] = np.concatenate([[0.0], np.cumsum(a)])
+    # recorded demand for the whole part, which the merged record carries after the forward start
+    rec_by_iid = {}
+    for iid_, g in ev[ev["recorded"]].groupby("item_id"):
+        a = np.zeros(N); np.add.at(a, g["t"].to_numpy(), g["qty"].to_numpy()); rec_by_iid[int(iid_)] = a
     fwd_t = day_idx.get(forward["start"]) if forward else None
-    # the look-ahead sees only what the ERP genuinely knows ahead of time:
-    # scheduled production (backflush on released jobs). Manual pulls and
-    # service orders are not known until they happen.
-    sched_t = 0
-    bf = ev[ev["recorded"] & (ev["channel"] == "BACKFLUSH")]
-    cum_bf_num, cum_bf_iid = {}, {}
-    for key, store in (("item_number", cum_bf_num), ("item_id", cum_bf_iid)):
+    # the look-ahead sees only what the ERP genuinely knows ahead of time: the
+    # component requirements of jobs already released to the floor, which it
+    # nets against stock (MRP). A job is invisible before its release date;
+    # manual pulls and service orders are not known until they happen.
+    bf = ev[ev["recorded"] & (ev["channel"] == "BACKFLUSH")].copy()
+    rel = release_by_job or {}
+    bf["r"] = bf["job_id"].map(lambda j: day_idx.get(rel.get(j), 0) if rel.get(j) in day_idx else 0).astype(int)
+    # with the order book, a job is visible from the day its customer order is booked
+    bk = booked_by_job or {}
+    bf["b"] = [min(r_, day_idx.get(bk.get(j), r_)) for j, r_ in zip(bf["job_id"], bf["r"])]
+    order_book = bool((forward or {}).get("order_book"))
+    known_num, known_iid = {}, {}
+    for key, store in (("item_number", known_num), ("item_id", known_iid)):
         for k, g in bf.groupby(key):
-            a = np.zeros(N); np.add.at(a, g["t"].to_numpy(), g["qty"].to_numpy())
-            store[int(k) if key == "item_id" else k] = np.concatenate([[0.0], np.cumsum(a)])
+            g = g.sort_values("t")
+            store[int(k) if key == "item_id" else k] = (g["t"].to_numpy(), g["r"].to_numpy(), g["b"].to_numpy(),
+                                                        g["qty"].to_numpy(float))
 
     def ahead(n, t, L, iid=None):
         merged = fwd_t is not None and t >= fwd_t
-        if t >= sched_t:
-            c = cum_bf_iid.get(iid) if merged else cum_bf_num.get(n)
-        else:
-            c = cum_by_iid.get(iid) if merged else cum_by_num.get(n)
-        if c is None:
+        arr = known_iid.get(iid) if merged else known_num.get(n)
+        if arr is None:
             return 0.0
-        return c[min(t + L, N)] - c[t]
+        c, r, b, q = arr
+        vis = b if (merged and order_book) else r
+        lo = int(np.searchsorted(c, t, side="right")); hi = int(np.searchsorted(c, t + L, side="right"))
+        if hi <= lo:
+            return 0.0
+        return float(q[lo:hi][vis[lo:hi] <= t].sum())
 
     jobs_by_iid_day = {}
     for r in ev[ev["channel"] == "BACKFLUSH"].itertuples(index=False):
@@ -151,7 +164,16 @@ def simulate(events, item_master, item_meta, dup_map, plan, drift_supplier_id, s
         rng = np.random.default_rng([C.RANDOM_SEED, 7, int(iid)])
         nc = never_closed                      # this item's share of short receipts left open
         phys_d = phys_by_iid.get(iid, np.zeros(N))
-        avg_daily = max(phys_d[-365:].mean(), phys_d.mean(), 0.02)
+        # usage the shop could know on the day: the trailing year of consumption
+        # (the first quarter of the history serves as a burn-in)
+        cum_u = np.concatenate([[0.0], np.cumsum(phys_d)])
+
+        def usage(t_):
+            if t_ < 90:
+                return max(cum_u[90] / 90.0, 0.02)
+            lo_ = max(0, t_ - 365)
+            return max((cum_u[t_] - cum_u[lo_]) / (t_ - lo_), 0.02)
+        avg_daily = usage(0)
         cost = float(cost_by_item.get(iid, 1.0))
         meta0 = item_meta[nums[0]]
         cls = meta0["cls"]
@@ -170,7 +192,8 @@ def simulate(events, item_master, item_meta, dup_map, plan, drift_supplier_id, s
         q_each = max(1, int(round(avg_daily * C.ORDER_COVER_DAYS)))
         q_order = max(1, int(round(q_each / conv))) if conv > 1 else q_each
 
-        physical = C.INITIAL_STOCK_COVER * max(sum(rop.values()), q_each)
+        # opening stock at a normal working level: the point plus half a lot
+        physical = sum(rop.values()) + q_each / 2.0
         book = {n: physical * w / (conv if conv > 1 else 1) for n, w in zip(nums, weights)}
         open_po = []          # dicts: num, arrival, qty_book, phantom, rush, promised
         last_order = {n: -10**6 for n in nums}
@@ -179,15 +202,22 @@ def simulate(events, item_master, item_meta, dup_map, plan, drift_supplier_id, s
         in_episode = False    # currently short
         corrected_this_episode = False
         learned = False       # after a surprise shortage the floor watches the bin by sight
+        expedite = False      # forward: the ERP flags projected shortages on the parts she tracked
         suppressed_since = {n: None for n in nums}
         pseries = np.zeros(N); bseries = {n: np.zeros(N) for n in nums}
         useries = np.zeros(N); sdays = np.zeros(N, dtype=bool)
         prim = dup_map[iid]["primary"] if iid in dup_map else nums[0]
         sched = (forward or {}).get("schedule") or {}
         sched_by_t = {}
-        for (d_, r_, s_) in sched.get(prim, []):
+        for (d_, r_, s_, *q_) in sched.get(prim, []):
             if d_ in day_idx:
-                sched_by_t[day_idx[d_]] = (float(r_), float(s_))
+                sched_by_t[day_idx[d_]] = (float(r_), float(s_), (float(q_[0]) if q_ and q_[0] else None),
+                                           (float(q_[1]) if len(q_) > 1 and q_[1] else 0.0))
+        q_sched = None        # the model's order quantity, when it sets one
+        d_sched = 0.0         # the model's daily forecast, for the lead-time refresh
+        update_lead = bool((forward or {}).get("update_lead"))
+        lead_obs = []         # (receipt day, days from order to receipt) on regular orders
+        l_base = None         # the lead time the schedule's points were built on
 
         for t in range(N):
             # ── the corrected masters take over on the forward start date ───
@@ -209,9 +239,25 @@ def simulate(events, item_master, item_meta, dup_map, plan, drift_supplier_id, s
                 last_order = {prim: max(last_order.values())}
                 bseries = {prim: bseries.get(prim, np.zeros(N))}
                 learned = False
-                tracked = False                            # the spreadsheet is retired
+                # the spreadsheet is retired; on the parts she tracked, the ERP's
+                # projected-shortage exception now prompts the same expediting
+                expedite = tracked
+                tracked = False
             if t in sched_by_t:
                 rop[prim] = sched_by_t[t][0]
+                q_sched = sched_by_t[t][2]
+                d_sched = sched_by_t[t][3]
+            # the ERP refreshes each supplier lead time monthly from the last six months of receipts
+            if update_lead and fwd_t is not None and t >= fwd_t and days[t].day == 1:
+                if l_base is None:
+                    l_base = mlead[prim]
+                recent = [lt_ for (tr_, lt_) in lead_obs if tr_ >= t - 180]
+                if len(recent) >= 3:
+                    mlead[prim] = max(1, int(round(float(np.median(recent)))))
+            if t % 7 == 0 or t == fwd_t or t in sched_by_t:
+                avg_daily = usage(t)
+                q_each = max(1, int(round(q_sched if q_sched else avg_daily * C.ORDER_COVER_DAYS)))
+                q_order = max(1, int(round(q_each / conv))) if conv > 1 else q_each
             if fwd_t is not None and t > fwd_t and days[t].day == 1:
                 k = (days[t].year - C.FORWARD_START.year) * 12 + days[t].month - C.FORWARD_START.month
                 cls_abc = forward.get("abc", {}).get(iid, "C")
@@ -234,6 +280,8 @@ def simulate(events, item_master, item_meta, dup_map, plan, drift_supplier_id, s
                     physical += po["qty_recv"] * (conv if conv > 1 else 1)
                     book[po["num"]] += po["qty_recv"]
                     po["recv_day"] = t
+                    if not po["rush"] and not po.get("deferred"):
+                        lead_obs.append((t, t - po["order_t"]))
                     if backlog > 0:
                         take = min(backlog, max(physical, 0.0))
                         physical -= take; backlog -= take
@@ -273,7 +321,10 @@ def simulate(events, item_master, item_meta, dup_map, plan, drift_supplier_id, s
                         in_episode = True
                         if not tracked:
                             learned = True
-                        cause = _cause(nums, book, physical, open_po, rop, suppressed_since, t, conv)
+                        # today's recorded issues have not yet come off the book
+                        rec_today = (rec_by_iid.get(iid, ZERO)[t] if fwd_t is not None and t >= fwd_t
+                                     else sum(book_by_num.get(n_, ZERO)[t] for n_ in nums))
+                        cause = _cause(nums, book, physical, open_po, rop, suppressed_since, t, conv, rec_today)
                         shortages.append({"item_id": iid, "item_number": nums[0], "date": days[t].date().isoformat(),
                                           "short_qty": int(round(short)), "cause": cause,
                                           "jobs": len(jobs_by_iid_day.get((iid, t), [])), "tracked": tracked})
@@ -290,8 +341,12 @@ def simulate(events, item_master, item_meta, dup_map, plan, drift_supplier_id, s
                         corrected_this_episode = True
             # the ERP subtracts recorded issues in eaches, even from a book kept in
             # boxes (M5): that mismatch is the error, so no conversion is applied
-            for n in nums:
-                book[n] -= book_by_num.get(n, ZERO)[t]
+            if fwd_t is not None and t >= fwd_t:
+                # after the merge every issue posts to the surviving record
+                book[prim] -= rec_by_iid.get(iid, ZERO)[t]
+            else:
+                for n in nums:
+                    book[n] -= book_by_num.get(n, ZERO)[t]
             # ── chronic write-offs on omitted items (T1) ─────────────────
             if (iid in omitted and t in month_adj_days and days[t].date() <= fix_from
                     and rng.random() < C.T1_MONTHLY_ADJ_PROB):
@@ -321,10 +376,13 @@ def simulate(events, item_master, item_meta, dup_map, plan, drift_supplier_id, s
                     level = avg_daily * C.BUYER_SAFETY_DAYS
                     look = ahead(n, t, buyer_look, iid)
                 elif fwd_t is not None and t >= fwd_t:
-                    # on the corrected masters the decision is a plain reorder
-                    # point: the point already carries the lead-time demand
+                    # on the corrected masters the point covers the demand the ERP
+                    # cannot see (forecast unscheduled usage plus safety stock), and
+                    # MRP nets the requirements of released jobs on top of it
                     level = rop[n]
-                    look = 0.0
+                    if update_lead and l_base is not None and d_sched:
+                        level += d_sched * (mlead[n] - l_base)       # a refreshed lead time moves the point
+                    look = ahead(n, t, mlead[n], iid)
                 else:
                     level = rop[n]
                     look = ahead(n, t, mlead[n], iid)
@@ -368,6 +426,25 @@ def simulate(events, item_master, item_meta, dup_map, plan, drift_supplier_id, s
                           "promised": t + mlead[n], "arrival": t + alead, "qty_book": qty, "price": price,
                           "rush": False, "freight": 0.0, "received": False, "phantom": 0}
                     open_po.append(po); po_lines.append(po); last_order[n] = t
+            # ── reschedule-out: MRP pushes back inbound the item does not need yet ─
+            if (q_sched and fwd_t is not None and t >= fwd_t and t % 7 == 0
+                    and prim not in ((forward or {}).get("critical") or set())):   # never defer a line-critical part
+                n = prim
+                inbound = [po for po in open_po if not po["received"] and not po["rush"] and po["num"] == n]
+                pos = book[n] + sum(po["qty_book"] for po in inbound) - ahead(n, t, mlead[n], iid)
+                if pos <= rop[n]:
+                    # needed after all: pull deferred orders back in
+                    for po in inbound:
+                        if po.get("deferred", 0) > 0:
+                            po["arrival"] = max(t + 7, po["arrival"] - po["deferred"]); po["deferred"] = 0
+                            po["promised"] = max(po["promised"], po["arrival"])
+                for po in sorted(inbound, key=lambda p_: -p_["arrival"]):
+                    # not yet shipped, and without it the item still holds a full lot above its point
+                    if (po["arrival"] > t + 7 and po.get("deferred", 0) < 84
+                            and pos - po["qty_book"] >= rop[n] + q_each):
+                        po["arrival"] += 28; po["deferred"] = po.get("deferred", 0) + 28
+                        po["promised"] = max(po["promised"], po["arrival"])
+                        pos -= po["qty_book"]
             # ── rush orders ──────────────────────────────────────────────
             pending = [po for po in open_po if not po["received"]]
             has_rush = any(po["rush"] for po in pending)
@@ -377,7 +454,7 @@ def simulate(events, item_master, item_meta, dup_map, plan, drift_supplier_id, s
                 will_short = max(physical, 0.0) - need < 0
                 new_episode = in_episode and len(shortages) and shortages[-1]["item_id"] == iid \
                     and shortages[-1]["date"] == days[t].date().isoformat()
-                if (tracked and will_short and pending) or ((not tracked) and new_episode and rng.random() < C.RUSH_ESCALATION_PROB):
+                if ((tracked or expedite) and will_short and pending) or ((not tracked) and new_episode and rng.random() < C.RUSH_ESCALATION_PROB):
                     n = nums[0]
                     meta = item_meta[n]
                     alead = _actual_lead(meta, blead[n], days[t].date(), drift_rate.get(n, 6.0), drift_supplier_id, rng)
@@ -441,14 +518,14 @@ def simulate(events, item_master, item_meta, dup_map, plan, drift_supplier_id, s
     }
 
 
-def _cause(nums, book, physical, open_po, rop, suppressed_since, t, conv):
+def _cause(nums, book, physical, open_po, rop, suppressed_since, t, conv, rec_today=0.0):
     """Attribute a shortage or rush to the data error most directly behind it."""
     if any(suppressed_since[n] is not None for n in nums):
         return "phantom_on_order"
     late = [po for po in open_po if not po["received"] and po["arrival"] > po["promised"] and t >= po["promised"]]
     if late:
         return "stale_lead_time"
-    book_total = sum(book.values()) * (conv if conv > 1 else 1)
+    book_total = sum(book.values()) * (conv if conv > 1 else 1) - rec_today
     if physical <= 0 and book_total > 0 and (book_total - max(physical, 0)) > PHANTOM_BOOK_TOL * max(book_total, 1):
         return "unrecorded_consumption"
     return "other"

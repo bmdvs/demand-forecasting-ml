@@ -62,43 +62,73 @@ def build_queue():
             & (pd.to_datetime(po["order_date"]) >= pd.Timestamp(AS_OF) - pd.Timedelta(days=90))]
     on_order = (op["qty_ordered"] - op["qty_received"]).groupby(op["item_number"].map(canon)).sum()
 
+    # component requirements of released jobs not yet complete, within each item's lead time
+    prod = pd.read_csv(RAW / "erp" / "production_orders.csv")
+    open_jobs = prod[(pd.to_datetime(prod["release_date"]) <= pd.Timestamp(AS_OF))
+                     & ((prod["completed_date"].isna()) | (pd.to_datetime(prod["completed_date"]) > pd.Timestamp(AS_OF)))]
+    bom = pd.read_csv(RAW / "erp" / "bill_of_materials.csv")
+    req = open_jobs.merge(bom, on="product_number")
+    req["qty"] = req["qty_ordered"] * req["qty_per"]
+    known_jobs = req.groupby(req["component_item"].map(canon))["qty"].sum()
+    # a record left with no primary supplier falls back to the one it is bought from most
+    po_sup = po.dropna(subset=["supplier_id"]).assign(c=po["item_number"].map(canon)).groupby("c")["supplier_id"]         .agg(lambda x: x.map(lambda v: sup_canon.get(v, v)).mode().iloc[0])
     merged = {canon(n) for n, c in xw.items() if n != c}
     stale = lead[(lead["median_actual"] - lead["master_lead_time"]).abs() > 3]["item_number"].map(canon)
     lead_fixed = set(stale)
     bom_fixed = set(bom["component_item"].map(canon))
     restored = set(ft.loc[ft["confirmation"] == "confirmed", "probable_item_number"].dropna().map(canon))
 
+    tier = sched.get("criticality", {})
     rows = []
     for item, entries in sched["items"].items():
         if item not in attrs.index:
             continue
-        d_, rop, ss, pred, h_days = entries[-1]
+        e = entries[-1]
+        d_, level, ss, pred, h_days, rop = e[0], e[1], e[2], e[3], e[4], e[5]
         a = attrs.loc[item]
         lt = float(a["corrected_lead_days"])
         daily = float(pred) / max(1.0, float(h_days))
-        fc_lead = daily * lt
+        # the point the ERP triggers on covers the demand it cannot already see:
+        # the forecast over the lead time less what released jobs have allocated
+        fc_lead = float(level) - float(ss)
         oh = float(on_hand.get(item, 0.0)); oo = float(on_order.get(item, 0.0))
         position = oh + oo
         cover = position / daily if daily > 0 else np.inf
-        if position <= rop:
+        # the ERP nets released jobs against stock (MRP): the item is due when stock
+        # on hand and on order, less what released jobs will draw within the lead
+        # time, falls to the level set for the demand it cannot see
+        need = float(known_jobs.get(item, 0.0))
+        position = oh + oo - need
+        if position <= level:
             status = "ORDER NOW"
-        elif position <= rop + daily * SOON_DAYS:
+        elif position <= level + daily * SOON_DAYS:
             status = "ORDER SOON"
         else:
             status = "OK"
-        suggested = max(0.0, rop + daily * ORDER_COVER_DAYS - position) if status != "OK" else 0.0
+        # the model's lot, in as many lots as the shortfall below the point needs
+        q_lot = float(e[7]) if len(e) > 7 and e[7] else max(1.0, daily * ORDER_COVER_DAYS)
+        suggested = q_lot * max(1, int(np.ceil((level - position) / q_lot))) if status != "OK" else 0.0
         sid = sup_canon.get(im["primary_supplier_id"].get(item), im["primary_supplier_id"].get(item))
+        if not isinstance(sid, str):
+            sid = po_sup.get(item)
         sname = sup["supplier_name"].get(sid, "") if isinstance(sid, str) else ""
         flags = [f for f, on in (("Merged record", item in merged), ("Lead time corrected", item in lead_fixed),
                                  ("BOM corrected", item in bom_fixed), ("History restored", item in restored)) if on]
         rows.append({"item": item, "desc": im["description"].get(item, ""), "abc": a["abc"], "supplier": sname,
-                     "on_hand": oh, "on_order": oo, "lead": lt, "fc_lead": fc_lead, "ss": float(ss), "rop": float(rop),
+                     "tier": tier.get(item, "standard"),
+                     "on_hand": oh, "on_order": oo, "alloc": need, "avail": position, "lead": lt, "fc_lead": fc_lead,
+                     "ss": float(ss), "rop": float(level),
                      "suggested": suggested, "status": status, "cover": cover, "cost": float(a["standard_cost"]),
                      "flags": flags})
     q = pd.DataFrame(rows)
     q["rank"] = q["status"].map({"ORDER NOW": 0, "ORDER SOON": 1, "OK": 2})
-    q["gap"] = (q["on_hand"] + q["on_order"] - q["rop"]) / q["rop"].clip(lower=1)
-    return q.sort_values(["rank", "abc", "gap"]).reset_index(drop=True)
+    q["trank"] = q["tier"].map({"line": 0, "service": 1, "standard": 2})
+    q["gap"] = (q["avail"] - q["rop"]) / q["rop"].clip(lower=1)
+    return q.sort_values(["rank", "trank", "gap"]).reset_index(drop=True)
+
+
+TIER_LABEL = {"line": '<span class="crit">Line-critical</span>', "service": '<span class="crit svc">Service</span>',
+              "standard": '<span style="color:#5F6B7A;">Standard</span>'}
 
 
 def _fmt(x):
@@ -117,8 +147,9 @@ def render(q):
         tags = "".join(f'<span class="tag">{f}</span>' for f in r.flags)
         trs.append(
             f'<tr style="background:{rowbg[r.status]};">'
-            f'<td class="mono">{r.item}</td><td>{r.desc}</td><td class="c">{r.abc}</td><td>{r.supplier}</td>'
-            f'<td class="r">{_fmt(r.on_hand)}</td><td class="r">{_fmt(r.on_order)}</td><td class="r">{r.lead:.0f}</td>'
+            f'<td class="mono">{r.item}</td><td>{r.desc}</td><td>{TIER_LABEL[r.tier]}</td><td class="c">{r.abc}</td><td>{r.supplier}</td>'
+            f'<td class="r">{_fmt(r.on_hand)}</td><td class="r">{_fmt(r.alloc)}</td><td class="r">{_fmt(r.on_order)}</td>'
+            f'<td class="r">{_fmt(r.avail)}</td><td class="r">{r.lead:.0f}</td>'
             f'<td class="r">{_fmt(r.fc_lead)}</td><td class="r">{_fmt(r.ss)}</td><td class="r"><b>{_fmt(r.rop)}</b></td>'
             f'<td class="r"><b>{_fmt(r.suggested) if r.suggested else "&ndash;"}</b></td>'
             f'<td><span class="badge" style="background:{badge[r.status]};">&bull; {r.status}</span></td>'
@@ -160,6 +191,7 @@ def render(q):
   .badge {{ color:#fff; font-weight:700; font-size:11px; padding:2px 7px; border-radius:3px; }}
   .tag {{ display:inline-block; border:1px solid #9FB3CC; color:#2458A6; background:#EEF4FB; border-radius:10px;
           padding:0 7px; margin-right:4px; font-size:11px; }}
+  .crit {{ font-weight:700; color:#B42318; }} .crit.svc {{ color:#B54708; }}
   .ml {{ background:{BLUE}; color:#fff; font-size:10px; font-weight:700; padding:1px 4px; border-radius:2px; margin-left:4px; }}
 </style></head><body>
 <div class="top"><div class="app">Enterprise Resource Planning</div>
@@ -167,7 +199,7 @@ def render(q):
 <div class="nav">{nav}</div>
 <div class="crumb"><span>Purchasing</span> &rsaquo; <span>Reorder</span> &rsaquo; Suggested Orders</div>
 <div class="head"><div><h1>Reorder Queue, Suggested Orders</h1>
-  <div class="sub">All stocked items against this month's reorder points &middot; {pd.Timestamp(AS_OF).strftime('%m/%d/%Y')}</div></div>
+  <div class="sub">All stocked items against this week's reorder points &middot; {pd.Timestamp(AS_OF).strftime('%m/%d/%Y')}</div></div>
   <div class="summary">REORDER SUMMARY <span class="dot" style="background:{RED}"></span><b>{now}</b>Order now
   <span class="dot" style="background:{AMBER}"></span><b>{soon}</b>Order soon
   <span class="dot" style="background:{GREEN}"></span><b>{ok:,}</b>OK</div></div>
@@ -175,8 +207,8 @@ def render(q):
   <span class="btn">Hold</span><span class="sep"></span><span class="btn">Export</span></div>
 <div class="filters">Supplier: <span class="sel">All &#9662;</span> Class: <span class="sel">All &#9662;</span>
   Action: <span class="sel">Order now + soon &#9662;</span> <span class="sel" style="width:220px;">&#128269; Search items...</span></div>
-<table><thead><tr><th>Item #</th><th>Description</th><th>ABC</th><th>Supplier</th><th class="r">On hand</th>
-<th class="r">On order</th><th class="r">Lead (days)</th><th class="r">Forecast over lead</th><th class="r">Safety stock</th>
+<table><thead><tr><th>Item #</th><th>Description</th><th>Criticality</th><th>ABC</th><th>Supplier</th><th class="r">On hand</th>
+<th class="r">Allocated</th><th class="r">On order</th><th class="r">Available</th><th class="r">Lead (days)</th><th class="r">Forecast over lead</th><th class="r">Safety stock</th>
 <th class="r">Reorder point</th><th class="r">Suggested qty</th><th>Action <span class="ml">ML</span></th><th>Changed by cleanup</th></tr></thead>
 <tbody>{''.join(trs)}</tbody></table>
 </body></html>"""
