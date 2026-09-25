@@ -104,8 +104,8 @@ def chart_halves():
 def chart_inventory_months():
     """Average inventory value by month, the same demand three ways, against 1H25 as the shop ran it."""
     fig, ax = B.make_fig(3.4)
-    cols = {"dirty": MED_GREY, "clean_rule": LIGHT_BLUE, "model": DARK_BLUE}
-    for v, name in VARIANTS:
+    cols = {"dirty": MED_GREY, "model": DARK_BLUE}
+    for v, name in PAIR:
         mm = F[v]["inventory_by_month"]
         xs = [pd.Timestamp(m_) for m_ in sorted(mm)]
         ys = [mm[m_] / 1e6 for m_ in sorted(mm)]
@@ -123,16 +123,42 @@ def chart_inventory_months():
     return B.b64(fig)
 
 
+STATUS = ["ORDER NOW", "ORDER SOON", "OK"]
+STATUS_COL = {"ORDER NOW": B.ACCENT_RED, "ORDER SOON": B.AMBER, "OK": GREEN}
+_sw = fr.get("status_weekly", {})
+status_tot = {st: sum(w.get(st, 0) for w in _sw.values()) for st in STATUS}
+n_weeks = len(_sw)
+n_scored = sum(status_tot.values())
+
+
+def chart_actions():
+    """Item-weeks by reorder action across the weekly refreshes, January to June 2026."""
+    vals = [status_tot[st] for st in STATUS]
+    fig, ax = B.make_fig(3.4)
+    bars = ax.bar(STATUS, vals, color=[STATUS_COL[st] for st in STATUS], width=0.55)
+    for b_, v in zip(bars, vals):
+        ax.text(b_.get_x() + b_.get_width() / 2, v + n_scored * 0.005, f"{v:,}\n({v / n_scored:.0%})",
+                ha="center", va="bottom", fontsize=10)
+    ax.set_ylabel("Item-weeks")
+    ax.set_ylim(0, max(vals) * 1.18)
+    ax.yaxis.set_major_formatter(__import__("matplotlib.ticker", fromlist=["FuncFormatter"]).FuncFormatter(lambda v, _: f"{v:,.0f}"))
+    B.chart_style(ax); fig.tight_layout()
+    return B.b64(fig)
+
+
+PAIR = [("dirty", "Without the model"), ("model", "With the model")]
+
+
 def chart_variants():
     """The same 1H26 demand three ways, in steady state (months 4 to 6)."""
     import matplotlib.pyplot as plt
     fig, axes = plt.subplots(1, 3, figsize=(B.CHART_W, 3.3))
-    names = ["Nothing\nfixed", "Cleaned,\nrule", "Cleaned,\nmodel"]
-    cols = [MED_GREY, LIGHT_BLUE, DARK_BLUE]
-    vals = [M46[v] for v, _ in VARIANTS]
+    names = ["Without\nthe model", "With\nthe model"]
+    cols = [MED_GREY, DARK_BLUE]
+    vals = [M46[v] for v, _ in PAIR]
     panels = [("Stockout events", [x["stockout_episodes"] for x in vals], "{:,.0f}", False),
               ("Jobs held for material", [x["jobs_delayed"] for x in vals], "{:,.0f}", False),
-              ("Average inventory ($000)", [x["avg_inventory_value"] / 1000 for x in vals], "${:,.0f}K", False)]
+              ("Rush spend ($000)", [x["rush_spend"] / 1000 for x in vals], "${:,.0f}K", False)]
     for ax, (title, v, fmt, zoom) in zip(axes, panels):
         bars = ax.bar(names, v, color=cols, width=0.62)
         lo = min(v) - 3 if zoom else 0
@@ -171,7 +197,7 @@ def halves_table():
     m = F["model"]
     spec = [
         ("Fill rate", lambda s: pct(s["fill_rate"])),
-        ("Fill rate, line-critical / service / standard parts",
+        ("Fill rate, line-critical / service / standard items",
          lambda s: " / ".join(pct(s["fill_rate_by_tier"][t_]) for t_ in ["line", "service", "standard"])),
         ("Stockout events", lambda s: f"{s['stockout_episodes']:,}"),
         ("Stockout days (item-days short)", lambda s: f"{s['stockout_days']:,}"),
@@ -202,10 +228,10 @@ def variants_table(window):
     rows = []
     spec = [
         ("Fill rate", lambda s: pct(s["fill_rate"])),
-        ("Fill rate, line-critical / service / standard parts",
+        ("Fill rate, line-critical / service / standard items",
          lambda s: " / ".join(pct(s["fill_rate_by_tier"][t_]) for t_ in ["line", "service", "standard"])),
         ("Stockout events", lambda s: f"{s['stockout_episodes']:,}"),
-        ("Stockout events, line-critical parts", lambda s: f"{s['stockout_episodes_by_tier']['line']:,}"),
+        ("Stockout events, line-critical items", lambda s: f"{s['stockout_episodes_by_tier']['line']:,}"),
         ("Jobs held for material", lambda s: f"{s['jobs_delayed']:,}"),
         ("Rush freight and premiums", lambda s: money(s["rush_spend"])),
         ("Average inventory value", lambda s: money(s["avg_inventory_value"])),
@@ -216,11 +242,35 @@ def variants_table(window):
         ("Excess stock (over 12 months of supply)", lambda s: f"{money(s['excess_value'])} ({s['excess_items']} items)"),
         ("Order lines placed", lambda s: f"{s['order_lines']:,}"),
         ("Purchases", lambda s: money(s["purchases"])),
-        ("Consumption at cost", lambda s: money(s["consumption_value"])),
+        ("Usage at cost", lambda s: money(s["consumption_value"])),
     ]
     for label, fn in spec:
         rows.append([label] + [fn(window[v]) for v, _ in VARIANTS])
     return widths(B.data_table(["Measure"] + [n for _, n in VARIANTS], rows, right=[1, 2, 3]), [31, 23, 23, 23])
+
+
+def compare_table(window):
+    """Without and with the model on the same demand, for one window."""
+    d_, m_ = window["dirty"], window["model"]
+    def chg_(a_, b_, money_=False):
+        if a_ == 0:
+            return ""
+        return f"{(b_ - a_) / a_ * 100:+.0f}%"
+    spec = [
+        ("Fill rate", lambda x: pct(x["fill_rate"]), lambda: f"{(m_['fill_rate'] - d_['fill_rate']) * 100:+.1f} pts"),
+        ("Stockout events", lambda x: f"{x['stockout_episodes']:,}", lambda: chg_(d_["stockout_episodes"], m_["stockout_episodes"])),
+        ("Stockout events, line-critical items", lambda x: f"{x['stockout_episodes_by_tier']['line']:,}",
+         lambda: chg_(d_["stockout_episodes_by_tier"]["line"], m_["stockout_episodes_by_tier"]["line"])),
+        ("Jobs held for material", lambda x: f"{x['jobs_delayed']:,}", lambda: chg_(d_["jobs_delayed"], m_["jobs_delayed"])),
+        ("Rush freight and premiums", lambda x: money(x["rush_spend"]), lambda: chg_(d_["rush_spend"], m_["rush_spend"])),
+        ("Average inventory value", lambda x: money(x["avg_inventory_value"]), lambda: chg_(d_["avg_inventory_value"], m_["avg_inventory_value"])),
+        ("Inventory at the end of the window", lambda x: money(x["end_inventory_value"]), lambda: chg_(d_["end_inventory_value"], m_["end_inventory_value"])),
+        ("Order lines placed", lambda x: f"{x['order_lines']:,}", lambda: chg_(d_["order_lines"], m_["order_lines"])),
+        ("Purchases", lambda x: money(x["purchases"]), lambda: chg_(d_["purchases"], m_["purchases"])),
+    ]
+    rows = [[label, fn(d_), fn(m_), ch()] for label, fn, ch in spec]
+    return widths(B.data_table(["Measure", "Without the model", "With the model", "Change"], rows, right=[1, 2, 3]),
+                  [40, 21, 21, 18])
 
 
 def purchases_table():
@@ -231,27 +281,60 @@ def purchases_table():
     return widths(B.data_table(["Month"] + [n for _, n in VARIANTS], rows, right=[1, 2, 3]), [22, 26, 26, 26])
 
 
-def accuracy_table():
-    seg = {s["segment"]: s for s in metrics["segments"]}
-    fbias = F["model"].get("forecast_bias_by_segment") or {}
+def _live_accuracy():
+    """Score every weekly forecast the model made in 1H26 against the usage that followed, alongside the
+    simple method chosen for each demand pattern before go-live. Forecasts whose horizon runs past June 30
+    are left out."""
+    wk = pd.read_parquet(REPO / "ml" / "data" / "marts" / "consumption_weekly.parquet")
+    wide = wk.pivot(index="canonical", columns="week", values="consumption").fillna(0)
+    widx = {pd.Timestamp(x): i for i, x in enumerate(wide.columns)}
+    end = pd.Timestamp(C_END) - pd.Timedelta(days=1)
+    seg_attr = attrs.set_index("canonical_item_number")["segment"]
+    meth = {r["segment"]: r["baseline_method"] for r in metrics["segments"]}
     rows = []
-    for s in SEG_ORDER:
-        if s not in seg:
+    for item, entries in sched["items"].items():
+        if item not in wide.index:
             continue
-        r = seg[s]
-        fb = fbias.get(s)
-        rows.append([s.capitalize(), pct(r["wape_model"], 0), pct(r["wape_baseline"], 0), f"{r['lift']*100:+.0f}%",
-                     f"{r['bias']*100:+.0f}%", f"{fb*100:+.0f}%" if fb is not None else "n/a"])
-    rows.append(["<strong>All items</strong>", f"<strong>{pct(metrics['overall']['model'], 0)}</strong>",
-                 f"<strong>{pct(metrics['overall']['baseline'], 0)}</strong>",
-                 f"<strong>{(metrics['overall']['baseline']-metrics['overall']['model'])/metrics['overall']['baseline']*100:+.0f}%</strong>", "", ""])
+        sr = wide.loc[item].to_numpy(float)
+        seg = seg_attr.get(item, "smooth")
+        for e in entries:
+            o = pd.Timestamp(e[0]); mon = o - pd.Timedelta(days=o.weekday())
+            h = int(round(e[4] / 7)); t = widx.get(mon)
+            if t is None or t < 52 or mon + pd.Timedelta(days=7 * h) > end:
+                continue
+            base = {"ma4": sr[t - 4:t].sum() / 4 * h, "ma13": sr[t - 13:t].sum() / 13 * h,
+                    "ma52": sr[t - 52:t].sum() / 52 * h, "snaive": sr[t - 52:t - 52 + h].sum()}[meth.get(seg, "ma52")]
+            rows.append((seg, sr[t:t + h].sum(), float(e[3]), base))
+    return pd.DataFrame(rows, columns=["segment", "actual", "forecast", "base"])
+
+
+def _wape(a, f):
+    return float(np.abs(a - f).sum() / a.sum())
+
+
+def accuracy_table():
+    seg25 = {s_["segment"]: s_ for s_ in metrics["segments"]}
+    rows = []
+    for s_ in SEG_ORDER:
+        g = live[live["segment"] == s_]
+        if g.empty:
+            continue
+        wm, wb = _wape(g["actual"], g["forecast"]), _wape(g["actual"], g["base"])
+        bias = (g["forecast"].sum() - g["actual"].sum()) / g["actual"].sum()
+        rows.append([s_.capitalize(), pct(wm, 0), pct(wb, 0), f"{(wb - wm) / wb * 100:+.0f}%",
+                     f"{seg25[s_]['bias'] * 100:+.0f}%" if s_ in seg25 else "", f"{bias * 100:+.0f}%"])
+    rows.append(["<strong>All items</strong>", f"<strong>{pct(live_model, 0)}</strong>",
+                 f"<strong>{pct(live_base, 0)}</strong>",
+                 f"<strong>{(live_base - live_model) / live_base * 100:+.0f}%</strong>", "",
+                 f"<strong>{live_bias * 100:+.0f}%</strong>"])
     return widths(B.data_table(["Demand pattern", "Model error", "Best simple method", "Improvement",
-                                "Bias before correction", "Bias in 1H26, corrected"], rows, right=[1, 2, 3, 4, 5]),
-                  [20, 15, 18, 15, 16, 16])
+                                "Forecast bias"], [r[:4] + r[5:] for r in rows],
+                               right=[1, 2, 3, 4]), [24, 18, 22, 18, 18])
 
 
 # ── report ────────────────────────────────────────────────────────────────────
 mod, rule, dirty = F["model"], F["clean_rule"], F["dirty"]
+C_END = "2026-06-30"
 mod46, rule46, dirty46 = M46["model"], M46["clean_rule"], M46["dirty"]
 k_abc, z = sched["safety_factor"], sched["normal_z"]
 bias = sched["bias_correction"]
@@ -275,10 +358,10 @@ if end_mod <= end_rule:
     END_NOTE = f"ends June with the least stock of the three ({k(end_mod)})"
 else:
     END_NOTE = (f"ends June with {k(end_mod)} of stock, well below manual reordering and close to the rule's "
-                f"{k(end_rule)}, because it holds larger buffers on the parts whose demand is hardest to predict,")
+                f"{k(end_rule)}, because it holds larger buffers on the items whose demand is hardest to predict,")
 if _m <= _r:
     AVG_NOTE = (f"It also carries the least stock of the three on average over months 4 to 6 ({k(_m)}), though it "
-                "gets there gradually: it first builds buffers on the parts that were running short, then runs down the rest.")
+                "gets there gradually: it first builds buffers on the items that were running short, then runs down the rest.")
 else:
     AVG_NOTE = ""   # the June comparison above already explains the model's position against the rule
 avg25 = float(np.mean(list(H1["inventory_by_month"].values()) + list(H2["inventory_by_month"].values())))
@@ -301,6 +384,10 @@ monthly = pd.read_parquet(REPO / "ml" / "data" / "marts" / "consumption_monthly.
 seg_n = attrs["segment"].value_counts().to_dict(); abc_n = attrs["abc"].value_counts().to_dict()
 n_items = len(attrs)
 cand = metrics["candidates"]
+live = _live_accuracy()
+live_model, live_base = _wape(live["actual"], live["forecast"]), _wape(live["actual"], live["base"])
+live_bias = (live["forecast"].sum() - live["actual"].sum()) / live["actual"].sum()
+live_bias_max = max(abs((g["forecast"].sum() - g["actual"].sum()) / g["actual"].sum()) for _, g in live.groupby("segment"))
 CAND_LABEL = {"Linear": "Linear regression (ridge)", "RandomForest": "Random forest", "XGBoost": "XGBoost"}
 WIN = metrics["winner"]
 WIN_DESC = {"RandomForest": "a random forest, an ensemble of several hundred decision trees whose forecasts are averaged",
@@ -316,9 +403,11 @@ else:
 
 
 def candidate_table():
+    order = [metrics["winner"]] + [c for c in ["RandomForest", "XGBoost", "Linear"] if c != metrics["winner"]]
     rows = [[CAND_LABEL[c], pct(cand[c]["val_wape"]), pct(cand[c]["test_wape"]),
-             "Selected" if c == metrics["winner"] else ""] for c in ["Linear", "RandomForest", "XGBoost"]]
-    return widths(B.data_table(["Candidate", "Validation error (WAPE)", "Test error (WAPE)", ""], rows, right=[1, 2]),
+             f'<span style="color:{GREEN};font-weight:700;">&#10004;</span> Selected' if c == metrics["winner"] else ""]
+            for c in order]
+    return widths(B.data_table(["Candidate", "Validation error (WAPE)", "Held-out 2025 error (WAPE)", ""], rows, right=[1, 2]),
                   [34, 24, 24, 18])
 
 
@@ -326,7 +415,7 @@ hist = monthly[monthly["month"] < "2026-01-01"].merge(
     attrs[["canonical_item_number", "segment", "abc", "standard_cost"]], left_on="canonical", right_on="canonical_item_number")
 hist["value"] = hist["consumption"] * hist["standard_cost"].fillna(attrs["standard_cost"].median())
 SEG_COL = {"smooth": DARK_BLUE, "erratic": LIGHT_BLUE, "lumpy": "#8093A4", "intermittent": "#D5DCE1"}
-# the part's category, read from its item-number prefix (the class field carries a
+# the item's category, read from its item-number prefix (the class field carries a
 # generic MISC placeholder on some records)
 PREFIX_CAT = {"MEC": "Mechanical", "ELE": "Electrical", "RM": "Raw material", "FAS": "Fasteners",
               "HDW": "Hardware", "FIT": "Fittings", "CON": "Consumables", "SVC": "Outside service"}
@@ -366,19 +455,20 @@ def _chart_by_category(col, scale, ylabel, avg_fmt):
 
 
 def chart_value_by_category():
-    return _chart_by_category("value", 1000, "Consumption at cost ($000 / month)",
-                              "Average: ${:,.0f}K of parts consumed per month")
+    return _chart_by_category("value", 1000, "Usage in value ($000 / month)",
+                              "Average: ${:,.0f}K of items used per month")
 
 
 def chart_units_by_category():
-    return _chart_by_category("consumption", 1000, "Units consumed (000 / month)",
-                              "Average: {:,.1f}K units consumed per month")
+    return _chart_by_category("consumption", 1000, "Usage in units (000 / month)",
+                              "Average: {:,.1f}K units used per month")
 
 
 # cost and usage by category, 2025
 _h25 = hist[(hist["month"] >= "2025-01-01") & (hist["month"] < "2026-01-01")]
-_u25 = _h25.groupby("canonical").agg(units=("consumption", "sum"), value=("value", "sum"))
-_u25 = _u25.join(attrs.set_index("canonical_item_number")[["category", "standard_cost"]])
+# every stocked item counts, including the few with no usage in 2025
+_u25 = attrs.set_index("canonical_item_number")[["category", "standard_cost"]].join(
+    _h25.groupby("canonical").agg(units=("consumption", "sum"), value=("value", "sum"))).fillna({"units": 0, "value": 0})
 cat_tbl = _u25.groupby("category").agg(n=("units", "size"), med_cost=("standard_cost", "median"),
                                        med_units=("units", "median"), units=("units", "sum"), value=("value", "sum"))
 cat_tbl = cat_tbl.reindex([c for c in CAT_ORDER if c in cat_tbl.index])
@@ -393,20 +483,20 @@ def category_table():
     rows.append(["<strong>All items</strong>", f"<strong>{int(cat_tbl['n'].sum()):,}</strong>", "", "", "<strong>100%</strong>",
                  f"<strong>{k(cat_tbl['value'].sum())}</strong>", "<strong>100%</strong>"])
     return widths(B.data_table(["Category", "Items", "Median unit cost", "Median units used per item (2025)",
-                                "Share of units used (2025)", "Consumption value (2025)", "Share of value (2025)"], rows,
+                                "Share of units used (2025)", "Usage value (2025)", "Share of value (2025)"], rows,
                                right=[1, 2, 3, 4, 5, 6]), [20, 9, 14, 16, 13, 15, 13])
 
 
 _hi = cat_tbl.loc[[c for c in ["Mechanical", "Electrical"] if c in cat_tbl.index]]
 _lo = cat_tbl.loc[[c for c in ["Fasteners", "Hardware"] if c in cat_tbl.index]]
-TBL_TEXT = (f"Item cost and usage move in opposite directions across the categories. Mechanical and electrical parts "
+TBL_TEXT = (f"Item cost and usage move in opposite directions across the categories. Mechanical and electrical items "
             f"(motors, gearboxes, drives, controls) are {pct(_hi['item_share'].sum(), 0)} of items and "
-            f"{pct(_hi['value_share'].sum(), 0)} of consumption value, with median unit costs of "
+            f"{pct(_hi['value_share'].sum(), 0)} of usage value, with median unit costs of "
             f"${cat_tbl.loc['Mechanical', 'med_cost']:,.0f} and ${cat_tbl.loc['Electrical', 'med_cost']:,.0f}, but only "
             f"{pct(_hi['unit_share'].sum(), 0)} of the units used. Fasteners and hardware are the reverse: "
             f"{pct(_lo['unit_share'].sum(), 0)} of the units used but {pct(_lo['value_share'].sum(), 0)} of the value, "
             f"at median unit costs under ${max(cat_tbl.loc['Fasteners', 'med_cost'], cat_tbl.loc['Hardware', 'med_cost']) + 0.5:,.0f}. "
-            f"The shop's working capital is therefore tied up in a few hundred expensive, slower-moving parts, not in the "
+            f"The shop's working capital is therefore tied up in a few hundred expensive, slower-moving items, not in the "
             f"high-volume floor stock.")
 
 
@@ -414,14 +504,20 @@ def chart_category_patterns():
     """Number of items in each category, stacked by demand pattern."""
     fig, ax = B.make_fig(3.7)
     bottom = np.zeros(len(cat_seg))
+    totals = cat_seg.sum(axis=1).to_numpy()
     for seg in SEG_ORDER:
         vals = cat_seg[seg].to_numpy()
         ax.bar(cat_seg.index, vals, bottom=bottom, color=SEG_COL[seg], width=0.65, label=seg.capitalize())
+        # each segment's share of its category, where the segment is tall enough to hold a label
+        for i, (v, b0) in enumerate(zip(vals, bottom)):
+            if v >= 7:
+                ax.text(i, b0 + v / 2, f"{v / totals[i] * 100:.0f}%", ha="center", va="center", fontsize=7.5,
+                        color="white" if seg in ("smooth", "lumpy") else DARK_GREY)
         bottom += vals
     for i, tot_ in enumerate(bottom):
-        ax.text(i, tot_ + 2, f"{int(tot_)}", ha="center", fontsize=8.5, fontweight="bold")
+        ax.text(i, tot_ + 5, f"{int(tot_)}", ha="center", fontsize=8.5, fontweight="bold")
     ax.set_ylabel("Items")
-    ax.set_ylim(0, bottom.max() * 1.15)
+    ax.set_ylim(0, bottom.max() * 1.18)
     ax.set_xticks(range(len(cat_seg))); ax.set_xticklabels([c.replace(" ", "\n") for c in cat_seg.index])
     ax.tick_params(axis="x", labelsize=8.5)
     B.chart_style(ax)
@@ -435,7 +531,7 @@ def _top(seg, n=2):
     return " and ".join(f"{c.lower()} ({v*100:.0f}%)" for c, v in s_.items())
 
 
-CAT_TEXT = (f"Individual demand patterns are informed by the kind of part, though every category carries all four "
+CAT_TEXT = (f"Individual demand patterns are informed by the kind of item, though every category carries all four "
             f"patterns. Smooth demand is most common among {_top('smooth')}, the floor stock used consistently every "
             f"week. Erratic demand is spread widely, and is highest among {_top('erratic')}. Lumpy demand concentrates "
             f"in {_top('lumpy')}. Intermittent demand is highest in {_top('intermittent')}, where just a few of these "
@@ -451,8 +547,8 @@ def chart_history_value():
     tot = w.sum(axis=1); x = np.arange(len(tot)); fit = np.polyfit(x, tot.to_numpy(), 1)
     ax.plot(w.index, np.polyval(fit, x), color=DARK_GREY, linestyle="--", linewidth=1.2, label="Trend")
     ax.set_ylim(0, tot.max() * 1.35)
-    ax.set_ylabel("Units consumed (000 / month)")
-    _avg_box(ax, f"Average: {round(tot.mean() * 10) * 100:,.0f} units consumed per month")
+    ax.set_ylabel("Units used (000 / month)")
+    _avg_box(ax, f"Average: {round(tot.mean() * 10) * 100:,.0f} units used per month")
     B.chart_style(ax)
     ax.legend(loc="upper center", bbox_to_anchor=(0.5, -0.1), frameon=False, ncol=5, fontsize=9)
     fig.tight_layout()
@@ -491,7 +587,7 @@ def chart_pareto():
         x_ = n_ / len(v) * 100; y_ = float(cum.iloc[min(n_, len(v)) - 1])
         ax.axvline(x_, color=MED_GREY, linestyle=":", linewidth=1)
         ax.text(x_ + 1, 8, f"{lab} items end\n{x_:.0f}% of items, {y_:.0f}% of value", fontsize=8, color=DARK_GREY)
-    ax.set_xlabel("Share of items, highest consumption value first (%)"); ax.set_ylabel("Cumulative share of value (%)")
+    ax.set_xlabel("Share of items, highest usage value first (%)"); ax.set_ylabel("Cumulative share of value (%)")
     ax.set_xlim(0, 100); ax.set_ylim(0, 102)
     B.chart_style(ax)
     return B.b64(fig)
@@ -501,7 +597,7 @@ FLOW_HTML = (
     '<div style="display:flex;align-items:stretch;gap:0;margin:22px 0;flex-wrap:wrap;">'
     '<div style="flex:1;min-width:190px;background:#F3F5F7;border-radius:8px;padding:16px 18px;border-top:4px solid #381FA1;">'
     '<div style="font-weight:700;color:#322B4B;margin-bottom:6px;">1. What it reads</div>'
-    '<div style="font-size:16px;line-height:1.55;">Three years of cleaned consumption history for every stocked item, '
+    '<div style="font-size:16px;line-height:1.55;">Three years of cleaned usage history for every stocked item, '
     'with its demand pattern, value class, cost and supplier lead time.</div></div>'
     '<div style="align-self:center;font-size:26px;color:#8093A4;padding:0 12px;">&rarr;</div>'
     '<div style="flex:1;min-width:190px;background:#F3F5F7;border-radius:8px;padding:16px 18px;border-top:4px solid #381FA1;">'
@@ -518,10 +614,10 @@ import base64
 _png = REPO / "docs" / "screenshots" / "erp_queue.png"
 erp_b64 = base64.b64encode(_png.read_bytes()).decode() if _png.exists() else ""
 
-charts = {"halves": chart_halves(), "variants": chart_variants(), "acc": chart_accuracy(),
+charts = {"halves": chart_halves(), "variants": chart_variants(), "actions": chart_actions(),
           "invm": chart_inventory_months(), "valcat": chart_value_by_category(), "catseg": chart_category_patterns(),
           "unitcat": chart_units_by_category(),
-          "hist": chart_history_value(), "examples": chart_examples(), "pareto": chart_pareto()}
+          "examples": chart_examples()}
 
 toc = ('<a href="#summary">Executive Summary</a><hr>'
        '<a href="#modeloverview">Model Overview</a>'
@@ -530,7 +626,6 @@ toc = ('<a href="#summary">Executive Summary</a><hr>'
        '<a href="#performance">Model Performance</a>'
        '<a href="#scoring" class="sub">Scoring Summary</a>'
        '<a href="#accuracy" class="sub">Accuracy and Validation</a>'
-       '<a href="#source" class="sub">Where the Improvement Came From</a>'
        '<a href="#limits" class="sub">What It Can and Cannot Predict</a>')
 
 body = f"""
@@ -545,14 +640,14 @@ Against the first half of 2025, run the way the shop had always run it, stockout
 freight and premiums from {k(H1['rush_spend'])} to {k(mod['rush_spend'])}.</p>
 {B.chart("Inventory (2025 average month against June 2026); stockouts, held jobs and rush spend by half-year", charts["halves"])}
 <p>The manual process held more stock than the shop needed, in the wrong places. Reorder points set at go-live
-and never revisited were far too high on some parts and too low on others, and buyers bought about four and a half months
-of a part at a time whatever it cost. The model moves the stock to where it prevents a stoppage. Each part's
+and never revisited were far too high on some items and too low on others, and buyers bought about four and a half months
+of an item at a time whatever it cost. The model moves the stock to where it prevents a stoppage. Each item's
 buffer is sized to how far off its own forecasts and deliveries have been, jobs already booked are netted weeks
-before they draw parts, and expensive parts are bought more often in smaller lots. Replaying the same six months of demand with nothing fixed shows the gain once the new
+before they draw items, and expensive items are bought more often in smaller lots. Replaying the same six months of demand with nothing fixed shows the gain once the new
 policy has settled (months 4 to 6): stockout events fall {fall(dirty46['stockout_episodes'], mod46['stockout_episodes'])},
 jobs held for material {fall(dirty46['jobs_delayed'], mod46['jobs_delayed'])}
 and rush spend {fall(dirty46['rush_spend'], mod46['rush_spend'])}. Inventory is still falling at the end of June,
-as excess on slow parts is used up and not replaced.</p>
+as excess on slow items is used up and not replaced.</p>
 
 {B.kpi_row(
     B.kpi_card(f"{k(avg25)} &rarr; {k(jun_avg)}", "Inventory", "2025 monthly average to June 2026", GREEN),
@@ -566,8 +661,8 @@ as excess on slow parts is used up and not replaced.</p>
 <p>Over the past six months (January 2026 to June 2026), the demand forecasting model has set the shop's reorder
 decisions. Every week, the model predicts which items need to be reordered, and these predictions are then fed
 directly into the ERP for each of the {n_items:,} stocked items. The model's reorder decisions are based on the
-current stock on hand and on order for each item, the forecasted consumption over each supplier's delivery time,
-and a safety buffer based on how unpredictable each part's demand and deliveries have been.</p>
+current stock on hand and on order for each item, the forecasted usage over each supplier's delivery time,
+and a safety buffer based on how unpredictable each item's demand and deliveries have been.</p>
 {FLOW_HTML}
 <p>The model refreshes its forecasts every week and is retrained on the latest history once a month. The
 model's predictions are loaded directly into the ERP, which flags when each item should be reordered and how much
@@ -576,7 +671,7 @@ expensive items are bought every few weeks in small lots, and cheap items a few 
 <p>The ERP's reorder queue ranks every stocked item against the model's weekly reorder point: items at or below it
 are marked "ORDER NOW", items within two weeks of it "ORDER SOON", and items more than two weeks outside of
 it "OK". Each line also
-shows the part's criticality, the stock on hand, allocated to released jobs and on order, the forecast, the safety
+shows the item's criticality, the stock on hand, allocated to released jobs and on order, the forecast, the safety
 stock and the suggested order quantity, as seen in the screenshot of the ERP system below:</p>
 <div class="chart-wrap" style="padding:6px;">
   <img src="data:image/png;base64,{erp_b64}" alt="ERP reorder queue with the demand model's reorder points"
@@ -584,132 +679,97 @@ stock and the suggested order quantity, as seen in the screenshot of the ERP sys
 </div>
 
 {B.section("data", "Section 2.2", "Training Data Overview")}
-<p>The model learns from the shop's weekly consumption of every stocked item. It was originally trained on three
-years of this consumption data (2023 through 2025, as shown below), and is continually trained on every new month
+<p>The model learns from the shop's historical usage of every stocked item. It was originally trained on three
+years of this usage data (2023 through 2025, as shown below), and is continually trained on every new month
 of data.</p>
-{B.chart("MONTHLY CONSUMPTION IN VALUE, BY ITEM CATEGORY (JAN. 2023 to DEC. 2025)", charts["valcat"])}
-{B.chart("MONTHLY CONSUMPTION IN UNITS, BY ITEM CATEGORY (JAN. 2023 to DEC. 2025)", charts["unitcat"])}
+{B.chart("MONTHLY USAGE IN VALUE, BY ITEM CATEGORY (JAN. 2023 to DEC. 2025)", charts["valcat"])}
+{B.chart("MONTHLY USAGE IN UNITS, BY ITEM CATEGORY (JAN. 2023 to DEC. 2025)", charts["unitcat"])}
 <p>Demand is steady in aggregate over the three years, but individual items exhibit very different demand patterns.
 We've categorized these individual item demand patterns into four groups, which the model is calibrated against:
 {seg_n.get('smooth', 0)} smooth (regular and steady), {seg_n.get('erratic', 0)} erratic (regular but variable),
 {seg_n.get('lumpy', 0)} lumpy (irregular and variable) and {seg_n.get('intermittent', 0)} intermittent (many months
 with no demand at all). One representative item within each pattern is shown below.</p>
-{B.chart("Three years of monthly consumption, one representative item per demand pattern", charts["examples"])}
+{B.chart("Three years of monthly usage, one representative item per demand pattern", charts["examples"])}
 <p>{CAT_TEXT}</p>
 {B.chart("Items in each category, by demand pattern", charts["catseg"])}
 <p>{TBL_TEXT}</p>
 {category_table()}
-<p>Value is concentrated. A small share of items carries most of the consumption value: {abc_n.get('A', 0)} A
-items, {abc_n.get('B', 0)} B items and {abc_n.get('C', 0)} C items. That concentration is why order quantities are
-set by cost: buying the A items in smaller, more frequent lots frees most of the working capital, while the
-buffers that protect against stockouts are set by how unpredictable each part is.</p>
-{B.chart("Consumption value concentration, 2025", charts["pareto"])}
-
 {B.section("performance", "Section 3", "Model Performance")}
 
 {B.section("scoring", "Section 3.1", "Scoring Summary")}
-<p>From January to June 2026 the model refreshed the reorder points of all {n_items:,} items every week. The table compares that half-
-year with the two halves of 2025, each as the shop actually ran it. The two 2025 halves are close to each
-other, which makes them a fair baseline; 2H25 includes the ten weeks of remediation, but the cleaned records and
-the new reorder points only took over on 1 January. A job counts as held for material when its production order
-hit a material-shortage hold, the same definition the data quality audit used for 2025.</p>
+<p>From January to June 2026 the model refreshed the reorder points of all {n_items:,} items every week. Across
+those {n_weeks} weekly refreshes it scored {n_scored:,} item-weeks: <strong>{status_tot['ORDER NOW']:,}</strong>
+({status_tot['ORDER NOW'] / n_scored:.0%}) were marked ORDER NOW and <strong>{status_tot['ORDER SOON']:,}</strong>
+({status_tot['ORDER SOON'] / n_scored:.0%}) ORDER SOON, and the rest were OK. In a typical week that is about
+{status_tot['ORDER NOW'] / n_weeks:.0f} items to order now and {status_tot['ORDER SOON'] / n_weeks:.0f} to order soon,
+a short, ranked list for the buyers to work through.</p>
+{B.chart("Item-weeks by Reorder Action, January to June 2026", charts["actions"])}
+<p>The table below compares the model's performance in the first half of 2026 to the performance of the shop
+before the model when reordering decisions were done manually (showing both half-year periods of 2025).</p>
 {halves_table()}
-<p>Inventory is compared on the average month of 2025, as the shop ran it, against June 2026, the model's sixth
-month. A half-year average would mix in the first months of 2026, when the model was still working through the
-stock the manual process had built. The replay with manual reordering continued shows how much of the decline
-would have happened anyway.</p>
-{inventory_table()}
-<p>Purchases fell in 1H26 ({k(mod['purchases'])} against {k(H1['purchases'])}) because the model stopped
-reordering parts that already held more than they needed and let that stock run down. Different halves carry
-different demand, so the size of each change also reflects the season and the product mix. Section 3.3 removes
-that by holding demand fixed.</p>
 
 {B.section("accuracy", "Section 3.2", "Accuracy and Validation")}
-<p>Accuracy is measured as weighted absolute percentage error (WAPE) over each item's lead time, which reads like
-the familiar percentage error for a steady part and stays defined for the many parts with weeks of zero demand.
-The model learned on the cleaned weekly history through 2024, was tuned on a block of validation weeks, and was
-then scored on a held-out year of weekly rolling forecasts in 2025. Three candidate algorithms were each tuned
-and compared on the validation weeks. {WIN_WHY}</p>
+<p>The model was chosen and calibrated before go-live on a held-out year of 2025, which it had not seen during
+training. Three candidate algorithms were tuned and compared on their forecasts for that year, and the
+{CAND_LABEL[WIN].lower() if WIN != 'XGBoost' else 'XGBoost'} model, with the lowest error, was selected. Every
+other result in this section measures how the model then performed in live use, from January to June 2026.</p>
 {candidate_table()}
-<p>The cleaning matters to what the model can learn.
-The same model, with the same features, was run on the history at three stages of cleaning (scored on monthly forecasts over the lead time). Across all items
-the error falls from {pct(tw['raw'])} to {pct(tw['fully'])}; on the {len(repaired)} items whose history the
-cleanup actually repaired (duplicates merged, unrecorded consumption restored) it falls from
-{pct(tw_rep['raw'])} to {pct(tw_rep['fully'])}, and on the merged duplicates alone from {pct(tw_dup['raw'], 0)} to
-{pct(tw_dup['fully'], 0)}. The gain is modest overall because only three of the sixteen errors touch the demand
-history. The other thirteen corrupt the lead times, bills and stock records the reorder point is built on, and
-the model's results in Section 3.3 rest on those corrections.</p>
-{B.chart("Forecast error at three stages of cleaning", charts["acc"])}
-<p>On the held-out year the model beats the best simple method for each demand pattern (a moving average, last
-year's month or Croston's method, whichever did best):</p>
+<p>The model's forecasts are scored with weighted absolute percentage error (WAPE): the total gap between forecast
+and actual usage over each item's lead time, as a share of total actual usage. From January to June 2026, the
+model's {len(live):,} forecasts (one per item, each week) scored <strong>{pct(live_model, 0)}</strong>. In
+practical terms, for every 100 units an item actually used over its lead time, the forecast was off by about
+{live_model * 100:.0f} units, high or low, against about {live_base * 100:.0f} for the best simple method. The
+errors largely cancel out across items: in total, the forecasts came within {abs(live_bias) * 100:.1f}% of actual
+usage. The error on any one item is large because most items are used unevenly: a single job or spare-parts order
+can double an item's usage in a week. That is why each reorder point adds a safety buffer sized to the item's own
+forecast error, rather than trusting the forecast alone.</p>
+<p>The model beat the best simple method (a moving average or last year's same weeks) for each demand pattern:</p>
 {accuracy_table()}
-<p>Bias is the diagnostic accuracy hides. Before correction the model ran
-{', '.join(f"{abs(s_['bias'])*100:.0f}% low on {s_['segment']}" for s_ in metrics['segments'])} parts. Each
-pattern's forecasts are scaled up by the ratio of actual to forecast demand in the 2025 backtest, and in the six
-forward months the corrected forecasts ran within {fb_max*100:.0f}% of actual demand for every pattern.</p>
-<p>The safety buffer is calibrated on the same backtest. The buffer is set so that the units a part is expected to
-run short between deliveries stay within its fill-rate target, measured on the model's actual 2025 errors rather
-than on a normal curve. Those errors have fatter tails than a normal curve, so textbook multiples would leave the
-buffer short. The calculation accounts for the order quantity (a large lot protects most of its own cycle), for
-the part of demand the ERP already sees on released jobs, and for delivery variability from each item's own
-receipt history.</p>
+<p>Bias is the diagnostic accuracy hides. Left alone, the model's forecasts run low, most of all on intermittent
+items, so each pattern's forecasts are scaled up by a fixed correction. With it, the forecasts ran within
+{live_bias_max * 100:.0f}% of actual usage for every pattern.</p>
+<p>The safety buffer is set so that the units an item is expected to run short between deliveries stay within its
+fill-rate target, measured on the model's own forecast errors rather than on a normal curve. Those errors have
+fatter tails than a normal curve, so textbook multiples would leave the buffer short. The calculation accounts for
+the order quantity (a large lot protects most of its own cycle), for the part of demand the ERP already sees on
+released jobs, and for delivery variability from each item's own receipt history.</p>
+{sub("With and without the model, January to June 2026")}
+<p>To measure what the model changed, the same January to June 2026 demand and supplier deliveries were replayed
+twice: once with the shop's manual reordering continued (its stale lead times and reorder points, the buyers'
+four-and-a-half-month lots and the data errors), and once with the model setting reorder points and order
+quantities on the cleaned records, reading the order book about {VM_days} days ahead. The purchasing manager
+expedites the same items in both. The first three months are a transition, as orders placed under the old points
+are still arriving and excess stock is used up, so the steady-state comparison is April to June.</p>
+{B.chart("Without and with the model, April to June 2026", charts["variants"])}
+{B.chart("Average inventory by month, without and with the model", charts["invm"])}
+<p>Once the new policy has settled, the model cuts stockout events by {fall(dirty46['stockout_episodes'], mod46['stockout_episodes'])},
+stockouts on line-critical items from {dirty46['stockout_episodes_by_tier']['line']} to
+{mod46['stockout_episodes_by_tier']['line']}, jobs held for material by {fall(dirty46['jobs_delayed'], mod46['jobs_delayed'])} and
+rush spend by {fall(dirty46['rush_spend'], mod46['rush_spend'])}, and ends June with {k(end_mod)} of stock against
+{k(end_dirty)}. It places more order lines ({mod46['order_lines']:,} against {dirty46['order_lines']:,}) because the
+expensive items are bought more often; that is the cost of carrying less of them.</p>
+{sub("January to June 2026")}
+{compare_table(F)}
+{sub("April to June 2026 (after the transition)")}
+{compare_table(M46)}
 
-{B.section("source", "Section 3.3", "Where the Improvement Came From")}
-<p>To separate what the cleanup did from what the model did, the same January to June 2026 demand, with the same
-supplier deliveries, was replayed three ways. With nothing fixed, the shop keeps the stale lead times and
-reorder points, the duplicate records, the phantom on-order and the buyers' four-and-a-half-month lots. With the cleaned
-records and the recomputed rule, it runs on the corrected masters with reorder points recomputed each month from
-the last twelve months of usage over the corrected lead time, plus a standard buffer, and keeps the buyers' lots.
-With the demand model, the corrected masters are the same, and the reorder points and order quantities come from
-the model. Under the rule the ERP nets the parts committed to released jobs, which it sees about {V_days} days
-ahead; the model also reads the order book, which extends that to about {VM_days} days, and keeps supplier lead
-times current. In every variant the purchasing manager expedites the same parts she always has. None of the three can
-see future demand beyond that, as the ERP cannot.</p>
-{B.chart("The same demand three ways, months 4 to 6 (steady state)", charts["variants"])}
-{B.chart("Average inventory by month, the same demand three ways", charts["invm"])}
-<p>The first three months are a transition: orders placed under the old points are still arriving, and excess
-stock is being used up. The comparison that matters is months 4 to 6, once the new policy has settled. Across the
-full six months:</p>
-{variants_table(F)}
-{sub("Months 1 to 3 (transition)")}
-{variants_table(M13)}
-{sub("Months 4 to 6 (steady state)")}
-{variants_table(M46)}
-<p>The recomputed rule alone lowers inventory (a June 30 balance of {k(end_rule)} against {k(end_dirty)} with
-nothing fixed) and {RULE_SVC}: fill is {pct(rule46['fill_rate'])} against {pct(dirty46['fill_rate'])}, and
-{rule46['jobs_delayed']} jobs are held against {dirty46['jobs_delayed']}. But its textbook buffer assumes steadier
-demand than the shop's parts show, so the lumpy, hard-to-predict parts still run short. The model, on the same cleaned records,
-{END_NOTE} and cuts stockout events to
-{mod46['stockout_episodes']:,}, stockouts on line-critical parts from {dirty46['stockout_episodes_by_tier']['line']}
-to {mod46['stockout_episodes_by_tier']['line']}, and jobs held to {mod46['jobs_delayed']}. {AVG_NOTE} It places more order
-lines ({mod46['order_lines']:,} against {dirty46['order_lines']:,}) because the expensive parts are bought more often;
-that is the cost of carrying less of them.</p>
-{sub("Purchases by month")}
-<p>Purchases should converge to consumption under any sound policy. Under the model, purchases run above
-consumption at first while buffers are built on the parts that were running short, then below it as excess on
-the rest is used up.</p>
-{purchases_table()}
-
-{B.section("limits", "Section 3.4", "What It Can and Cannot Predict")}
+{B.section("limits", "Section 3.3", "What It Can and Cannot Predict")}
 <ul class="limitation-list">
   <li><strong>It forecasts demand, not supply.</strong> The model predicts how much the shop will use; it takes each
       supplier's lead time from its recent deliveries, refreshed monthly, and does not predict a late delivery. The buffer covers
       the usual spread of deliveries, not a supplier failure.</li>
   <li><strong>The forward window is a simulation.</strong> The six months are replayed from the generated demand
-      and supplier behaviour, not observed. Demand, deliveries and the forecast are identical across the three
-      variants, so the differences between them are the policy; the size of each difference is an estimate.</li>
-  <li><strong>Excess on slow parts takes time to clear.</strong> {k(mod46['excess_value'])} of stock in months 4 to 6
+      and supplier behaviour, not observed. Demand, deliveries and the forecast are identical in both replays, so
+      the differences between them are the policy; the size of each difference is an estimate.</li>
+  <li><strong>Excess on slow items takes time to clear.</strong> {k(mod46['excess_value'])} of stock in months 4 to 6
       still sits on {mod46['excess_items']} items holding more than a year of supply. The model stops reordering
-      them, but a part used a few times a year takes that long to draw down. Returning or selling the worst of it
+      them, but an item used a few times a year takes that long to draw down. Returning or selling the worst of it
       would release the cash sooner; that is a disposition decision for purchasing and finance, not a forecast.</li>
   <li><strong>The order book is an assumption.</strong> The shop's records carry no booking date for customer
       orders, so each job is assumed booked four to eight weeks before its release, typical of a job shop quoting
       lead times of that length. With less notice, the model would see less of the coming demand.</li>
-  <li><strong>The comparison rule is a textbook rule.</strong> The recomputed rule uses the standard buffer a
-      planner would set by hand. A planner could pad it further and buy more service with more stock; what the
-      model adds is putting that stock on the parts whose demand is hardest to predict.</li>
-  <li><strong>Expediting is held constant.</strong> All three variants expedite the same parts the purchasing
-      manager tracked before go-live, so rush spend reflects how often those parts were at risk, not a change in
+  <li><strong>Expediting is held constant.</strong> Both replays expedite the same items the purchasing
+      manager tracked before go-live, so rush spend reflects how often those items were at risk, not a change in
       how hard the shop chases suppliers.</li>
   <li><strong>The first three months are a transition.</strong> Orders placed under the old points are still
       arriving while excess is used up; the steady-state comparison is months 4 to 6, and three months is a short
