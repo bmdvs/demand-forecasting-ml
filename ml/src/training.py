@@ -33,7 +33,6 @@ optuna.logging.set_verbosity(optuna.logging.WARNING)
 
 MARTS = REPO / "ml" / "data" / "marts"
 BACKTEST = REPO / "ml" / "data" / "backtest"
-SEEDS = REPO / "data_pipeline" / "seeds"
 RAW = REPO / "data_source" / "raw"
 MODELS = REPO / "ml" / "models"
 N_TRIALS = 15
@@ -193,7 +192,7 @@ def run():
 
 def _dirty_before_after(model, attrs):
     tx = pd.read_csv(RAW / "erp" / "inventory_transactions.csv")
-    crosswalk = pd.read_csv(SEEDS / "item_crosswalk.csv")
+    crosswalk = pd.read_csv(MARTS / "item_crosswalk.csv")
     groups = crosswalk.groupby("canonical_item_number")["item_number"].apply(list)
     clusters = groups[groups.map(len) > 1]
     iss = tx[tx["type"].isin(["ISSUE", "BACKFLUSH"])].copy()

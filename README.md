@@ -64,7 +64,7 @@ flowchart LR
 
 Raw extracts from the ERP, the warehouse system and the buyers' spreadsheet are typed in dbt staging models on DuckDB. Sixteen data-quality models, one per error in the audit, flag the affected records, from dead and duplicate item records and stale lead times to free-text purchases and purchase orders never closed; a summary mart turns them into the audit's error register. The remediation is recorded as auditable merges, corrections and deactivations, which the intermediate models apply without overwriting the source: duplicate records resolve to one canonical item, confirmed ledger corrections are applied, and lead times are recomputed from actual receipts. The marts then hold cleaned weekly usage, item attributes (demand pattern, ABC class, corrected lead time), the inventory position and supplier performance.
 
-Because the data is generated, the model's training marts are built by [`ml/src/prep_marts.py`](ml/src/prep_marts.py), which also produces raw, partly cleaned and fully cleaned versions of the history and scores each against the generator's true demand. The dbt marts cover the same 1,300 items and match their total usage to within 0.2%.
+Because the data is generated, dbt also reads the generator's record of what it planted, flattened into tables by [`data_source/generate/export_truth.py`](data_source/generate/export_truth.py): the true duplicate clusters, the usage that was never recorded, the planned value classes and true demand. These stand in for findings the business confirmed, and they let the marts carry raw, master-cleaned and fully cleaned versions of the usage history, plus a true-demand series to score each version against. The model reads its marts from the warehouse, exported to parquet by [`ml/src/export_marts.py`](ml/src/export_marts.py), and the data quality audit reads its error register from the `mart_dq_error_summary` mart.
 
 The demand model is a random forest, selected over XGBoost and ridge regression on a 2024 validation window and tested on the full 2025 year. Every Monday it forecasts each item's usage over its supplier lead time. That forecast is bias-corrected by demand pattern and combined with a safety buffer, sized from the model's own errors to each item type's fill-rate target, and a cost-based order quantity. The result is loaded into the ERP's reorder queue. The model is retrained monthly and monitored each month against its 2025 performance.
 
@@ -96,14 +96,15 @@ python3 -m venv .venv
 source .venv/bin/activate          # Windows: .venv\Scripts\activate
 pip install -e .
 
-# 2. Generate the source data, remediate it and build the marts
+# 2. Generate the source data and remediate it
 python3 -m data_source.generate.run_generator
 python3 -m data_source.generate.validate
 python3 -m data_source.generate.remediation
-python3 -m ml.src.prep_marts
+python3 -m data_source.generate.export_truth
 
 # 3. Warehouse: staging, data-quality models, intermediate models and marts
 cd data_pipeline && dbt build --profiles-dir . && cd ..
+python3 -m ml.src.export_marts
 
 # 4. Baselines, model selection and the weekly forecast and reorder policy
 python3 -m ml.src.baselines
@@ -115,10 +116,11 @@ python3 -m ml.src.forward_policy
 python3 -m data_source.generate.run_generator
 python3 -m data_source.generate.validate
 python3 -m data_source.generate.remediation
-python3 -m ml.src.prep_marts
+python3 -m data_source.generate.export_truth
+cd data_pipeline && dbt build --profiles-dir . && cd ..
+python3 -m ml.src.export_marts
 python3 -m ml.src.reliability
 python3 -m ml.src.financials
-cd data_pipeline && dbt build --profiles-dir . && cd ..
 
 # 6. Explainability and monitoring
 python3 -m ml.src.explain_weekly
