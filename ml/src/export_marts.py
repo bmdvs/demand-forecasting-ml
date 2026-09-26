@@ -26,7 +26,7 @@ import pandas as pd
 from data_source.generate import config as C
 
 REPO = C.REPO_ROOT
-WAREHOUSE = REPO / "data_source" / "inventory_forecast.duckdb"
+WAREHOUSE = REPO / "data_source" / "demand_forecasting.duckdb"
 MARTS = REPO / "ml" / "data" / "marts"
 
 TIERS = {"raw": "mart_consumption_raw", "master": "mart_consumption_master",

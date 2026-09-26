@@ -27,7 +27,7 @@ MARTS = REPO / "ml" / "data" / "marts"
 BACKTEST = REPO / "ml" / "data" / "backtest"
 FIN = REPO / "ml" / "data" / "financials"
 OUT = REPO / "docs" / "reports" / "data_quality_audit.html"
-WAREHOUSE = REPO / "data_source" / "inventory_forecast.duckdb"
+WAREHOUSE = REPO / "data_source" / "demand_forecasting.duckdb"
 
 
 def _money(x):
