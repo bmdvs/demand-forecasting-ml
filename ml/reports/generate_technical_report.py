@@ -121,6 +121,17 @@ for item, entries in sched["items"].items():
         _last.append((attrs.loc[item, "abc"], e[7] / d, e[2] / d))
 lots = pd.DataFrame(_last, columns=["abc", "lot_days", "ss_days"])
 
+_m25 = pd.read_parquet(MARTS / "consumption_monthly.parquet")
+_u25 = _m25[(_m25["month"] >= "2025-01-01") & (_m25["month"] < "2026-01-01")].groupby("canonical")["consumption"].sum()
+_v = attrs.join(_u25.rename("u25")).fillna({"u25": 0})
+_v["v25"] = _v["u25"] * _v["standard_cost"]
+ABCV = _v.groupby("abc").agg(med_val=("v25", "median"), p10=("v25", lambda x: x.quantile(0.1)),
+                              med_cost=("standard_cost", "median"))
+
+
+def k_(x):
+    return f"${x / 1000:,.1f}K" if x >= 1000 else f"${x:,.0f}"
+
 
 # ── charts ──────────────────────────────────────────────────────────────────
 def chart_volume():
@@ -337,7 +348,7 @@ def feature_table():
 def split_table():
     rows = [[name, split[k]["window"].replace(" to ", " to "), f"{split[k]['rows']:,}", f"{split[k]['items']:,}",
              f"{split[k]['target_median']:,.0f}", pct(split[k]["zero_share"], 0)]
-            for name, k in [("Train", "train"), ("Validation", "validation"), ("Held-out test", "test")]]
+            for name, k in [("Train", "train"), ("Validation", "validation"), ("Test", "test")]]
     rows.append(["Live", "2026-01-01 to 2026-06-29", f"{len(live):,}", f"{live['item'].nunique():,}",
                  f"{live['actual'].median():,.0f}", pct((live['actual'] == 0).mean(), 0)])
     return widths(B.data_table(["Split", "Forecast dates", "Forecasts", "Items", "Median target (units)", "Zero-usage share"],
@@ -436,14 +447,15 @@ def ops_table():
                          "rop_schedule.json &rarr; ERP reorder queue"],
         ["Retraining triggers", "Live WAPE for any demand pattern more than 5 points above its 2025 level for two "
                                 "consecutive months; corrected bias outside &plusmn;10% for a pattern; achieved fill "
-                                "rate more than 1 point below target for a criticality group"],
+                                "rate more than 1 point below target for a criticality group; stockout events or jobs "
+                                "held for material above their 1H 2026 monthly level for two consecutive months"],
     ]
     return widths(B.data_table(["Specification", "Detail"], rows), [22, 78])
 
 
 charts = {"volume": chart_volume(), "target": chart_target(), "corr": chart_corr(), "learning": chart_learning(),
           "calib": chart_calibration(), "pattern": chart_by_pattern(), "pva": chart_pred_actual(),
-          "shap": chart_shap(), "loss": chart_loss(), "lots": chart_lots(), "coverage": chart_coverage()}
+          "shap": chart_shap(), "loss": chart_loss(), "lots": chart_lots()}
 
 p_ = metrics["candidates"][WIN]["params"]
 PROSE = {"ly": "usage in the same weeks last year", "lead": "supplier lead time", "h": "the forecast horizon",
@@ -478,32 +490,29 @@ body = f"""
   <div><div class="mc-label">Tuning</div><div class="mc-value">Optuna, {N_TRIALS} trials per candidate, validation WAPE objective</div></div>
   <div><div class="mc-label">Cadence</div><div class="mc-value">Refreshed every Monday; retrained monthly</div></div>
   <div><div class="mc-label">Outputs</div><div class="mc-value">Reorder point and order quantity per item, loaded into the ERP</div></div>
-  <div><div class="mc-label">Held-out 2025 WAPE</div><div class="mc-value">{pct(test_w)} (best simple method {pct(metrics['overall']['baseline'])})</div></div>
-  <div><div class="mc-label">Live 1H 2026 WAPE</div><div class="mc-value">{pct(live_w)} (best simple method {pct(live_b)})</div></div>
-  <div style="grid-column:1/-1;"><div class="mc-label">Purpose</div><div class="mc-value">Forecasts each stocked item's usage over its supplier lead time and turns it into a reorder point and order quantity for the ERP's reorder queue. Decision support for purchasing: buyers release the suggested orders.</div></div>
+  <div><div class="mc-label">Held-out 2025 WAPE</div><div class="mc-value">{pct(test_w)}</div></div>
+  <div><div class="mc-label">Live 1H 2026 WAPE</div><div class="mc-value">{pct(live_w)}</div></div>
+  <div style="grid-column:1/-1;"><div class="mc-label">Purpose</div><div class="mc-value">Forecasts each stocked item's usage over its supplier lead time and turns it into a reorder point and order quantity for the ERP's reorder queue. Intended as decision support for reordering: buyers are required to release the suggested orders.</div></div>
 </div></div>
 
 {B.section("data", "Section 2", "Training Data")}
 <p>The model learns from the shop's weekly usage of each of its {attrs.shape[0]:,} stocked items. Each training row
 is one item on one forecast date. Its features describe the item's usage up to that date, and its target is the
-usage over the following lead time, rounded to whole weeks. Because lead times run from a few weeks to a few
-months, the target covers a different window for each item, and the lead time (<code>h</code>) is itself a
-feature.</p>
+usage over the following lead time, rounded to whole weeks.</p>
 <p>The historical data is split by date and never shuffled. The first 52 weeks of history (through 2023) are used
 only to build the rolling features, because every forecast needs a full year of history behind it, so the first
 usable forecast date is January 2024. The 2024 data was used for tuning, split into a January to June training
 window and a July to December validation window on which the three candidates were compared. Once the winner was
 chosen, it was refit on all of 2024 before being scored on 2025 data. We chose to use the full 2025 year of data for
 model testing, because the bias correction for each demand pattern and the safety-buffer multiples are calibrated on
-its errors, and both need a full seasonal cycle rather than half of one to reflect the seasonal demand of certain
-items.</p>
+its errors, and both need a full year to reflect the seasonal demand of certain items.</p>
 <p>The first six months of 2026 are the model's live output. In live use the model is retrained monthly on every
 forecast date whose outcome is already known, which by June 2026 spans 2024 through early 2026. Because 2025 serves
-both to calibrate the policy and to report held-out accuracy, the fully out-of-sample test is the live performance
+both to calibrate the model and to report held-out accuracy, the fully out-of-sample test is the live performance
 from January to June 2026.</p>
 {split_table()}
 {B.chart("Weekly Usage by Split", charts["volume"])}
-<p>The {len(FEAT_DESC)} features fall into three groups. The first is Rolling Usage, including usage windows (4, 13,
+<p>The model's {len(FEAT_DESC)} features fall into three groups. The first is Rolling Usage, including usage windows (4, 13,
 26 and 52 weeks), the count of weeks with any usage, the time since the last usage and the recent variability. The
 second is Calendar Features, to let the model learn seasonal demand patterns. The third is Item Attributes,
 including cost, lead time, demand pattern, value class and category, to tell the model how to read each item's
@@ -514,16 +523,9 @@ usage.</p>
 {feature_table()}
 <p>The rolling usage windows are strongly correlated with one another, since they overlap in time. The
 weeks-since-last-usage and variability features move against the usage windows, as expected for intermittent items.
-Some features are near-duplicates: the 52-week window and the all-history average ({cmat.loc['s52', 'mean_all']:+.2f}),
-lead time and forecast horizon ({cmat.loc['lead', 'h']:+.2f}, since the horizon is the lead time in weeks), and annual
-usage and the long windows (about {cmat.loc['s52', 'annual']:+.2f}). A random forest's accuracy is unaffected by this;
-duplicate features simply share the importance between them. Unit cost runs against usage
-({cmat.loc['std_cost', 's13']:+.2f} to {cmat.loc['std_cost', 'mean_all']:+.2f}), because expensive items are used in
-smaller quantities. Lead time is unrelated to usage level ({cmat.loc['lead', 's52']:+.2f}) but correlates
-{cmat.loc['lead', 'ly']:+.2f} with last year's usage over the same weeks, because that figure is summed over a
-lead-time-long window and so captures both the item's level and the length of the window being forecast. Last
-year's usage correlates only {cmat.loc['s52', 'ly']:+.2f} with the 52-week total, so its timing adds information
-beyond the average level.</p>
+Unit cost runs against usage ({cmat.loc['std_cost', 's13']:+.2f} to {cmat.loc['std_cost', 'mean_all']:+.2f}), because
+expensive items are used in smaller quantities. Last year's usage correlates only {cmat.loc['s52', 'ly']:+.2f} with the
+52-week total, so its timing adds information beyond the average level.</p>
 {B.chart("Feature Correlation Heatmap (numeric features, Spearman)", charts["corr"])}
 <p>The target is heavily right-skewed: most lead-time windows use a few dozen units, while fasteners and
 consumables run to thousands. The model is therefore trained on log(1 + usage), so the few very high-volume items do
@@ -541,9 +543,7 @@ held-out 2025 year. The {LABEL[WIN].lower()} had the lowest validation error and
 {candidate_table()}
 <p>The best {LABEL[WIN].lower()} model has {p_.get('n_estimators')} trees with a maximum depth of
 {p_.get('max_depth')} and at least {p_.get('min_samples_leaf')} rows per leaf. The relatively large leaf-size floor
-keeps each tree from fitting individual spikes: every prediction averages at least {p_.get('min_samples_leaf')}
-similar training rows, so the model learns typical usage for items in similar situations rather than memorising
-one-off outliers.</p>
+keeps the model from fitting individual spikes and instead learning the items' typical usage patterns.</p>
 
 {B.section("performance", "Section 3.2", "Model Performance")}
 <p>Accuracy is measured as WAPE: the total absolute gap between forecast and actual usage across all forecasts,
@@ -576,7 +576,7 @@ in both periods.</p>
 <p>Plotted against actual usage on log scales, the live forecasts cluster around the diagonal across four orders
 of magnitude, meaning the same model tracks items that use a handful of units per lead time as well as those that use
 thousands, rather than working only for high- or low-volume items. The spread around the diagonal is the item-level
-error that the safety buffer has to absorb.</p>
+error that the safety buffer absorbs.</p>
 <div style="max-width:520px;margin:18px auto;">{B.chart("Forecast vs Actual Usage, Live 1H 2026", charts["pva"])}</div>
 
 {B.section("shap", "Section 4", "Feature Importance (SHAP)")}
@@ -584,13 +584,12 @@ error that the safety buffer has to absorb.</p>
 forecasts and in units of log usage. The model leans most on {top3[0]}, {top3[1]} and {top3[2]}. Last year's usage
 over the same weeks is by far the strongest, because it is the only feature measured over exactly the window being
 forecast: the same number of weeks as the item's lead time, at the same time of year. Every other usage feature
-covers a fixed span (4, 13, 26 or 52 weeks) that the model has to rescale to the lead time, so last year's figure is
-the closest single stand-in for the answer. More recent usage then adjusts that starting point up or down, and the
-item's demand pattern tells the model how far to trust the recent weeks. Calendar and category features contribute
-little. About {SEASONAL_SHARE:.0%} of items are seasonal, but each peaks at its own time of year, and last year's
-same-weeks usage already carries each item's own seasonal timing; a shared week-of-year or month feature adds little
-on top of it. Category adds little for a similar reason, since cost, usage level and demand pattern already capture
-most of what distinguishes the categories.</p>
+covers a fixed span (4, 13, 26 or 52 weeks) that the model has to rescale. More recent usage then adjusts that
+starting point up or down, and the item's demand pattern tells the model how reliably this can be trusted.</p>
+<p>Calendar and category features contribute little. About {SEASONAL_SHARE:.0%} of items are seasonal, but each peaks
+at its own time of year, and last year's same-weeks usage already carries each item's own seasonal timing; a shared
+week-of-year or month feature adds little on top of it. Category adds little for a similar reason, since cost, usage
+level and demand pattern already capture most of what distinguishes the categories.</p>
 {B.chart("Mean Absolute SHAP Value by Feature", charts["shap"])}
 
 {B.section("policy", "Section 5", "From Forecast to Reorder Decision")}
@@ -619,17 +618,14 @@ ordered often needs more.</p>
 <p><strong>Order quantity.</strong> The recommended order quantity for each item, calculated from its usage
 forecast, balances the cost of placing an order line against the cost of holding stock. Expensive, heavily used items
 are ordered every few weeks, and cheap items a few times a year.</p>
+<p>The chart below groups items by value class. The classes are set by annual usage value (units used &times; unit
+cost), not by unit price: A items are those that together make up the first 80% of usage value, B items the next 15%
+and C items the last 5%. In 2025 the typical A item used about {k_(ABCV.loc['A', 'med_val'])} of stock a year (most
+above {k_(ABCV.loc['A', 'p10'])}) at a median unit cost of ${ABCV.loc['A', 'med_cost']:,.0f}; a typical B item about
+{k_(ABCV.loc['B', 'med_val'])} a year at ${ABCV.loc['B', 'med_cost']:,.0f}; and a typical C item about
+{k_(ABCV.loc['C', 'med_val'])} a year at ${ABCV.loc['C', 'med_cost']:,.0f}. The A items, where most of the money sits,
+are bought in the smallest lots.</p>
 {B.chart("Order Quantity in Days of Usage, by Value Class", charts["lots"])}
-<p><strong>Coverage.</strong> In live use, actual usage over the lead time stayed within the forecast plus buffer
-in {live['covered'].mean() * 100:.0f}% of lead-time windows. The fill rate, the share of units supplied from stock,
-is higher, because when usage does run over, the shortfall is usually small and the next order arrives soon after.
-Achieved fill rates came in {min(FT[t] - MOD['fill_rate_by_tier'][t] for t, _ in TIERS) * 100:.1f} to
-{max(FT[t] - MOD['fill_rate_by_tier'][t] for t, _ in TIERS) * 100:.1f} points below their targets over the six
-months. The gap is widest in the first three months, while stock placed under the old reorder points was still
-being worked through; from April to June it narrows to
-{min(FT[t] - M46M['fill_rate_by_tier'][t] for t, _ in TIERS) * 100:.1f} to
-{max(FT[t] - M46M['fill_rate_by_tier'][t] for t, _ in TIERS) * 100:.1f} points.</p>
-{B.chart("Reorder-Point Coverage and Fill Rate by Criticality, Live 1H 2026", charts["coverage"])}
 
 {B.section("limits", "Section 6", "Known Limitations")}
 <ul class="limitation-list">
@@ -639,8 +635,8 @@ being worked through; from April to June it narrows to
   <li><strong>Irreducible item-level error.</strong> Lumpy and intermittent demand carries randomness no model can
   learn; much of the item-level WAPE of {pct(live_w, 0)} reflects that rather than the fit.</li>
   <li><strong>Fill rate, not events.</strong> The buffer targets the share of units supplied. It does not directly
-  target the probability of a stockout event or of a job being held, which are the outcomes production feels
-  most.</li>
+  target the probability of a stockout event or of a job being held, though these important metrics are closely
+  monitored.</li>
   <li><strong>Supply is taken as given.</strong> Lead times are refreshed from recent receipts and their variability
   enters the buffer, but late deliveries are not forecast.</li>
   <li><strong>Order-book assumption.</strong> The records carry no booking date for customer orders; jobs are
