@@ -505,6 +505,11 @@ above their 2025 levels (Investigate).</p>
 {pattern_table()}
 
 {B.section("drift", "Section 2.2", "Drift")}
+<p>Drift compares each month's data with a fixed reference calculated using the Jensen-Shannon distance, flagged at
+{TH['drift']:.2f}. In other words, it checks for statistical similarity: whether this month's values fall across the
+same ranges, in similar proportions, as the reference, where 0 means the two are identical and 1 means they do not
+overlap at all. It is checked three ways: on the targets (lead-time usage), on the model's forecasts, and on the
+model's features.</p>
 <p>Target drift is the distance between each month's actual lead-time usage and the training rows (Investigate
 threshold flagged at {TH['drift']:.2f}; calculated using the Jensen-Shannon distance). A shift would mean actual
 monthly demand has moved away from what the model learned. <strong>Across the matured months target drift stays well
