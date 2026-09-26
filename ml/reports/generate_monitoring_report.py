@@ -438,8 +438,7 @@ against the rows the model was trained on, and outcomes against the shop's 2025 
 the held-out 2025 year. <strong>From January to April, overall error stays close to the reference
 ({pct(min(p['wape'] for p in M))} to {pct(max(p['wape'] for p in M))}) and overall bias stays within
 {max(abs(p['bias']) for p in M) * 100:.0f}%, meaning the model as a whole has not degraded.</strong> March and April sit slightly above the reference, so both
-are flagged to Investigate, but stay well below the Retrain threshold of {pct(ret_wape)}. Recall, May and
-June's forecasts haven't matured yet, so they're not included in this chart.</p>
+are flagged to Investigate, but stay below the Retrain threshold of {pct(ret_wape)}.</p>
 {B.chart("Forecast Error (WAPE) by Month", charts["wape"])}
 {perf_table()}
 <p>Examining forecast error by demand pattern, <strong>intermittent items were over-forecast in March and April,
