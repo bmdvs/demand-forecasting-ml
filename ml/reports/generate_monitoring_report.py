@@ -233,23 +233,17 @@ def chart_fill():
 def chart_outcomes():
     import matplotlib.pyplot as plt
     fig, axes = plt.subplots(1, 2, figsize=(B.CHART_W, 3.1))
-    sq = fr["monthly"]
     for ax, key, ref, title in [(axes[0], "stockout_events", summ["ref_events"], "Stockout events"),
                                 (axes[1], "jobs_held", summ["ref_held"], "Jobs held for material")]:
         vals = [p[key] for p in P]
-        sqv = [sq[p["period"]]["dirty"]["stockout_episodes" if key == "stockout_events" else "jobs_delayed"] for p in P]
-        ax.bar(short, vals, color=[ACCENT_RED if v > ref else DARK_BLUE for v in vals], width=0.55, label="With the model")
-        ax.plot(short, sqv, "o--", color=MED_GREY, lw=1.4, label="Status quo")
-        ax.axhline(ref, color=AMBER, ls="--", lw=1.3, label=f"2025 monthly average ({ref:.0f})")
+        ax.bar(short, vals, color=[ACCENT_RED if v > ref else DARK_BLUE for v in vals], width=0.55)
+        ax.axhline(ref, color=AMBER, ls="--", lw=1.3)
+        ax.text(len(P) - 0.5, ref, f"2025 monthly avg. {ref:.1f}", ha="right", va="bottom", fontsize=8.5,
+                color=DARK_GREY, fontweight="bold")
+        ax.set_xlim(-0.6, len(P) - 0.4); ax.set_ylim(0, max(max(vals), ref) * 1.2)
         ax.set_title(title, fontsize=10, color=DARK_GREY)
         B.chart_style(ax)
-    from matplotlib.patches import Patch
-    h, l = axes[0].get_legend_handles_labels()
-    l = [x.replace(f" ({summ['ref_events']:.0f})", "") for x in l]
-    i = l.index("With the model")
-    h[i], l[i] = Patch(color=DARK_BLUE), "With the model (red where above the 2025 average)"
-    fig.legend(h, l, loc="lower center", ncol=3, fontsize=8.5, frameon=False, bbox_to_anchor=(0.5, -0.02))
-    fig.tight_layout(rect=(0, 0.07, 1, 1))
+    fig.tight_layout()
     return B.b64(fig)
 
 
@@ -435,12 +429,20 @@ def log_table():
 
 
 worst = max(flag_pats.items(), key=lambda kv: max(abs(h[2]) for h in kv[1])) if flag_pats else None
+TIER_NAME = {"line": "production items", "service": "spare parts", "standard": "shop supplies"}
+_gaps = [(t, p, FT[t] - p["fill_by_tier"][t]) for p in P for t in FT]
+n_cells = len(_gaps)
+n_below = sum(g > 0 for _, _, g in _gaps)
+n_below1 = sum(g > TH["fill_tol"] for _, _, g in _gaps)
+miss = {t: sum(FT[t] - p["fill_by_tier"][t] > 0 for p in P) for t in FT}
+_w = max(_gaps, key=lambda x: x[2])
+worst_gap = (TIER_NAME[_w[0]], pd.Timestamp(_w[1]["period"] + "-01").strftime("%B"), _w[2] * 100)
 toc = ('<a href="#status">1 &middot; Status &amp; Decision</a>'
        '<a href="#summary">2 &middot; MLOps Monitoring Summary</a>'
        '<a href="#perf" class="sub">Performance</a>'
        '<a href="#drift" class="sub">Drift</a>'
        '<a href="#quality" class="sub">Data Quality</a>'
-       '<a href="#outcomes" class="sub">Business Outcomes</a>'
+       '<a href="#outcomes" class="sub">Business KPIs</a>'
        '<a href="#log">3 &middot; Monitoring Log</a>')
 
 body = f"""
@@ -464,8 +466,8 @@ business KPI targets.</p>
 {B.section("summary", "Section 2", "MLOps Monitoring Summary")}
 
 {B.section("perf", "Section 2.1", "Performance")}
-<p>Forecast error for each complete month of data is presented below against the {pct(ref_wape)} reference from
-the held-out 2025 year. <strong>From January to April, overall error stays close to the reference
+<p>Forecast error for each complete month of data is presented below against the {pct(ref_wape)} Investigate
+threshold (the model's original WAPE on 2025 data). <strong>From January to April, overall error stays close to the reference
 ({pct(min(p['wape'] for p in M))} to {pct(max(p['wape'] for p in M))}) and overall bias stays within
 {max(abs(p['bias']) for p in M) * 100:.0f}%, meaning the model as a whole has not degraded.</strong> March and April sit slightly above the reference, so both
 are flagged to Investigate, but stay below the Retrain threshold of {pct(ret_wape)}.</p>
@@ -481,22 +483,23 @@ above their 2025 levels (Investigate).</p>
 {pattern_table()}
 
 {B.section("drift", "Section 2.2", "Drift")}
-<p>Drift compares each month's data with a fixed reference using the Jensen-Shannon distance, flagged at
-{TH['drift']:.2f}. It is checked three ways: on actual usage, on the model's forecasts and on its inputs.</p>
-<p><strong>Target drift.</strong> Distance between each month's actual lead-time usage and the training rows. A shift would mean demand itself has moved away from what the model learned. <strong>Across the
-matured months target drift stays well under the threshold ({min(p['target_drift'] for p in matured):.3f} to
-{max(p['target_drift'] for p in matured):.3f}): the shop's usage looks like the usage the model was trained
-on.</strong></p>
+<p>Target drift is the distance between each month's actual lead-time usage and the training rows (Investigate
+threshold flagged at {TH['drift']:.2f}; calculated using the Jensen-Shannon distance). A shift would mean actual
+monthly demand has moved away from what the model learned. <strong>Across the matured months target drift stays well
+under the threshold ({min(p['target_drift'] for p in matured):.3f} to {max(p['target_drift'] for p in matured):.3f}),
+meaning demand patterns are consistent.</strong></p>
 {B.chart("Target Drift Distance by Month", charts["target"])}
-<p><strong>Prediction drift.</strong> Distance between each month's forecasts and the forecasts from the held-out 2025 year. A label-free early
-warning, available as soon as forecasts are made. <strong>Prediction drift stays under the threshold every month
-(at most {max(p['prediction_drift'] for p in P):.3f}), so the model is producing forecasts on the same scale and
-spread as in 2025.</strong></p>
+<p>Prediction drift measures how far the distribution of each month's forecasts has moved from that of the
+held-out 2025 forecasts, i.e., whether the forecasts are spread across the same range of values in similar
+proportions. <strong>Prediction drift stays under the threshold every month (at most
+{max(p['prediction_drift'] for p in P):.3f}), so the model is producing forecasts on the same scale and spread as in
+2025.</strong></p>
 {B.chart("Prediction Drift Distance by Month", charts["pred"])}
 {B.chart(f"Forecast Distribution: Held-out 2025 Reference vs {names[-1]}", charts["pdist"])}
-<p><strong>Feature drift.</strong> Per-feature distance between each month's inputs and the training rows; calendar features are excluded, since
-they change with the date by design. <strong>{'No input feature crosses the threshold in any month' if max(p['n_features_drifted'] for p in P) == 0 else 'A few features cross the threshold'}, so
-the item-level over-forecasting above is not explained by a shift in the inputs.</strong></p>
+<p>Feature drift measures how far the distribution of each input has moved each month from its distribution in
+the training rows; calendar features are excluded, since they change with the date by design. <strong>No input
+feature crosses the threshold in any month, so the item-level over-forecasting above is not explained by a shift in
+the inputs.</strong></p>
 {B.chart("Per-Feature Drift Distance (feature by month)", charts["heat"])}
 <p>Latest-month detail ({names[-1]}), ordered by distance:</p>
 {feat_table()}
@@ -510,18 +513,19 @@ negative usage, {'no' if max(p['unseen_items'] for p in P) == 0 else 'some'} uns
 inputs as a cause of the pattern-level drift.</strong></p>
 {dq_table()}
 
-{B.section("outcomes", "Section 2.4", "Business Outcomes")}
-<p>The outcomes the reorder policy is accountable for, from the live replay. Fill rate is measured against each
-criticality group's target. <strong>At least one group ran more than {TH['fill_tol'] * 100:.0f} point below its
-target in {len(svc_months)} of {len(P)} months, by as much as {max(p['fill_gap'] for p in P) * 100:.1f} points,
-narrowing to {P[-1]['fill_gap'] * 100:.1f} points by {names[-1]}. Overall forecast bias is small, so the shortfall
-points to the safety buffers: calibrated on 2025 errors, they are not quite reaching the targets, and should be
-recalibrated on the January to June errors.</strong> The early months also carry the handover from the manual
-stock levels.</p>
-{B.chart("Fill Rate by Criticality Group and Month", charts["fill"])}
-<p>Stockout events and held jobs sit above the 2025 monthly average only in
-{' and '.join(pd.Timestamp(p['period'] + '-01').strftime('%B') for p in out_months) or 'no month'}, the transition
-months, and below it from March onward. <strong>They run below the status quo replay in every month.</strong></p>
+{B.section("outcomes", "Section 2.4", "Business KPIs")}
+<p>Fill rate is measured against each item type's target: {FT['line'] * 100:g}% for production items and
+{FT['service'] * 100:g}% for spare parts and shop supplies. <strong>Most of the time, item types fell below their
+targets: across the six months and three item types, fill rate was below target in {n_below} of {n_cells} cases, and
+more than {TH['fill_tol'] * 100:.0f} point below in {n_below1} of them. Shop supplies missed their target in
+{'every month' if miss['standard'] == len(P) else str(miss['standard']) + ' of ' + str(len(P)) + ' months'}, spare parts in {miss['service']} and production items in {miss['line']}, with the
+largest gap for {worst_gap[0]} in {worst_gap[1]} ({worst_gap[2]:.1f} points). By {names[-1]} the gaps had narrowed to
+{P[-1]['fill_gap'] * 100:.1f} points or less.</strong> Overall forecast bias is small, so the shortfall points to the
+safety buffers: calibrated on 2025 errors, they are not quite reaching the targets, and should be recalibrated on the
+January to June errors. The early months also carry the handover from the manual stock levels.</p>
+{B.chart("Fill Rate by Item Type", charts["fill"])}
+<p>Stockout events and held jobs sit above the 2025 monthly average, the Investigate threshold, in January and
+February (stockout events in January only), and below it from March onward.</p>
 {B.chart("Stockout Events and Held Jobs by Month", charts["outcomes"])}
 
 {B.section("log", "Section 3", "Monitoring Log")}
