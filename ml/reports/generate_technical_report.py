@@ -418,10 +418,28 @@ def policy_table():
                                     "and reduced for the share of demand visible on booked jobs; the second term is the "
                                     "variability of the supplier's delivery time"],
         ["Order-book visibility", f"Released jobs about {sched['mrp_visibility_days']:.0f} days ahead; booked jobs about "
-                                  f"{sched['model_visibility_days']:.0f} days ahead"],
+                                  f"{sched['model_visibility_days']:.0f} days ahead.<br><em>Released:</em> a job's parts come off "
+                                  f"the shelf when it is completed, and the ERP sees the job from its release date, so "
+                                  f"{sched['mrp_visibility_days']:.0f} days is the median time from release to completion of "
+                                  f"2025 jobs that finished on time (delayed jobs are excluded, since their extra days are "
+                                  f"waiting on material). <em>Booked:</em> adds the time from booking the customer order to "
+                                  f"releasing the job. The records carry no booking date, so this is an assumption: jobs "
+                                  f"booked four to eight weeks before release, a median of about "
+                                  f"{sched['order_book_days']:.0f} days."],
         ["Order quantity", f"Economic lot: &radic;(2 &times; annual usage &times; ${sched['order_line_cost']:.0f} per order line "
                            f"&divide; ({sched['holding_rate'] * 100:.0f}% holding &times; unit cost)), kept between "
-                           f"{sched['lot_days'][0]} and {sched['lot_days'][1]} days of usage"],
+                           f"{sched['lot_days'][0]} and {sched['lot_days'][1]} days of usage.<br>"
+                           f"<em>Annual usage:</em> the model's usage forecast, at a yearly rate. "
+                           f"<em>Unit cost:</em> standard cost from the item master. "
+                           f"<em>${sched['order_line_cost']:.0f} per order line (assumption):</em> the fully loaded cost of "
+                           f"placing and processing one line (buyer time, receiving and inspection, putaway, invoice "
+                           f"matching); published estimates for manufacturers run roughly $20 to $100+ per purchase order, "
+                           f"less per line. <em>{sched['holding_rate'] * 100:.0f}% holding (assumption):</em> the usual "
+                           f"20 to 30% rule of thumb covering cost of capital, storage, handling, insurance and "
+                           f"obsolescence. <em>{sched['lot_days'][0]} to {sched['lot_days'][1]} days (judgment):</em> no "
+                           f"item ordered more often than about every two weeks, and no more than four months of a cheap "
+                           f"item at once, below the buyers' old {sched['buyer_lot_days']}-day lot. Supplier minimum "
+                           f"order quantities, price breaks and freight are not modelled."],
         ["Change threshold", f"A reorder point moves only when the new value differs by more than "
                              f"{sched['hysteresis'] * 100:.0f}%: {ch['raw_any_change'] * 100:.0f}% of item-weeks would "
                              f"otherwise change, {ch['applied_any_change'] * 100:.0f}% do"],
@@ -594,9 +612,8 @@ level and demand pattern already capture most of what distinguishes the categori
 
 {B.section("policy", "Section 5", "From Forecast to Reorder Decision")}
 <p>The model makes one prediction: the usage forecast, how many units each item will use over its supplier lead
-time. The reorder point and order quantity are not forecasts; they are decisions calculated from that usage forecast.
-Each week, for each item, the reorder policy turns the usage forecast into a reorder point and an order quantity
-using the rules below.</p>
+time. The reorder point and order quantity presented in the ERP are then calculated from that usage forecast using
+the rules below.</p>
 {policy_table()}
 <p><strong>Bias correction.</strong> Trained on log usage, the model's back-transformed forecasts estimate the
 median rather than the mean, so they run low, most of all for intermittent items. Each pattern's forecasts are then
@@ -619,12 +636,13 @@ ordered often needs more.</p>
 forecast, balances the cost of placing an order line against the cost of holding stock. Expensive, heavily used items
 are ordered every few weeks, and cheap items a few times a year.</p>
 <p>The chart below groups items by value class. The classes are set by annual usage value (units used &times; unit
-cost), not by unit price: A items are those that together make up the first 80% of usage value, B items the next 15%
-and C items the last 5%. In 2025 the typical A item used about {k_(ABCV.loc['A', 'med_val'])} of stock a year (most
-above {k_(ABCV.loc['A', 'p10'])}) at a median unit cost of ${ABCV.loc['A', 'med_cost']:,.0f}; a typical B item about
+cost): A items are those that together make up the first 80% of usage value, B items the next 15% and C items the
+last 5%. In 2025 the typical A item used about {k_(ABCV.loc['A', 'med_val'])} of stock a year (most above
+{k_(ABCV.loc['A', 'p10'])}) at a median unit cost of ${ABCV.loc['A', 'med_cost']:,.0f}; a typical B item about
 {k_(ABCV.loc['B', 'med_val'])} a year at ${ABCV.loc['B', 'med_cost']:,.0f}; and a typical C item about
 {k_(ABCV.loc['C', 'med_val'])} a year at ${ABCV.loc['C', 'med_cost']:,.0f}. The A items, where most of the money sits,
-are bought in the smallest lots.</p>
+are bought in the smallest lots. See the <a href="model_overview.html">ML Model Overview</a> report for more detail on
+this order quantity approach.</p>
 {B.chart("Order Quantity in Days of Usage, by Value Class", charts["lots"])}
 
 {B.section("limits", "Section 6", "Known Limitations")}
@@ -651,6 +669,6 @@ are bought in the smallest lots.</p>
 """
 
 OUT.parent.mkdir(parents=True, exist_ok=True)
-OUT.write_text(B.page("ML Model Technical Overview: Demand Forecast and Reorder Policy", "", toc, body),
+OUT.write_text(B.page("ML Model Technical Overview: Demand Forecasting", "", toc, body),
                encoding="utf-8")
 print(f"Technical report written to {OUT}")
