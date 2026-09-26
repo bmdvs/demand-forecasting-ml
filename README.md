@@ -32,9 +32,9 @@ The model has set every reorder decision since January 2026. As a result, the sh
 
 | # | Deliverable | What it is | Links |
 |---|---|---|---|
-| 1 | ERP reorder queue | The demand model embedded in the ERP's purchasing screen: each item's on-hand, allocated, on-order and available stock, forecast usage over its lead time, safety stock, reorder point and suggested order quantity, with its criticality, ranked by urgency. | [View](https://brimsystems.github.io/mfg-demand-forecasting/docs/index.html) |
-| 2 | Data quality audit | Every type of error found across the ERP's master and transaction tables, its scale, the remediation performed and its evidence, the before-and-after results, and the process changes that stop each error recurring. | [View](https://brimsystems.github.io/mfg-demand-forecasting/docs/reports/data_quality_audit.html) |
-| 3 | ML model overview & performance report | A high-level summary of the model: what it does, the usage it learns from, how it sets each reorder, and its results against 2025 and the status quo. | [View](https://brimsystems.github.io/mfg-demand-forecasting/docs/reports/model_overview.html) |
+| 1 | ERP reorder queue | The demand forecasting model embedded in the ERP's purchasing screen: each item's on-hand, allocated, on-order and available stock, forecast usage over its lead time, safety stock, reorder point and suggested order quantity. | [View](https://brimsystems.github.io/mfg-demand-forecasting/docs/index.html) |
+| 2 | Data quality audit | Details the comprehensive data quality audit, including every type of error found across the ERP's eight tables, the error remediation completed, the before-and-after results, and the process changes that will keep the ERP system clean. | [View](https://brimsystems.github.io/mfg-demand-forecasting/docs/reports/data_quality_audit.html) |
+| 3 | ML model overview & performance report | A high-level summary of the demand forecasting model: what it does, the data it learns from, how it sets each reorder, and the results it achieves. | [View](https://brimsystems.github.io/mfg-demand-forecasting/docs/reports/model_overview.html) |
 | 4 | ML technical report | The model card, training data and time-based split, model selection and performance, SHAP feature importance, the rules that turn a forecast into a reorder decision, known limitations, and deployment. | [View](https://brimsystems.github.io/mfg-demand-forecasting/docs/reports/technical_report.html) |
 | 5 | MLOps monitoring report | Monthly monitoring of the live model against Investigate and Retrain thresholds: forecast error and bias overall and by demand pattern, drift, data quality and business KPIs, with a rules-based retraining decision. | [View](https://brimsystems.github.io/mfg-demand-forecasting/docs/reports/monitoring_report.html) |
 
@@ -61,7 +61,7 @@ The model has set every reorder decision since January 2026. As a result, the sh
 | `ml/src/reliability.py` | Classes every item's on-hand balance as reliable, uncertain or unreliable, before and after remediation. |
 | `ml/src/financials.py` | Measures what the errors cost and what the cleanup achieved, from the records: rush spend and shortages traced to each error, inventory write-offs and phantom on-order, and the before-and-after measures in the audit's results. |
 
-### Machine learning model: [`ml/src/`](ml/src/)
+### Demand forecasting ML model: [`ml/src/`](ml/src/)
 
 | File | What it does |
 |---|---|
@@ -98,11 +98,7 @@ flowchart LR
   ML --> MON["MLOps monitoring"]
 ```
 
-Raw extracts from the ERP, the warehouse system and the buyers' spreadsheet are typed in dbt staging models on DuckDB. Sixteen data-quality models, one per error in the audit, flag the affected records, from dead and duplicate item records and stale lead times to free-text purchases and purchase orders never closed; a summary mart turns them into the audit's error register. The remediation is recorded as auditable merges, corrections and deactivations, which the intermediate models apply without overwriting the source: duplicate records resolve to one canonical item, confirmed ledger corrections are applied, and lead times are recomputed from actual receipts. The marts then hold cleaned weekly usage, item attributes (demand pattern, ABC class, corrected lead time), the inventory position and supplier performance.
-
-Because the data is generated, dbt also reads the generator's record of what it planted, flattened into tables by [`data_source/generate/export_truth.py`](data_source/generate/export_truth.py): the true duplicate clusters, the usage that was never recorded, the planned value classes and true demand. These stand in for findings the business confirmed, and they let the marts carry raw, master-cleaned and fully cleaned versions of the usage history, plus a true-demand series to score each version against. The model reads its marts from the warehouse, exported to parquet by [`ml/src/export_marts.py`](ml/src/export_marts.py), and the data quality audit reads its error register from the `mart_dq_error_summary` mart.
-
-The demand model is a random forest, selected over XGBoost and ridge regression on a 2024 validation window and tested on the full 2025 year. Every Monday it forecasts each item's usage over its supplier lead time. That forecast is bias-corrected by demand pattern and combined with a safety buffer, sized from the model's own errors to each item type's fill-rate target, and a cost-based order quantity. The result is loaded into the ERP's reorder queue. The model is retrained monthly and monitored each month against its 2025 performance.
+Raw extracts from the ERP, its warehouse system and the buyers' spreadsheet, with the data quality problems that come with them (dead and duplicate item records, stale lead times and reorder points, free-text purchases, keying errors and documents never closed), are combined by a tested dbt pipeline into conformed marts. Along the way, one data-quality model per error type flags the affected records and feeds the audit's error register, and the remediation is applied through auditable merges and corrections without overwriting the source data. The cleaned marts then feed the demand forecasting model, whose weekly reorder points and order quantities are loaded into the ERP's reorder queue and monitored each month.
 
 ---
 
@@ -173,7 +169,3 @@ The report generators write standalone HTML to [`docs/`](docs/), which GitHub Pa
 | Monitoring | SciPy (Jensen-Shannon distance), pandas |
 | Reporting | matplotlib, HTML/CSS |
 | Delivery | Static HTML, GitHub Pages |
-
----
-
-Brian Davis, fractional data engineering and analytics partner for SMB manufacturers &middot; brian@brimsystems.com
