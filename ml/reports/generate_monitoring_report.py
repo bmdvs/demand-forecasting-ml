@@ -465,8 +465,6 @@ business KPI targets.</p>
 {rules_table()}
 
 {B.section("summary", "Section 2", "MLOps Monitoring Summary")}
-<p>The layers below track the model every month. Performance is measured against the held-out 2025 year, drift
-against the rows the model was trained on, and outcomes against the shop's 2025 results.</p>
 
 {B.section("perf", "Section 2.1", "Performance")}
 <p>Forecast error for each complete month of data is presented below against the {pct(ref_wape)} reference from
