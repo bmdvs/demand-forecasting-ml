@@ -1,0 +1,54 @@
+version: 2
+
+models:
+  - name: mart_item_attributes
+    description: One row per canonical item, the attributes the forecast and reorder policy read.
+    columns:
+      - name: canonical_item_number
+        tests: [unique, not_null]
+      - name: abc
+        tests:
+          - accepted_values:
+              values: ['A', 'B', 'C']
+      - name: segment
+        tests:
+          - accepted_values:
+              values: ['smooth', 'erratic', 'lumpy', 'intermittent']
+
+  - name: mart_consumption_weekly
+    description: Fully cleaned weekly usage, the series the weekly model trains on.
+    columns:
+      - name: canonical_item_number
+        tests:
+          - not_null
+          - relationships:
+              to: ref('mart_item_attributes')
+              field: canonical_item_number
+      - name: consumption
+        tests: [not_null]
+
+  - name: mart_consumption_fully
+    columns:
+      - name: canonical_item_number
+        tests: [not_null]
+
+  - name: mart_true_demand
+    columns:
+      - name: canonical_item_number
+        tests: [not_null]
+
+  - name: mart_inventory_position
+    columns:
+      - name: canonical_item_number
+        tests: [unique, not_null]
+
+  - name: mart_supplier_performance
+    columns:
+      - name: supplier_id
+        tests: [unique, not_null]
+
+  - name: mart_dq_error_summary
+    description: The audit's error register, one row per error per ERP table.
+    columns:
+      - name: error_no
+        tests: [not_null]

@@ -1,6 +1,6 @@
 item_ref,on_hand_note,lead_time_note,reorder_note,preferred_supplier_note,last_updated
-relay 14awg,~70 on hand (runs short),expedite avail,keep 2 boxes,cheapest,2026-06-30
-gearmtr 10hp,~76 on hand (runs short),~8 wks,order early,backup only,2026-06-30
+relay 14awg,~52 on hand,~6 wks,call rep,fast ship,2026-06-30
+gearmtr 10hp,~68 on hand (runs short),2 wks stock,order early,backup only,2026-06-30
 gear redcr 10hp,~24 on hand,expedite avail,order early,,2026-06-30
 timing belt 1hp,~0 on hand,3-4 wks,keep 2 boxes,cheapest,2026-06-30
 pillow block 2hp,~22 on hand,~6 wks,call rep,backup only,2026-06-30

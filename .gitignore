@@ -218,8 +218,7 @@ data_source/raw/
 data_source/truth/
 ml/data/
 
-# dbt
-data_pipeline/profiles.yml
+# dbt (profiles.yml is committed: it holds only a relative DuckDB path)
 data_pipeline/.user.yml
 data_pipeline/target/
 data_pipeline/dbt_packages/
