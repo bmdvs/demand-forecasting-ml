@@ -438,9 +438,7 @@ worst = max(flag_pats.items(), key=lambda kv: max(abs(h[2]) for h in kv[1])) if 
 toc = ('<a href="#status">1 &middot; Status &amp; Decision</a>'
        '<a href="#summary">2 &middot; MLOps Monitoring Summary</a>'
        '<a href="#perf" class="sub">Performance</a>'
-       '<a href="#target" class="sub">Target Drift</a>'
-       '<a href="#prediction" class="sub">Prediction Drift</a>'
-       '<a href="#feature" class="sub">Feature Drift</a>'
+       '<a href="#drift" class="sub">Drift</a>'
        '<a href="#quality" class="sub">Data Quality</a>'
        '<a href="#outcomes" class="sub">Business Outcomes</a>'
        '<a href="#log">3 &middot; Monitoring Log</a>')
@@ -482,31 +480,28 @@ above their 2025 levels (Investigate).</p>
 {B.chart("Forecast Bias by Demand Pattern and Month (Retrain threshold &plusmn;" + f"{TH['bias_tol'] * 100:.0f}" + "%)", charts["pattern"])}
 {pattern_table()}
 
-{B.section("target", "Section 2.2", "Target Drift")}
-<p>Distance between each month's actual lead-time usage and the training rows (Jensen-Shannon, flagged at
-{TH['drift']:.2f}). A shift would mean demand itself has moved away from what the model learned. <strong>Across the
+{B.section("drift", "Section 2.2", "Drift")}
+<p>Drift compares each month's data with a fixed reference using the Jensen-Shannon distance, flagged at
+{TH['drift']:.2f}. It is checked three ways: on actual usage, on the model's forecasts and on its inputs.</p>
+<p><strong>Target drift.</strong> Distance between each month's actual lead-time usage and the training rows. A shift would mean demand itself has moved away from what the model learned. <strong>Across the
 matured months target drift stays well under the threshold ({min(p['target_drift'] for p in matured):.3f} to
 {max(p['target_drift'] for p in matured):.3f}): the shop's usage looks like the usage the model was trained
 on.</strong></p>
 {B.chart("Target Drift Distance by Month", charts["target"])}
-
-{B.section("prediction", "Section 2.3", "Prediction Drift")}
-<p>Distance between each month's forecasts and the forecasts from the held-out 2025 year. A label-free early
+<p><strong>Prediction drift.</strong> Distance between each month's forecasts and the forecasts from the held-out 2025 year. A label-free early
 warning, available as soon as forecasts are made. <strong>Prediction drift stays under the threshold every month
 (at most {max(p['prediction_drift'] for p in P):.3f}), so the model is producing forecasts on the same scale and
 spread as in 2025.</strong></p>
 {B.chart("Prediction Drift Distance by Month", charts["pred"])}
 {B.chart(f"Forecast Distribution: Held-out 2025 Reference vs {names[-1]}", charts["pdist"])}
-
-{B.section("feature", "Section 2.4", "Feature Drift")}
-<p>Per-feature distance between each month's inputs and the training rows; calendar features are excluded, since
+<p><strong>Feature drift.</strong> Per-feature distance between each month's inputs and the training rows; calendar features are excluded, since
 they change with the date by design. <strong>{'No input feature crosses the threshold in any month' if max(p['n_features_drifted'] for p in P) == 0 else 'A few features cross the threshold'}, so
 the item-level over-forecasting above is not explained by a shift in the inputs.</strong></p>
 {B.chart("Per-Feature Drift Distance (feature by month)", charts["heat"])}
 <p>Latest-month detail ({names[-1]}), ordered by distance:</p>
 {feat_table()}
 
-{B.section("quality", "Section 2.5", "Data Quality")}
+{B.section("quality", "Section 2.3", "Data Quality")}
 <p>Checks on each month's inputs: usage records, items scored, missing features, negative usage, items the model
 has not seen, missing item attributes, and the largest weekly usage against the largest in the training history.
 <strong>The inputs arrive complete every month, with {'no' if max(p['negative_usage'] for p in P) == 0 else 'some'}
@@ -515,7 +510,7 @@ negative usage, {'no' if max(p['unseen_items'] for p in P) == 0 else 'some'} uns
 inputs as a cause of the pattern-level drift.</strong></p>
 {dq_table()}
 
-{B.section("outcomes", "Section 2.6", "Business Outcomes")}
+{B.section("outcomes", "Section 2.4", "Business Outcomes")}
 <p>The outcomes the reorder policy is accountable for, from the live replay. Fill rate is measured against each
 criticality group's target. <strong>At least one group ran more than {TH['fill_tol'] * 100:.0f} point below its
 target in {len(svc_months)} of {len(P)} months, by as much as {max(p['fill_gap'] for p in P) * 100:.1f} points,
