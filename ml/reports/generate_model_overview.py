@@ -86,7 +86,7 @@ def chart_halves():
     panels = [("Stockout events", ["1H/2H '25\nAvg.", "1H '26"], half("stockout_episodes"), m["stockout_episodes"], "{:,.0f}"),
               ("Jobs held for material", ["1H/2H '25\nAvg.", "1H '26"], half("jobs_delayed"), m["jobs_delayed"], "{:,.0f}"),
               ("Rush spend ($000)", ["1H/2H '25\nAvg.", "1H '26"], half("rush_spend") / 1000, m["rush_spend"] / 1000, "${:,.0f}K"),
-              ("Inventory balance ($M)", ["Dec 31, '25", "June 30, '26"], dec_end / 1e6, end_mod / 1e6, "${:,.2f}M")]
+              ("Inventory balance ($M)", ["Dec. '25", "Jun. '26"], dec_end / 1e6, end_mod / 1e6, "${:,.2f}M")]
     for ax, (title, labels, a_, b_, fmt) in zip(axes, panels):
         bars = ax.bar(labels, [a_, b_], color=[MED_GREY, DARK_BLUE], width=0.6)
         ax.text(bars[0].get_x() + bars[0].get_width() / 2, a_ * 1.02, fmt.format(a_), ha="center", fontsize=8.5,
@@ -668,10 +668,9 @@ jobs held for material fell <strong>{fall(HALF('jobs_delayed'), mod['jobs_delaye
 <strong>{fall(dec_end, end_mod)}</strong> reduction, about <strong>{k(round((dec_end - end_mod) / 10000) * 10000)}</strong>,
 in inventory balance. This entire inventory reduction is a true release of working capital, freeing up significant
 cash used to run the business.</p>
-<p>The model reduced working capital in two ways. First, with more accurate and timely reads of when each item needs
-to be reordered, the shop needed less safety stock overall, sized to how unpredictable each item actually is rather
-than padded across the board, while stockouts and held jobs still fell. Second, the model sets order quantities so
-that expensive items are bought in smaller, more frequent lots, meaning fewer of them sit on the shelves.</p>
+<p>The model reduced working capital in two ways. First, through more accurate and timely reads of when each item needs to be reordered, less safety stock was
+needed to be held overall, while stockout events and held jobs still fell. Second, the model was specifically tuned
+to order expensive items in smaller, more frequent lots, meaning fewer of these items were held on shelves.</p>
 <div style="margin:18px 0;"><div class="chart-title" style="text-align:center;">Model Performance Summary, 2025 vs. 1H 2026</div>
 <img src="data:image/png;base64,{charts['halves']}" alt="Model Performance Summary, 2025 vs. 1H 2026" style="width:100%;height:auto;display:block;"></div>
 
@@ -727,6 +726,8 @@ a short, ranked list for the buyers to work through.</p>
 {B.chart("Average Weekly Predictions by Reorder Action, by Month", charts["actions_m"])}
 
 {B.section("accuracy", "Section 3.2", "Accuracy and Validation")}
+<p>Please see the <a href="technical_report.html">ML Model Technical Overview</a> report for more detail on the
+model's performance and validation metrics.</p>
 <p>The model was chosen and calibrated before go-live on held-out data for the full year of 2025. Three candidate
 algorithms were tuned and compared on their forecasts for that year, and the
 {CAND_LABEL[WIN].lower() if WIN != 'XGBoost' else 'XGBoost'} model, with the lowest error, was selected.</p>

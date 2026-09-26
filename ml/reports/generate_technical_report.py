@@ -472,33 +472,51 @@ body = f"""
 </div></div>
 
 {B.section("data", "Section 2", "Training Data")}
-<p>The model learns from the shop's weekly usage of each of its {attrs.shape[0]:,} stocked items: items backflushed
-to production jobs, issued to spare-parts orders and pulled by hand, recorded in the ERP and cleaned by the data
-quality audit (duplicate records merged, unrecorded usage restored, keying errors corrected). Each training row is
-one item on one forecast date. Its features describe the item's usage up to that date, and its target is the
+<p>The model learns from the shop's weekly usage of each of its {attrs.shape[0]:,} stocked items. Each training row
+is one item on one forecast date. Its features describe the item's usage up to that date, and its target is the
 usage over the following lead time, rounded to whole weeks. Because lead times run from a few weeks to a few
 months, the target covers a different window for each item, and the lead time (<code>h</code>) is itself a
 feature.</p>
-<p>The split is by forecast date and never shuffled: a forecast is only trained on rows whose target window closed
-before the next split begins, so no future usage leaks into training. The first 52 weeks of history are used only
-to build the rolling features. The 2025 year is held out entirely for model selection and calibration, and the
-January to June 2026 forecasts are the model's live output.</p>
+<p>The historical data is split by date and never shuffled. The first 52 weeks of history (through 2023) are used
+only to build the rolling features, because every forecast needs a full year of history behind it, so the first
+usable forecast date is January 2024. The 2024 data was used for tuning, split into a January to June training
+window and a July to December validation window on which the three candidates were compared. Once the winner was
+chosen, it was refit on all of 2024 before being scored on 2025 data. We chose to use the full 2025 year of data for
+model testing, because the bias correction for each demand pattern and the safety-buffer multiples are calibrated on
+its errors, and both need a full seasonal cycle rather than half of one to reflect the seasonal demand of certain
+items.</p>
+<p>The first six months of 2026 are the model's live output. In live use the model is retrained monthly on every
+forecast date whose outcome is already known, which by June 2026 spans 2024 through early 2026. Because 2025 serves
+both to calibrate the policy and to report held-out accuracy, the fully out-of-sample test is the live performance
+from January to June 2026.</p>
 {split_table()}
 {B.chart("Weekly Usage by Split", charts["volume"])}
-<p>The {len(FEAT_DESC)} features fall into three groups. Rolling usage windows (4, 13, 26 and 52 weeks), the count of
-weeks with any usage, the time since the last usage and the recent variability describe how an item has been used.
-The calendar features let the model learn seasonal patterns, and the item attributes (cost, lead time, demand
-pattern, value class and category) let a single model share what it learns across similar items. Correlations are
-Spearman rank correlations on the training rows, which suit the skewed, zero-heavy usage.</p>
+<p>The {len(FEAT_DESC)} features fall into three groups. The first is Rolling Usage, including usage windows (4, 13,
+26 and 52 weeks), the count of weeks with any usage, the time since the last usage and the recent variability. The
+second is Calendar Features, to let the model learn seasonal demand patterns. The third is Item Attributes,
+including cost, lead time, demand pattern, value class and category, to tell the model how to read each item's
+usage history: the lead time sets how long a window it is forecasting, the demand pattern how far recent usage can
+be trusted, and the cost, value class and category how similar items tend to behave. The correlation figures
+presented are calculated as Spearman rank correlations on the training rows, which suit the skewed, zero-heavy
+usage.</p>
 {feature_table()}
-<p>The rolling usage windows are strongly correlated with one another, since they overlap in time. Tree ensembles
-handle this well: correlated features compete for the same splits, which affects how importance is shared between
-them rather than the accuracy of the forecast. The weeks-since-last-usage and variability features move against
-the usage windows, as expected for intermittent items.</p>
+<p>The rolling usage windows are strongly correlated with one another, since they overlap in time. The
+weeks-since-last-usage and variability features move against the usage windows, as expected for intermittent items.
+Some features are near-duplicates: the 52-week window and the all-history average ({cmat.loc['s52', 'mean_all']:+.2f}),
+lead time and forecast horizon ({cmat.loc['lead', 'h']:+.2f}, since the horizon is the lead time in weeks), and annual
+usage and the long windows (about {cmat.loc['s52', 'annual']:+.2f}). A random forest's accuracy is unaffected by this;
+duplicate features simply share the importance between them. Unit cost runs against usage
+({cmat.loc['std_cost', 's13']:+.2f} to {cmat.loc['std_cost', 'mean_all']:+.2f}), because expensive items are used in
+smaller quantities. Lead time is unrelated to usage level ({cmat.loc['lead', 's52']:+.2f}) but correlates
+{cmat.loc['lead', 'ly']:+.2f} with last year's usage over the same weeks, because that figure is summed over a
+lead-time-long window and so captures both the item's level and the length of the window being forecast. Last
+year's usage correlates only {cmat.loc['s52', 'ly']:+.2f} with the 52-week total, so its timing adds information
+beyond the average level.</p>
 {B.chart("Feature Correlation Heatmap (numeric features, Spearman)", charts["corr"])}
 <p>The target is heavily right-skewed: most lead-time windows use a few dozen units, while fasteners and
-consumables run to thousands. The model is therefore trained on log(1 + usage), and its forecasts are transformed
-back before scoring. The distribution is stable across the three splits.</p>
+consumables run to thousands. The model is therefore trained on log(1 + usage), so the few very high-volume items do
+not dominate the fit and the model learns proportional patterns across items of very different sizes. This
+distribution is stable across the three splits, as shown below.</p>
 {B.chart("Target Distribution: Train / Validation / Held-out Test", charts["target"])}
 
 {B.section("modelperf", "Section 3", "Model Selection & Performance")}
