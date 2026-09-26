@@ -519,7 +519,7 @@ body = f"""
 </div></div>
 
 {B.section("data", "Section 2", "Training Data")}
-<p>The model learns from the shop's weekly usage of each of its {attrs.shape[0]:,} stocked items. Each training row
+<p>The demand forecasting model learns from the shop's weekly usage of each of its {attrs.shape[0]:,} stocked items. Each training row
 is one item on one forecast date. Its features describe the item's usage up to that date, and its target is the
 usage over the following lead time, rounded to whole weeks.</p>
 <p>The historical data is split by date and never shuffled. The first 52 weeks of history (through 2023) are used
