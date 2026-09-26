@@ -404,7 +404,7 @@ def pattern_table():
     top = ('<th rowspan="2">Month</th>'
            + "".join(f'<th colspan="2" style="text-align:center;">{sg.capitalize()}</th>' for sg in SEG)
            + '<th rowspan="2">Model rules</th>')
-    sub = "".join(f"<th {th}>Error</th><th {th}>Bias</th>" for sg in SEG)
+    sub = "".join(f"<th {th}>Error (pts)</th><th {th}>Bias (%)</th>" for sg in SEG)
     body = ""
     for n, p in zip(mnames, M):
         lv = p["pattern_levels"]
@@ -412,7 +412,8 @@ def pattern_table():
         for sg in SEG:
             if sg in lv:
                 b_txt = f"{p['pattern_bias'][sg] * 100:+.1f}%"
-                cells += (f'<td {th}>{_val(pct(p["pattern_wape"][sg]), lv[sg]["wape"])}</td>'
+                e_txt = f"{(p['pattern_wape'][sg] - REFP[sg]['wape']) * 100:+.1f}"
+                cells += (f'<td {th}>{_val(e_txt, lv[sg]["wape"])}</td>'
                           f'<td {th}>{_val(b_txt, lv[sg]["bias"])}</td>')
             else:
                 cells += "<td></td><td></td>"
