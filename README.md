@@ -1,10 +1,12 @@
 # ERP Data Quality Audit & Demand Forecasting
 
-**A comprehensive data quality audit of an industrial equipment manufacturer's ERP system. The cleaned data feeds a machine learning model that sets the shop's reorder points and order quantities for all stocked items. As detailed in the deliverables, this model achieved significant improvements across production and purchasing KPIs while at the same time releasing working capital through a lower inventory balance.**
+A comprehensive data quality audit of an industrial equipment manufacturer's ERP system. The cleaned data feeds a machine learning model that forecasts demand for every stocked item and sets the shop's reorder points and order quantities.
 
 The data quality audit covered all of the records across the ERP's eight tables and found 16 types of recurring data quality errors. It details the remediation process, which resolved the majority of these errors, as well as the process changes that will keep the ERP system clean going forward.
 
-The machine learning model makes weekly reordering predictions for each of the shop's 1,300 stocked items. It forecasts each item's expected usage over its supplier lead time and turns this into a reorder point and order quantity. It was calibrated to ensure minimal stockouts, jobs held for material and expedited freight, while keeping inventory as low as possible. The model is supported by technical documentation and MLOps monitoring in production.
+The machine learning model makes weekly reordering predictions for each of the shop's 1,300 stocked items. It forecasts each item's expected usage over its supplier lead time and turns this into a reorder point and order quantity. It was calibrated to ensure minimal stockouts, jobs held for material and expedited freight, while keeping inventory as low as possible. **As detailed in the deliverables, this model achieved significant improvements across production and purchasing KPIs while at the same time releasing working capital through a lower inventory balance.**
+
+The model is supported by technical documentation and MLOps monitoring in production.
 
 The model's reorder suggestions are embedded in the company's existing ERP purchasing screen, as shown below:
 
