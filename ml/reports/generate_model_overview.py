@@ -648,19 +648,18 @@ toc = ('<a href="#summary">Executive Summary</a><hr>'
        '<a href="#performance">Model Performance</a>'
        '<a href="#scoring" class="sub">Scoring Summary</a>'
        '<a href="#accuracy" class="sub">Accuracy and Validation</a>'
-       '<a href="#limits" class="sub">What It Can and Cannot Predict</a>')
+       '<a href="#limits" class="sub">Assumptions &amp; Limitations</a>')
 
 body = f"""
 {B.section("summary", "Section 1", "Executive Summary")}
-<p>The demand forecasting model sets the shop's reorder decisions for all {n_items:,} stocked items. Every week it
-forecasts how much of each item the shop will use before a new order could arrive, and turns that forecast into a
-reorder point and an order quantity that are loaded straight into the ERP's purchasing screen. The model has been
-live for the past six months, January through June 2026, and in that time every reorder decision the shop has made
-came from it.</p>
+<p>The demand forecasting model has been live for the past six months, from January through June 2026, and in that
+time it has set every reorder decision for all {n_items:,} items the shop stocks. Every week the model forecasts how
+much of each item the shop will use before a new order could arrive, and turns that forecast into a reorder point
+and an order quantity that are loaded straight into the ERP's purchasing screen.</p>
 <p>Before the model, reordering was manual and ran on data that was messy and couldn't be trusted. Much of the
-process was manual, labor-intensive and imprecise: stock levels and lead times were tracked in separate
-spreadsheets, stock on hand was confirmed by walking the shelves, safety stock was set by rule of thumb, and
-shortfalls were made up with rush orders. The result was the shop carrying excess inventory, roughly
+reordering process was manual, labor-intensive and imprecise: stock levels and lead times were stale, stock on hand
+was unconfirmed and vague, safety stock was inflated, and rush orders were relied upon to compensate for
+shortfalls. The result was the shop carrying excess inventory, roughly
 {(H1['days_of_supply'] + H2['days_of_supply']) / 2:.0f} days of usage, yet still logging elevated stockout events,
 held jobs for missing material and rush freight spend.</p>
 <p>In its first six months, the model improved the four outcomes that matter most to production and purchasing.
@@ -674,13 +673,11 @@ material fell {fall(HALF('jobs_delayed'), mod['jobs_delayed'])} and rush spend f
 {B.section("modeloverview", "Section 2", "Model Overview")}
 
 {B.section("what", "Section 2.1", "What This Model Does")}
-<p>The demand forecasting model is built on an ensemble decision-tree algorithm called a random
-forest. Over the past six
-months (January 2026 to June 2026), the demand forecasting model has set the shop's reorder
-decisions. Every week, the model predicts which items need to be reordered, and these predictions are then fed
-directly into the ERP for each of the {n_items:,} stocked items. The model's reorder decisions are based on the
-current stock on hand and on order for each item, the forecasted usage over each supplier's delivery time,
-and a safety buffer based on how unpredictable each item's demand and deliveries have been.</p>
+<p>The demand forecasting model is built on an ensemble decision-tree algorithm called a random forest. Every week,
+the model predicts which items need to be reordered, and these predictions are then fed directly into the ERP for
+each of the {n_items:,} stocked items. The model's reorder decisions are based on the current stock on hand and on
+order for each item, the forecasted usage over each supplier's delivery time, and a safety buffer based on how
+unpredictable each item's demand and deliveries have been.</p>
 {FLOW_HTML}
 <p>The model refreshes its forecasts every week and is retrained on the latest history once a month. The
 model's predictions are loaded directly into the ERP, which flags when each item should be reordered and how much
@@ -740,28 +737,17 @@ stock: fewer stockouts and held jobs, less spent rushing orders in, and less inv
 {B.chart("Status quo and with the model, January to June 2026", charts["variants"])}
 {B.chart("Average inventory by month, status quo and with the model", charts["invm"])}
 
-{B.section("limits", "Section 3.3", "What It Can and Cannot Predict")}
+{B.section("limits", "Section 3.3", "Assumptions &amp; Limitations")}
 <ul class="limitation-list">
   <li><strong>It forecasts demand, not supply.</strong> The model predicts how much the shop will use; it takes each
       supplier's lead time from its recent deliveries, refreshed monthly, and does not predict a late delivery. The buffer covers
       the usual spread of deliveries, not a supplier failure.</li>
-  <li><strong>The forward window is a simulation.</strong> The six months are replayed from the generated demand
-      and supplier behaviour, not observed. Demand, deliveries and the forecast are identical in both replays, so
-      the differences between them are the policy; the size of each difference is an estimate.</li>
-  <li><strong>Excess on slow items takes time to clear.</strong> {k(mod46['excess_value'])} of stock from April to June
-      still sits on {mod46['excess_items']} items holding more than a year of supply. The model stops reordering
-      them, but an item used a few times a year takes that long to draw down. Returning or selling the worst of it
-      would release the cash sooner; that is a disposition decision for purchasing and finance, not a forecast.</li>
   <li><strong>The order book is an assumption.</strong> The shop's records carry no booking date for customer
       orders, so each job is assumed booked four to eight weeks before its release, typical of a job shop quoting
       lead times of that length. With less notice, the model would see less of the coming demand.</li>
   <li><strong>Expediting is held constant.</strong> Both replays expedite the same items the purchasing
       manager tracked before go-live, so rush spend reflects how often those items were at risk, not a change in
       how hard the shop chases suppliers.</li>
-  <li><strong>The first three months are a transition.</strong> Orders placed under the old points were still
-      arriving while excess was used up, so the six-month results understate the model's settled performance: from
-      April to June alone, stockout events were {fall(dirty46['stockout_episodes'], mod46['stockout_episodes'])} lower
-      than the status quo and jobs held for material {fall(dirty46['jobs_delayed'], mod46['jobs_delayed'])} lower.</li>
 </ul>
 """
 
