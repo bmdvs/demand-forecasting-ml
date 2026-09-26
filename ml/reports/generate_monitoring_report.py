@@ -510,11 +510,11 @@ above their 2025 levels (Investigate).</p>
 same ranges, in similar proportions, as the reference, where 0 means the two are identical and 1 means they do not
 overlap at all. It is checked three ways: on the targets (lead-time usage), on the model's forecasts, and on the
 model's features.</p>
-<p>Target drift is the distance between each month's actual lead-time usage and the training rows (Investigate
-threshold flagged at {TH['drift']:.2f}; calculated using the Jensen-Shannon distance). A shift would mean actual
-monthly demand has moved away from what the model learned. <strong>Across the matured months target drift stays well
-under the threshold ({min(p['target_drift'] for p in matured):.3f} to {max(p['target_drift'] for p in matured):.3f}),
-meaning demand patterns are consistent.</strong></p>
+<p><strong>Target drift.</strong> Distance between each month's actual lead-time usage and the training rows. A
+shift would mean demand itself has moved away from what the model learned. <strong>Across the matured months target
+drift stays well under the threshold ({min(p['target_drift'] for p in matured):.3f} to
+{max(p['target_drift'] for p in matured):.3f}), meaning monthly demand resembles the demand the model was trained
+on.</strong></p>
 {B.chart("Target Drift Distance by Month", charts["target"])}
 <p>Prediction drift measures how far the distribution of each month's forecasts has moved from that of the
 held-out 2025 forecasts, i.e., whether the forecasts are spread across the same range of values in similar
