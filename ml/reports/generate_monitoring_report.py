@@ -386,8 +386,7 @@ def perf_table():
 def pattern_table():
     th = 'style="text-align:right;"'
     top = ('<th rowspan="2">Month</th>'
-           + "".join(f'<th colspan="2" style="text-align:center;">{sg.capitalize()}<br>'
-                     f'<span style="font-weight:400;text-transform:none;">2025: {pct(REFP[sg]["wape"])}</span></th>' for sg in SEG)
+           + "".join(f'<th colspan="2" style="text-align:center;">{sg.capitalize()}</th>' for sg in SEG)
            + '<th rowspan="2">Model rules</th>')
     sub = "".join(f"<th {th}>Error</th><th {th}>Bias</th>" for sg in SEG)
     body = ""
@@ -475,14 +474,10 @@ are flagged to Investigate, but stay below the Retrain threshold of {pct(ret_wap
 {B.chart("Overall Forecast Error (WAPE) by Month", charts["wape"])}
 {B.chart("Overall Forecast Bias by Month", charts["obias"])}
 {perf_table()}
-<p>Examining forecast error by demand pattern, <strong>intermittent items were over-forecast in March and April,
-with error rising above the Retrain threshold and bias beyond the tolerance. This is the trigger behind the retraining
-recommendation: the bias correction set on 2025 is now too strong for these items, which leads to excess stock on
-them rather than shortages.</strong> Each pattern is judged against its own 2025 level: above it flags Investigate,
-and more than {TH['wape_tol'] * 100:.0f} points above flags Retrain. Smooth, erratic and lumpy items stay below their
-Retrain thresholds, though some ran slightly above their 2025 levels (Investigate), most often smooth items.
-Bias by demand pattern is judged against the same &plusmn;{TH['bias_tol'] * 100:.0f}% threshold: intermittent
-items crossed it in March and April, and erratic items in April.</p>
+<p>Examining by demand pattern, <strong>both forecast error and bias for intermittent items, plus bias for erratic
+items, exceeded the Retrain threshold. These are the primary triggers behind this report's retraining
+recommendation.</strong> Smooth and lumpy items stay below their Retrain thresholds, though at times ran slightly
+above their 2025 levels (Investigate).</p>
 {B.chart("Forecast Error by Demand Pattern, Points Above 2025 Level", charts["pwape"])}
 {B.chart("Forecast Bias by Demand Pattern and Month (Retrain threshold &plusmn;" + f"{TH['bias_tol'] * 100:.0f}" + "%)", charts["pattern"])}
 {pattern_table()}
