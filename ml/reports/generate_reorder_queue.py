@@ -78,7 +78,6 @@ def build_queue():
     bom_fixed = set(bom["component_item"].map(canon))
     restored = set(ft.loc[ft["confirmation"] == "confirmed", "probable_item_number"].dropna().map(canon))
 
-    tier = sched.get("criticality", {})
     rows = []
     for item, entries in sched["items"].items():
         if item not in attrs.index:
@@ -115,20 +114,14 @@ def build_queue():
         flags = [f for f, on in (("Merged record", item in merged), ("Lead time corrected", item in lead_fixed),
                                  ("BOM corrected", item in bom_fixed), ("History restored", item in restored)) if on]
         rows.append({"item": item, "desc": im["description"].get(item, ""), "abc": a["abc"], "supplier": sname,
-                     "tier": tier.get(item, "standard"),
                      "on_hand": oh, "on_order": oo, "alloc": need, "avail": position, "lead": lt, "fc_lead": fc_lead,
                      "ss": float(ss), "rop": float(level),
                      "suggested": suggested, "status": status, "cover": cover, "cost": float(a["standard_cost"]),
                      "flags": flags})
     q = pd.DataFrame(rows)
     q["rank"] = q["status"].map({"ORDER NOW": 0, "ORDER SOON": 1, "OK": 2})
-    q["trank"] = q["tier"].map({"line": 0, "service": 1, "standard": 2})
     q["gap"] = (q["avail"] - q["rop"]) / q["rop"].clip(lower=1)
-    return q.sort_values(["rank", "trank", "gap"]).reset_index(drop=True)
-
-
-TIER_LABEL = {"line": '<span class="crit">Line-critical</span>', "service": '<span class="crit svc">Service</span>',
-              "standard": '<span style="color:#5F6B7A;">Standard</span>'}
+    return q.sort_values(["rank", "gap"]).reset_index(drop=True)
 
 
 def _fmt(x):
@@ -147,7 +140,7 @@ def render(q):
         tags = "".join(f'<span class="tag">{f}</span>' for f in r.flags)
         trs.append(
             f'<tr style="background:{rowbg[r.status]};">'
-            f'<td class="mono">{r.item}</td><td>{r.desc}</td><td>{TIER_LABEL[r.tier]}</td><td class="c">{r.abc}</td><td>{r.supplier}</td>'
+            f'<td class="mono">{r.item}</td><td>{r.desc}</td><td class="c">{r.abc}</td><td>{r.supplier}</td>'
             f'<td class="r">{_fmt(r.on_hand)}</td><td class="r">{_fmt(r.alloc)}</td><td class="r">{_fmt(r.on_order)}</td>'
             f'<td class="r">{_fmt(r.avail)}</td><td class="r">{r.lead:.0f}</td>'
             f'<td class="r">{_fmt(r.fc_lead)}</td><td class="r">{_fmt(r.ss)}</td><td class="r"><b>{_fmt(r.rop)}</b></td>'
@@ -190,7 +183,6 @@ def render(q):
   .badge {{ color:#fff; font-weight:700; font-size:11px; padding:2px 7px; border-radius:3px; }}
   .tag {{ display:inline-block; border:1px solid #9FB3CC; color:#2458A6; background:#EEF4FB; border-radius:10px;
           padding:0 7px; margin-right:4px; font-size:11px; }}
-  .crit {{ font-weight:700; color:#B42318; }} .crit.svc {{ color:#B54708; }}
   .ml {{ background:{BLUE}; color:#fff; font-size:10px; font-weight:700; padding:1px 4px; border-radius:2px; margin-left:4px; }}
 </style></head><body>
 <div class="top"><div class="app">Enterprise Resource Planning</div>
@@ -206,7 +198,7 @@ def render(q):
   <span class="btn">Hold</span><span class="sep"></span><span class="btn">Export</span></div>
 <div class="filters">Supplier: <span class="sel">All &#9662;</span> Class: <span class="sel">All &#9662;</span>
   Action: <span class="sel">Order now + soon &#9662;</span> <span class="sel" style="width:220px;">&#128269; Search items...</span></div>
-<table><thead><tr><th>Item #</th><th>Description</th><th>Criticality</th><th>ABC</th><th>Supplier</th><th class="r">On hand</th>
+<table><thead><tr><th>Item #</th><th>Description</th><th>ABC</th><th>Supplier</th><th class="r">On hand</th>
 <th class="r">Allocated</th><th class="r">On order</th><th class="r">Available</th><th class="r">Lead (days)</th><th class="r">Forecast over lead</th><th class="r">Safety stock</th>
 <th class="r">Reorder point</th><th class="r">Suggested qty</th><th>Action <span class="ml">ML</span></th></tr></thead>
 <tbody>{''.join(trs)}</tbody></table>
