@@ -57,7 +57,7 @@ The model has set every reorder decision since January 2026. As a result, the sh
 |---|---|
 | `data_quality/dq_01` to `dq_16` | Flags the records affected by each of the sixteen errors in the audit. |
 | `marts/mart_dq_error_summary.sql` | Rolls the flagged records into the audit's error register: rows affected and rows in scope for each error and ERP table. |
-| `remediation.py` | Produces the records the cleanup leaves behind: dead-item dispositions, duplicate and supplier crosswalks, UOM conversions, recomputed lead times and reorder points, ledger corrections, document closures and the free-text attributions. |
+| `remediation.py` | Records every change made during the cleanup: dead-item dispositions, duplicate and supplier crosswalks, UOM conversions, recomputed lead times and reorder points, ledger corrections, document closures and the free-text attributions. |
 | `ml/src/reliability.py` | Classes every item's on-hand balance as reliable, uncertain or unreliable, before and after remediation. |
 | `ml/src/financials.py` | Measures what the errors cost and what the cleanup achieved, from the records: rush spend and shortages traced to each error, inventory write-offs and phantom on-order, and the before-and-after measures in the audit's results. |
 
@@ -69,7 +69,7 @@ The model has set every reorder decision since January 2026. As a result, the sh
 | `baselines.py` | Simple forecasting methods (naive, seasonal naive, moving averages, exponential smoothing, Croston) and the rolling-origin backtest harness. |
 | `features.py`, `training.py` | Feature building, the model candidates and the evaluation helpers the weekly model shares. |
 | `training_3way.py` | Runs the same model on raw, master-cleaned and fully cleaned history to measure what each tier of cleaning is worth. |
-| `forward_policy.py` | The production model: builds the weekly features, tunes random forest, XGBoost and ridge regression with Optuna, selects the winner, retrains it monthly, and turns each week's forecast into bias-corrected reorder points, safety buffers and order quantities for the ERP. |
+| `demand_model.py` | The production model: builds the weekly features, tunes random forest, XGBoost and ridge regression with Optuna, selects the winner, retrains it monthly, and turns each week's forecast into bias-corrected reorder points, safety buffers and order quantities for the ERP. |
 | `explain_weekly.py` | SHAP feature importance, the learning curve, feature correlations and the train, validation and test summary for the technical report. |
 | `monitor_weekly.py` | Monthly monitoring against Investigate and Retrain thresholds: forecast error and bias overall and by demand pattern, target, prediction and feature drift, data quality and business KPIs. |
 
@@ -130,7 +130,7 @@ python3 -m ml.src.export_marts
 python3 -m ml.src.baselines
 python3 -m ml.src.training
 python3 -m ml.src.training_3way
-python3 -m ml.src.forward_policy
+python3 -m ml.src.demand_model
 python3 -m ml.src.explain_weekly
 
 # 5. Replay January to June 2026 on the model's reorder schedule
