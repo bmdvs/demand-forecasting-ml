@@ -37,55 +37,43 @@
 <body>
   <div class="page-header">
     <h1>Manufacturing Data Platform: Inventory Forecasting &amp; ERP Data Quality</h1>
-    <div class="sub">Deliverables for a precision machining shop, from a dirty item master to forecast-driven reorder points.</div>
+    <div class="sub">Deliverables for an industrial equipment builder, from an unreliable ERP to forecast-driven reorder points.</div>
   </div>
 
   <div class="wrap">
-    <p class="intro">Seven deliverables trace the work end to end: a diagnosis of where the item master is dirty
-    and what it costs, an entity-resolution and cleaning pass, a demand model that forecasts each item over its
-    lead time, that forecast delivered as reorder suggestions inside the purchasing screen, an inventory policy
-    that turns accuracy into working capital, and the MLOps monitoring that keeps it honest. Full detail is in the
+    <p class="intro">Five deliverables trace the work end to end: an audit that finds and remediates every type of
+    data quality error in the ERP, a demand model that forecasts each item's usage over its supplier lead time, that
+    forecast delivered as reorder points and order quantities inside the ERP's purchasing screen, and the MLOps
+    monitoring that keeps it honest. Full detail is in the
     <a href="README.md">README</a>.</p>
 
     <a class="card primary" href="docs/index.html">
-      <div class="row"><span class="num">01</span><span class="title">ERP Purchasing &amp; Reorder Queue</span><span class="tag">Primary deliverable</span></div>
-      <div class="desc">The demand model embedded in a JobBOSS-style purchasing screen: each item's forecast demand over its lead time, on-hand, suggested order and a short reason, with merged records and corrected lead times flagged where they work.</div>
+      <div class="row"><span class="num">01</span><span class="title">ERP Reorder Queue</span><span class="tag">Primary deliverable</span></div>
+      <div class="desc">The demand model embedded in the ERP's purchasing screen: each item's stock position, forecast usage over its lead time, safety stock, reorder point and suggested order quantity, with its criticality, ranked by urgency.</div>
       <div class="open">Open &rarr;</div>
     </a>
 
     <a class="card" href="docs/reports/data_quality_audit.html">
-      <div class="row"><span class="num">02</span><span class="title">Data Quality Audit Report</span></div>
-      <div class="desc">Every defect class in the item master, the records affected, the evidence that flags them, and the operational cost, ending in the remediation performed and what it recovered.</div>
-      <div class="open">Open &rarr;</div>
-    </a>
-
-    <a class="card" href="docs/reports/analytics_report.html">
-      <div class="row"><span class="num">03</span><span class="title">Analytics Diagnostic Report</span></div>
-      <div class="desc">Where inventory dollars sit, the demand-pattern distribution, supplier lead-time performance against the master values, and the three-policy comparison of service level and working capital.</div>
-      <div class="open">Open &rarr;</div>
-    </a>
-
-    <a class="card" href="docs/reports/dashboard.html">
-      <div class="row"><span class="num">04</span><span class="title">KPI Dashboard</span></div>
-      <div class="desc">The running instrument panel on clean data: inventory value and turns, fill rate, stockout events, expedite frequency and supplier lead time, in week, month and trailing-twelve-month views.</div>
+      <div class="row"><span class="num">02</span><span class="title">Data Quality Audit</span></div>
+      <div class="desc">Every type of error found across the ERP's master and transaction tables, its scale, the remediation performed, the before-and-after results, and the process changes that stop each error recurring.</div>
       <div class="open">Open &rarr;</div>
     </a>
 
     <a class="card" href="docs/reports/model_overview.html">
-      <div class="row"><span class="num">05</span><span class="title">ML Model Overview &amp; Performance Report</span></div>
-      <div class="desc">A plain-language model card: what the demand model predicts over each item's lead time, how it performs by segment against the baselines, the accuracy gained from cleaning, and where it should not be trusted.</div>
+      <div class="row"><span class="num">03</span><span class="title">ML Model Overview &amp; Performance Report</span></div>
+      <div class="desc">A high-level summary of the model: what it does, the usage it learns from, how it sets each reorder, and its results against 2025 and the status quo.</div>
       <div class="open">Open &rarr;</div>
     </a>
 
     <a class="card" href="docs/reports/technical_report.html">
-      <div class="row"><span class="num">06</span><span class="title">ML Technical Report</span></div>
-      <div class="desc">Demand segmentation, feature engineering, why a global model, the rolling-origin backtest, why WAPE and MASE rather than MAPE, full results by segment and ABC class, and the safety-stock calibration.</div>
+      <div class="row"><span class="num">04</span><span class="title">ML Technical Report</span></div>
+      <div class="desc">The model card, training data and time-based split, model selection and performance, SHAP feature importance, the rules that turn a forecast into a reorder decision, known limitations, and deployment.</div>
       <div class="open">Open &rarr;</div>
     </a>
 
     <a class="card" href="docs/reports/monitoring_report.html">
-      <div class="row"><span class="num">07</span><span class="title">MLOps Monitoring Report</span></div>
-      <div class="desc">Production monitoring across periods on four drift layers, performance, target, prediction and feature drift, with an explicit, rules-based retraining decision.</div>
+      <div class="row"><span class="num">05</span><span class="title">MLOps Monitoring Report</span></div>
+      <div class="desc">Monthly monitoring of the live model against Investigate and Retrain thresholds: forecast error and bias overall and by demand pattern, drift, data quality and business KPIs, with a rules-based retraining decision.</div>
       <div class="open">Open &rarr;</div>
     </a>
 
