@@ -41,6 +41,9 @@ attrs = pd.read_parquet(MARTS / "item_attributes.parquet").set_index("canonical_
 weekly = pd.read_parquet(MARTS / "consumption_weekly.parquet")
 
 WIN = metrics["winner"]
+N_TRIALS = 12          # Optuna trials per candidate (forward_policy.N_TRIALS)
+from data_source.generate import config as _GC
+SEASONAL_SHARE = _GC.SEASONAL_ITEM_SHARE
 LABEL = {"Linear": "Linear regression (ridge)", "RandomForest": "Random forest", "XGBoost": "XGBoost"}
 SEG_ORDER = ["smooth", "erratic", "lumpy", "intermittent"]
 TIERS = [("line", "Production items"), ("service", "Spare parts"), ("standard", "Shop supplies")]
@@ -348,7 +351,7 @@ def candidate_table():
         r = metrics["candidates"][c]
         sel = c == WIN
         tick = f' <span style="color:{GREEN};font-weight:700;">&#10004; Selected</span>' if sel else ""
-        bg = f' style="background:{B.BG_GREY};font-weight:700;"' if sel else ""
+        bg = ' style="font-weight:700;"' if sel else ""
         params = ", ".join(f"{k} {v:.3g}" if isinstance(v, float) else f"{k} {v}" for k, v in r["params"].items())
         rows += (f'<tr{bg}><td>{LABEL[c]}{tick}</td><td style="text-align:right;">{pct(r["val_wape"])}</td>'
                  f'<td style="text-align:right;">{pct(r["test_wape"])}</td><td style="font-size:12.5px;">{params}</td></tr>')
@@ -397,8 +400,12 @@ def policy_table():
         ["Fill-rate targets", f"Production items {tgt(FT['line'])}, spare parts {tgt(FT['service'])}, shop supplies {tgt(FT['standard'])}"],
         ["Safety buffer", "k &times; &sigma;, with k the smallest multiple whose expected shortfall per cycle, on the "
                           "model's own error distribution, fits (1 - fill target) &times; order quantity"],
-        ["Forecast error &sigma;", "Each item's own 2025 forecast error, scaled to its lead time and reduced for the "
-                                    "share of demand visible on booked jobs; plus delivery-time variability"],
+        ["&sigma; (uncertainty, in units)", "The typical size of the gap between the usage forecast and actual usage "
+                                    "over the item's lead time (one standard deviation): &radic;(forecast error&sup2; + "
+                                    "(daily usage &times; lead-time standard deviation)&sup2;). The forecast error is the "
+                                    "standard deviation of the item's own 2025 forecast misses, scaled to its lead time "
+                                    "and reduced for the share of demand visible on booked jobs; the second term is the "
+                                    "variability of the supplier's delivery time"],
         ["Order-book visibility", f"Released jobs about {sched['mrp_visibility_days']:.0f} days ahead; booked jobs about "
                                   f"{sched['model_visibility_days']:.0f} days ahead"],
         ["Order quantity", f"Economic lot: &radic;(2 &times; annual usage &times; ${sched['order_line_cost']:.0f} per order line "
@@ -439,7 +446,12 @@ charts = {"volume": chart_volume(), "target": chart_target(), "corr": chart_corr
           "shap": chart_shap(), "loss": chart_loss(), "lots": chart_lots(), "coverage": chart_coverage()}
 
 p_ = metrics["candidates"][WIN]["params"]
-top3 = [FEAT_DESC.get(f, (f, ""))[0].lower() for f in imp["feature"].head(3)]
+PROSE = {"ly": "usage in the same weeks last year", "lead": "supplier lead time", "h": "the forecast horizon",
+         "s4": "the last 4 weeks of usage", "s13": "the last 13 weeks of usage", "s26": "the last 26 weeks of usage",
+         "s52": "the last 52 weeks of usage", "annual": "annual usage", "mean_all": "average weekly usage",
+         "seg_code": "the demand pattern", "nz13": "the weeks with usage in the last 13",
+         "since_nz": "the weeks since last usage", "std_cost": "unit cost"}
+top3 = [PROSE.get(f, FEAT_DESC.get(f, (f, ""))[0].lower()) for f in imp["feature"].head(3)]
 k_emp = {}
 zs = z_err.to_numpy()
 for kk in [1.0, 2.0, 3.0]:
@@ -463,7 +475,7 @@ body = f"""
   <div><div class="mc-label">Target</div><div class="mc-value">Units an item will use over its supplier lead time, from the forecast date</div></div>
   <div><div class="mc-label">Prediction Type</div><div class="mc-value">Regression on log(1 + usage), one forecast per item per week</div></div>
   <div><div class="mc-label">Features</div><div class="mc-value">{len(FEAT_DESC)} (rolling usage, calendar, item attributes)</div></div>
-  <div><div class="mc-label">Tuning</div><div class="mc-value">Optuna, {12} trials per candidate, validation WAPE objective</div></div>
+  <div><div class="mc-label">Tuning</div><div class="mc-value">Optuna, {N_TRIALS} trials per candidate, validation WAPE objective</div></div>
   <div><div class="mc-label">Cadence</div><div class="mc-value">Refreshed every Monday; retrained monthly</div></div>
   <div><div class="mc-label">Outputs</div><div class="mc-value">Reorder point and order quantity per item, loaded into the ERP</div></div>
   <div><div class="mc-label">Held-out 2025 WAPE</div><div class="mc-value">{pct(test_w)} (best simple method {pct(metrics['overall']['baseline'])})</div></div>
@@ -523,28 +535,27 @@ distribution is stable across the three splits, as shown below.</p>
 
 {B.section("selection", "Section 3.1", "Model Selection")}
 <p>Three candidates, a ridge regression, a random forest and an XGBoost gradient-boosted model, were each tuned
-with Optuna on the validation weeks (weighted absolute percentage error as the objective), then refit on train
-plus validation and scored once on the held-out 2025 year. The {LABEL[WIN].lower()} had the lowest validation
-error and was selected. The ridge regression, which cannot represent the zero-heavy, nonlinear relationship between
-recent usage and future usage, trails far behind.</p>
+with Optuna ({N_TRIALS} trials per model) on the validation weeks using weighted absolute percentage error (WAPE) as
+the objective. The models were then refit on train plus validation (i.e., full year 2024) and scored once on the
+held-out 2025 year. The {LABEL[WIN].lower()} had the lowest validation error and was selected.</p>
 {candidate_table()}
-<p>The selected forest has {p_.get('n_estimators')} trees with a maximum depth of {p_.get('max_depth')} and at least
-{p_.get('min_samples_leaf')} rows per leaf. The leaf-size floor keeps each tree from fitting individual spikes,
-which matters for lumpy items whose occasional large draws would otherwise be memorised.</p>
+<p>The best {LABEL[WIN].lower()} model has {p_.get('n_estimators')} trees with a maximum depth of
+{p_.get('max_depth')} and at least {p_.get('min_samples_leaf')} rows per leaf. The relatively large leaf-size floor
+keeps each tree from fitting individual spikes: every prediction averages at least {p_.get('min_samples_leaf')}
+similar training rows, so the model learns typical usage for items in similar situations rather than memorising
+one-off outliers.</p>
 
 {B.section("performance", "Section 3.2", "Model Performance")}
-<p>Accuracy is measured as weighted absolute percentage error (WAPE): the total absolute gap between forecast and
-actual usage across all forecasts, divided by total actual usage. Unlike a mean of percentage errors, it stays
-defined for items with zero usage in a window and weights each item by its volume. Results are shown for the
-validation weeks used in tuning, the held-out 2025 year used for selection and calibration, and the live January to
-June 2026 forecasts, which are the honest test of the model in use. The reorder points use the bias-corrected forecast
-(Section 5), which trades a little accuracy ({pct(test_w)} to {pct(test_w_c)} on the held-out year) for forecasts
-that do not run systematically low.</p>
+<p>Accuracy is measured as WAPE: the total absolute gap between forecast and actual usage across all forecasts,
+divided by total actual usage. Results are shown for the validation weeks used in tuning, the held-out 2025 year
+used for selection and calibration, and the live January to June 2026 forecasts, which are the honest test of the
+model in use. The reorder points use the bias-corrected forecast (Section 5), which trades a little accuracy
+({pct(test_w)} to {pct(test_w_c)} on the held-out year) for forecasts that do not run systematically low.</p>
 {metrics_table()}
 <p>A live WAPE of {pct(live_w, 0)} means that for every 100 units an item used over its lead time, the forecast was
 off by about {live_w * 100:.0f} units in either direction. That is typical for item-level forecasts of lumpy,
-job-driven demand, where a single job or spare-parts order can double an item's usage in a week. The errors
-largely cancel across items: total forecast usage was within {abs(live_bias) * 100:.1f}% of actual. The model's
+job-driven demand, where a single job or spare-parts order can double an item's usage in a week. <strong>The errors
+largely cancel across items: total forecast usage was within {abs(live_bias) * 100:.1f}% of actual.</strong> The model's
 gain over the best simple method ({pct(live_b, 0)}) is modest, as is usual for forecasts built from usage history
 alone. Most of the operational improvement comes from how the forecast is used, covered in Section 5.</p>
 <p>The learning curve refits the selected model on growing random shares of the training rows. The held-out error
@@ -563,40 +574,51 @@ in both periods.</p>
 {pattern_table()}
 {B.chart("Live WAPE by Demand Pattern, Model vs Best Simple Method", charts["pattern"])}
 <p>Plotted against actual usage on log scales, the live forecasts cluster around the diagonal across four orders
-of magnitude, from items using a handful of units per lead time to those using thousands. The spread around the
-diagonal is the item-level error the safety buffer has to absorb.</p>
+of magnitude, meaning the same model tracks items that use a handful of units per lead time as well as those that use
+thousands, rather than working only for high- or low-volume items. The spread around the diagonal is the item-level
+error that the safety buffer has to absorb.</p>
 <div style="max-width:520px;margin:18px auto;">{B.chart("Forecast vs Actual Usage, Live 1H 2026", charts["pva"])}</div>
 
 {B.section("shap", "Section 4", "Feature Importance (SHAP)")}
 <p>SHAP values measure each feature's average contribution to a forecast, here on a sample of the held-out 2025
-forecasts and in units of log usage. The model leans most on {top3[0]}, {top3[1]} and {top3[2]}. Last year's
-usage over the same weeks already spans the lead-time window, so it carries both the item's level and the length
-of the window; recent usage adjusts it, and the demand pattern tells the model how far to trust it. Calendar and
-category features contribute little, which is consistent with demand that is steady in aggregate.</p>
+forecasts and in units of log usage. The model leans most on {top3[0]}, {top3[1]} and {top3[2]}. Last year's usage
+over the same weeks is by far the strongest, because it is the only feature measured over exactly the window being
+forecast: the same number of weeks as the item's lead time, at the same time of year. Every other usage feature
+covers a fixed span (4, 13, 26 or 52 weeks) that the model has to rescale to the lead time, so last year's figure is
+the closest single stand-in for the answer. More recent usage then adjusts that starting point up or down, and the
+item's demand pattern tells the model how far to trust the recent weeks. Calendar and category features contribute
+little. About {SEASONAL_SHARE:.0%} of items are seasonal, but each peaks at its own time of year, and last year's
+same-weeks usage already carries each item's own seasonal timing; a shared week-of-year or month feature adds little
+on top of it. Category adds little for a similar reason, since cost, usage level and demand pattern already capture
+most of what distinguishes the categories.</p>
 {B.chart("Mean Absolute SHAP Value by Feature", charts["shap"])}
 
 {B.section("policy", "Section 5", "From Forecast to Reorder Decision")}
-<p>The forecast is one input to the reorder decision. Each week, for each item, the policy turns it into a reorder
-point and an order quantity using the rules below.</p>
+<p>The model makes one prediction: the usage forecast, how many units each item will use over its supplier lead
+time. The reorder point and order quantity are not forecasts; they are decisions calculated from that usage forecast.
+Each week, for each item, the reorder policy turns the usage forecast into a reorder point and an order quantity
+using the rules below.</p>
 {policy_table()}
 <p><strong>Bias correction.</strong> Trained on log usage, the model's back-transformed forecasts estimate the
-median rather than the mean, so they run low, most of all for intermittent items. Each pattern's forecasts are
-scaled by the ratio of actual to forecast usage in the held-out 2025 year. The correction holds up in live use.</p>
+median rather than the mean, so they run low, most of all for intermittent items. Each pattern's forecasts are then
+scaled by the ratio of actual to forecast usage in the held-out 2025 year. This correction removes almost all of the
+systematic under-forecasting in live use, as shown below.</p>
 {bias_table()}
-<p><strong>Safety buffer.</strong> The buffer is k standard errors of the item's own forecast error, where the
-error combines the forecast's miss over the lead time with the variability of the supplier's delivery time. Two
-refinements matter. First, the part of an item's demand already visible on booked production jobs carries no
-forecast error, so the error is scaled down by that share. Second, k is not taken from a normal curve. It is
-set on the model's actual 2025 errors so that the expected shortfall per replenishment cycle stays within the
-fill-rate target for the item's criticality. The errors have much fatter tails than a normal curve: at k = 2 the
-expected shortfall is {k_emp[2.0][0] / k_emp[2.0][1]:.1f} times what a normal distribution implies, and at k = 3,
-{k_emp[3.0][0] / k_emp[3.0][1]:.1f} times. Textbook multiples would leave the buffer short.</p>
+<p><strong>Safety buffer.</strong> The buffer is calculated as k standard errors of the item's own forecast
+error: k &times; &sigma;, where &sigma; combines the forecast's miss over the lead time with the variability of the
+supplier's delivery time, and k sets how many of those standard errors to hold. Two refinements are important to
+highlight here. First, the part of an item's demand already visible on booked production jobs carries no forecast
+error, so the error is scaled down by that share. Second, k is not taken from a normal curve. It is set on the
+model's actual 2025 errors so that the expected shortfall per replenishment cycle stays within the fill-rate target
+for the item's criticality group. The errors have much fatter tails than a normal curve: at k = 2 the expected
+shortfall is {k_emp[2.0][0] / k_emp[2.0][1]:.1f} times what a normal distribution implies, and at k = 3,
+{k_emp[3.0][0] / k_emp[3.0][1]:.1f} times. This is important to ensure an adequate buffer size. Because the shortfall allowance scales with the order
+quantity, an item ordered in large lots needs less buffer (its own lot protects most of the cycle), and an item
+ordered often needs more.</p>
 {B.chart("Expected Shortfall vs Buffer Size: Actual Errors vs Normal", charts["loss"])}
-<p>Because the shortfall allowance scales with the order quantity, an item ordered in large lots needs less buffer
-(its own lot protects most of the cycle), and an item ordered often needs more.</p>
-<p><strong>Order quantity.</strong> Each item's lot balances the cost of placing an order line against the cost of
-holding stock. Expensive, heavily used items are ordered every few weeks, and cheap items a few times a year. The
-buyers had bought about {sched['buyer_lot_days']} days of every item at a time.</p>
+<p><strong>Order quantity.</strong> The recommended order quantity for each item, calculated from its usage
+forecast, balances the cost of placing an order line against the cost of holding stock. Expensive, heavily used items
+are ordered every few weeks, and cheap items a few times a year.</p>
 {B.chart("Order Quantity in Days of Usage, by Value Class", charts["lots"])}
 <p><strong>Coverage.</strong> In live use, actual usage over the lead time stayed within the forecast plus buffer
 in {live['covered'].mean() * 100:.0f}% of lead-time windows. The fill rate, the share of units supplied from stock,
