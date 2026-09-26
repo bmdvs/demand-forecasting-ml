@@ -375,7 +375,8 @@ is because {worst[0] + ' items' if worst else 'one demand pattern'} drifted outs
 matured months. Separately, the safety buffers should be recalibrated: achieved fill rates ran below their targets
 through most of the half.</p>
 {status_block()}
-<p>The monitoring rules are presented below across four tiers. Model rules determine when retraining is needed, the
+<p>The monitoring rules are presented below across four tiers and evaluated every month. Model rules determine when
+retraining is needed, the
 Policy rule determines when recalibrating the safety buffers is needed, the Guardrail rule sets business KPI targets,
 and the Secondary rules manage leading indicators that warrant investigation.</p>
 {rules_table()}
