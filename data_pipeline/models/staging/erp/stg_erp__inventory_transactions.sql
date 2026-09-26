@@ -2,27 +2,20 @@ with source as (
 
     select * from {{ source('erp', 'inventory_transactions') }}
 
-),
-
-staged as (
-
-    select
-        transaction_id,
-        item_number,
-        cast(transaction_date as date)  as transaction_date,
-        type,
-        cast(quantity as double)        as quantity,
-        uom,
-        work_order_id,
-        location,
-        -- Populated only on non-stock free-text lines (defect T1).
-        description,
-        entered_code,
-        cast(unit_price as double)      as unit_price,
-        date_trunc('month', cast(transaction_date as date)) as transaction_month
-
-    from source
-
 )
 
-select * from staged
+select
+    txn_id,
+    item_number,
+    cast(txn_date as date)                          as txn_date,
+    cast(txn_time as time)                          as txn_time,
+    date_trunc('week', cast(txn_date as date))      as txn_week,
+    type                                            as txn_type,
+    cast(qty as double)                             as qty,
+    uom,
+    -- JOB- production orders, SO- service orders, WO- floor work orders, PO- receipts.
+    job_id,
+    reason_code,
+    location,
+    user_id
+from source
