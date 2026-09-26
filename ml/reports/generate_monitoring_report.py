@@ -5,7 +5,7 @@ layers (performance, target drift, prediction drift, feature drift, data quality
 the business outcomes the reorder policy is accountable for, then the monitoring log.
 Monthly over the live window, January to June 2026, from ml/data/monitoring/.
 
-    python -m ml.src.monitor_weekly        (after forward_policy and the forward replay)
+    python -m ml.src.monitor_weekly        (after demand_model and the forward replay)
     PYTHONIOENCODING=utf-8 "../mfg-oee-maintenance/.venv/Scripts/python.exe" -m ml.reports.generate_monitoring_report
 """
 import json
