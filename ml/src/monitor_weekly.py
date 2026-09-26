@@ -30,8 +30,9 @@ from data_source.generate import config as C
 MON = BACKTEST.parent / "monitoring"
 TRUTH = C.REPO_ROOT / "data_source" / "truth"
 DRIFT = 0.10              # Jensen-Shannon distance flagged as drift
-WAPE_TOL = 0.05           # pattern WAPE this far above its 2025 level is degraded
-BIAS_TOL = 0.10           # corrected bias outside +/- this is degraded
+WAPE_OVERALL_TOL = 0.03   # overall WAPE above the 2025 reference: investigate; this far above: retrain
+WAPE_TOL = 0.05           # pattern WAPE above its 2025 level: investigate; this far above: retrain
+BIAS_TOL = 0.10           # corrected bias, overall or for a pattern, outside +/- this: retrain
 FILL_TOL = 0.01           # fill rate this far below target is degraded
 MAX_FEATS = 3             # more drifted features than this is a secondary trigger
 MIN_ROWS = 150            # a pattern needs this many scored forecasts to be judged
@@ -99,6 +100,7 @@ def run():
     ref_pat = {sg: {"wape": _wape(g["actual"], g["pred_c"]),
                     "bias": float((g["pred_c"].sum() - g["actual"].sum()) / g["actual"].sum())}
                for sg, g in bt.groupby("segment")}
+    ref_wape = _wape(bt["actual"], bt["pred_c"])
     fill_target = sched["fill_rate_target"]
     m25 = fr.get("monthly_2025", {})
     ref_events = float(np.mean([v["stockout_episodes"] for v in m25.values()])) if m25 else np.nan
@@ -154,13 +156,25 @@ def run():
         out["ref_events"], out["ref_held"] = ref_events, ref_held
         periods.append(out)
 
-    # rules and status. Accuracy is judged only on months whose forecasts have mostly matured;
-    # a fill-rate shortfall calls for recalibrating the buffers, not retraining the model.
-    prev_model = False
+    # rules and status. Accuracy is judged only on months whose forecasts have mostly matured.
+    # Model rules have two levels: 1 = investigate, 2 = retrain. A fill-rate shortfall calls for
+    # recalibrating the buffers, not retraining the model.
+    def lvl(value, inv, ret):
+        return 2 if value > ret else 1 if value > inv else 0
+
     for out in periods:
         out["matured"] = out["n_scored"] >= MATURED * out["n_forecasts"]
-        model = {"performance": out["matured"] and out["worst_wape_gap"] > WAPE_TOL,
-                 "bias": out["matured"] and out["worst_bias"] > BIAS_TOL}
+        m = out["matured"]
+        pat = {sg: {"wape": lvl(w_, ref_pat[sg]["wape"], ref_pat[sg]["wape"] + WAPE_TOL),
+                    "bias": 2 if abs(out["pattern_bias"][sg]) > BIAS_TOL else 0}
+               for sg, w_ in out["pattern_wape"].items()} if m else {}
+        out["pattern_levels"] = pat
+        out["model_levels"] = {
+            "overall_wape": lvl(out["wape"], ref_wape, ref_wape + WAPE_OVERALL_TOL) if m else 0,
+            "overall_bias": (2 if abs(out["bias"]) > BIAS_TOL else 0) if m else 0,
+            "pattern_wape": max([v["wape"] for v in pat.values()], default=0),
+            "pattern_bias": max([v["bias"] for v in pat.values()], default=0)}
+        model = {k: v > 0 for k, v in out["model_levels"].items()}
         policy = {"service": out.get("fill_gap", 0) > FILL_TOL}
         guard = {"outcomes": (out.get("stockout_events", 0) > ref_events) or (out.get("jobs_held", 0) > ref_held)}
         sec = {"target_drift": out["matured"] and out["target_drift"] >= DRIFT,
@@ -168,11 +182,8 @@ def run():
                "feature_drift": out["n_features_drifted"] > MAX_FEATS}
         out["primary"] = {**model, **policy, **guard}
         out["secondary"] = sec
-        any_model = any(model.values())
-        out["status"] = ("RETRAIN" if any_model and prev_model else
+        out["status"] = ("RETRAIN" if max(out["model_levels"].values()) == 2 else
                          "INVESTIGATE" if any(out["primary"].values()) or sum(sec.values()) >= 2 else "HEALTHY")
-        if out["matured"]:
-            prev_model = any_model
 
     # the monthly retrains the forward policy performed
     log = []
@@ -185,8 +196,8 @@ def run():
                     "history_through": str(weeks[t_o - 1].date()), "model": metrics["winner"]})
     pd.DataFrame(log).to_csv(MON / "retrain_log.csv", index=False)
     pd.DataFrame(feat_rows).to_csv(MON / "feature_drift.csv", index=False)
-    summary = {"periods": periods, "reference_pattern": ref_pat, "fill_target": fill_target,
-               "thresholds": {"drift": DRIFT, "wape_tol": WAPE_TOL, "bias_tol": BIAS_TOL, "fill_tol": FILL_TOL,
+    summary = {"periods": periods, "reference_pattern": ref_pat, "reference_wape": ref_wape, "fill_target": fill_target,
+               "thresholds": {"drift": DRIFT, "wape_overall_tol": WAPE_OVERALL_TOL, "wape_tol": WAPE_TOL, "bias_tol": BIAS_TOL, "fill_tol": FILL_TOL,
                               "max_feats": MAX_FEATS, "min_rows": MIN_ROWS, "matured": MATURED},
                "ref_events": ref_events, "ref_held": ref_held, "latest_status": periods[-1]["status"]}
     (MON / "monitoring_summary.json").write_text(json.dumps(summary, indent=2, default=float))
