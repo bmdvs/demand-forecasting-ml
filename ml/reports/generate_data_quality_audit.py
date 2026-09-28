@@ -977,7 +977,7 @@ def run():
     d = gather()
     body, toc = build(d)
     OUT.parent.mkdir(parents=True, exist_ok=True)
-    html = B.page("ERP System Data Quality Audit", "", toc, body)
+    html = B.page("ERP System Data Quality Audit", "", toc, body, credit="Created by Brian Davis, 2026")
     for a, b in [("defects", "errors"), ("Defects", "Errors"), ("defect", "error"), ("Defect", "Error")]:
         html = html.replace(a, b)
     # subsection titles sized to match the bold table titles (18px)

@@ -124,6 +124,8 @@ def _css():
   .page-header {{ background:{DARK_GREY}; color:#fff; padding:14px 40px; }}
   .page-header h1 {{ font-size:21px; font-weight:700; letter-spacing:-0.3px; }}
   .page-header .sub {{ font-size:13px; color:{LIGHT_GREY}; margin-top:3px; }}
+  .page-header.credited {{ display:flex; justify-content:space-between; align-items:center; gap:24px; }}
+  .page-header .credit {{ font-size:11px; color:#fff; white-space:nowrap; }}
   .layout {{ display:flex; max-width:1200px; margin:0 auto; padding:0 40px; }}
   .toc {{ width:210px; flex-shrink:0; padding:36px 20px 40px 0; position:sticky; top:0;
     height:100vh; overflow-y:auto; border-right:1px solid {LIGHT_GREY}; }}
@@ -189,14 +191,19 @@ def _css():
 """
 
 
-def page(title, subtitle, toc, body):
+def page(title, subtitle, toc, body, credit=None):
     sub_html = f'<div class="sub">{subtitle}</div>' if subtitle else ""
+    if credit:
+        header = (f'<div class="page-header credited"><div><h1>{title}</h1>{sub_html}</div>'
+                  f'<div class="credit">{credit}</div></div>')
+    else:
+        header = f'<div class="page-header"><h1>{title}</h1>{sub_html}</div>'
     return f"""<!DOCTYPE html>
 <html lang="en"><head><meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>{title}</title><style>{_css()}</style></head>
 <body>
-<div class="page-header"><h1>{title}</h1>{sub_html}</div>
+{header}
 <div class="layout">
   <nav class="toc"><div class="toc-title">Contents</div>{toc}</nav>
   <main class="content">{body}</main>
