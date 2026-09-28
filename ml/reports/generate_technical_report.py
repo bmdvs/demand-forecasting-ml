@@ -674,6 +674,6 @@ ordered often needs more.</p>
 """
 
 OUT.parent.mkdir(parents=True, exist_ok=True)
-OUT.write_text(B.page("ML Model Technical Overview: Demand Forecasting", "", toc, body),
+OUT.write_text(B.page("ML Model Technical Overview: Demand Forecasting", "", toc, body, credit="Created by Brian Davis, 2026"),
                encoding="utf-8")
 print(f"Technical report written to {OUT}")
