@@ -1,4 +1,4 @@
-# ERP Data Quality Audit & Demand Forecasting ML Model
+# Demand Forecasting ML Model & ERP Data Quality Audit
 
 This project consists of two parts. 
 
