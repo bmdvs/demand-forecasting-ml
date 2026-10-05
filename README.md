@@ -2,11 +2,9 @@
 
 This project consists of two parts. 
 
-First, a full data quality audit of the ERP. The audit report details the findings, including 16 types of data quality errors found recurring across the system, plus the process of fixing the errors and ensuring the ERP stays clean going forward. 
+First, a full [data quality audit](https://brimsystems.github.io/mfg-demand-forecasting/docs/reports/data_quality_audit.html) of the ERP. The audit report details the findings, including 16 types of data quality errors found recurring across the system, plus the process of fixing the errors and ensuring the ERP stays clean going forward. 
 
-Second, a demand forecasting ML model was trained on the cleaned ERP records. Every week it forecasts demand and makes weekly reordering predictions for each of the shop's 1,300 stocked items. It forecasts the item's expected usage over its supplier lead time and turns this into a reorder point and order quantity. It was calibrated to ensure minimal stockouts, jobs held for material, and expedited freight, while at the same time keeping working capital as low as possible. 
-
-The model is supported by technical documentation and MLOps monitoring in production.
+Second, a [demand forecasting ML model](https://brimsystems.github.io/mfg-demand-forecasting/docs/reports/model_overview.html) was trained on the cleaned ERP records. Every week it forecasts demand and makes weekly reordering predictions for each of the shop's 1,300 stocked items. It forecasts the item's expected usage over its supplier lead time and turns this into a reorder point and order quantity. It was calibrated to ensure minimal stockouts, jobs held for material, and expedited freight, while at the same time keeping working capital as low as possible. The model is supported by [technical documentation](https://brimsystems.github.io/mfg-demand-forecasting/docs/reports/technical_report.html) and [MLOps monitoring](https://brimsystems.github.io/mfg-demand-forecasting/docs/reports/monitoring_report.html) in production.
 
 The model's reorder suggestions are embedded in the shop's existing [ERP purchasing screen](https://brimsystems.github.io/mfg-demand-forecasting/docs/index.html), as shown below:
 
