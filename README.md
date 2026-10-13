@@ -2,9 +2,9 @@
 
 The project began with a full [data quality audit](https://brimsystems.github.io/demand-forecasting-ml/docs/reports/data_quality_audit.html) of the shop's ERP, which found sixteen recurring error types across eight tables and remediated them so the records could be trusted. 
 
-A [demand forecasting ML model](https://brimsystems.github.io/demand-forecasting-ml/docs/reports/model_overview.html) was then built to forecast demand and make weekly reordering predictions for each of the shop's 1,300 stocked items. Over a six month period (Jan. to Jun. 2026), the model has been in production and used to set every reordering decision the shop made. 
+A **demand forecasting ML model** was then built to forecast demand and make weekly reordering predictions for each of the shop's 1,300 stocked items. The ML model is detailed in the [model overview report](https://brimsystems.github.io/demand-forecasting-ml/docs/reports/model_overview.html) and summarized below.  
 
-- **Results.** Compared to 2025, when the shop's reordering decisions were done manually, the model achieved improvements across production and purchasing KPIs, while also reducing the shop's inventory balance and freeing up cash tied in working capital.
+- **Results.** Over a six month period (Jan. to Jun. 2026), the model has been in production and used to set every reordering decision the shop made. Compared to 2025, when the shop's reordering decisions were done manually, the model achieved improvements across production and purchasing KPIs, while also reducing the shop's inventory balance and freeing up cash tied in working capital.
   
 | Stockout events | Jobs held for material | Rush-freight spend | Avg. inventory balance |
 |---|---|---|---|
