@@ -5,9 +5,11 @@ The project began with a full [data quality audit](https://brimsystems.github.io
 A [demand forecasting ML model](https://brimsystems.github.io/demand-forecasting-ml/docs/reports/model_overview.html) was then built to forecast demand and make weekly reordering predictions for each of the shop's 1,300 stocked items. Over a six month period (Jan. to Jun. 2026), the model has been in production and used to set every reordering decision the shop made. 
 
 - **Results.** Compared to 2025, when the shop's reordering decisions were done manually, the model achieved improvements across production and purchasing KPIs, while also reducing the shop's inventory balance and freeing up cash tied in working capital.
+  
 | Stockout events | Jobs held for material | Rush-freight spend | Avg. inventory balance |
 |---|---|---|---|
 | -34% | −32% | −38% | -10% |
+
 - **Decision.** Every Monday, for each item, the model sets a reorder point and an order quantity in the ERP's purchasing screen. The reorder point covers the demand expected before a new order could arrive; the order quantity is an economic lot bounded between two weeks and four months of usage. It forecasts each stocked item's expected usage over its supplier lead time and turn this into a reorder point and order quantity.
 - **Forecast.** One random forest across all items, trained on three years of remediated ERP history (inventory transactions, production orders and bills of materials, service orders, purchase-order receipts, item and supplier masters), with the shop's four demand patterns as inputs. It takes the parts that booked jobs will draw as known, exploded through the bill of materials, and forecasts the remaining usage over each item's supplier lead time. Every feature is built point-in-time, from what the ERP held on the forecast date.
 - **Reorder policy.** The forecast plus a safety buffer sized from the item's forecast error, its supplier's lead-time variability, and a fill-rate target set by criticality: 99% for parts on a production bill, 98.5% for service parts and shop supplies. Bias factors, error estimates and loss curves are re-estimated at each monthly retrain from the trailing year of out-of-sample errors.
