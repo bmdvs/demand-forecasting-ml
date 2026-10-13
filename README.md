@@ -1,6 +1,22 @@
-# Demand Forecasting ML Model & ERP Data Quality Audit
+# Machine Learning Model: Demand Forecasting 
 
-This project consists of two parts. 
+The project began with a full [data quality audit](https://brimsystems.github.io/demand-forecasting-ml/docs/reports/data_quality_audit.html) of the shop's ERP, which found sixteen recurring error types across eight tables and remediated them so the records could be trusted. 
+
+A [demand forecasting ML model](https://brimsystems.github.io/demand-forecasting-ml/docs/reports/model_overview.html) was then built to forecast demand and make weekly reordering predictions for each of the shop's 1,300 stocked items. It forecasts each stocked item's expected usage over its supplier lead time and turn this into a reorder point and order quantity.
+
+Over a six month period (Jan. to Jun. 2026), the model has been in production and used to make reordering decisions for each of the shop's 1,300 stocked items. Against 2025, when the shop's reordering decisions were done manually, the model achieved the following results: 
+
+| Stockout events | Jobs held for material | Rush-freight spend | Avg. inventory balance |
+|---|---|---|---|
+| -34% | −32% | −38% | -10% |
+
+- **Decision.** Every Monday, for each item, the model sets a reorder point and an order quantity in the ERP's purchasing screen. The reorder point covers the demand expected before a new order could arrive; the order quantity is an economic lot bounded between two weeks and four months of usage.
+- **Forecast.** One random forest across all items, trained on three years of remediated ERP history (inventory transactions, production orders and bills of materials, service orders, purchase-order receipts, item and supplier masters), with the shop's four demand patterns as inputs. It takes the parts that booked jobs will draw as known, exploded through the bill of materials, and forecasts the remaining usage over each item's supplier lead time. Every feature is built point-in-time, from what the ERP held on the forecast date.
+- **Reorder policy.** The forecast plus a safety buffer sized from the item's forecast error, its supplier's lead-time variability, and a fill-rate target set by criticality: 99% for parts on a production bill, 98.5% for service parts and shop supplies. Bias factors, error estimates and loss curves are re-estimated at each monthly retrain from the trailing year of out-of-sample errors.
+- **Evaluation.** Time-based split with a held-out 2025 backtest on total lead-time demand. Candidates (ridge, random forest, XGBoost) were tuned on validation and selected by rule, then scored against five simple methods a buyer could run by hand, including the order book plus the best moving average by demand pattern (47.3% WAPE). The production model reaches 42.8% overall and 36.8% on line-critical parts.
+- **In production.** Retrained monthly and refreshed weekly, with a monitor that tracks forecast error and bias by demand pattern, feature drift, supplier lead-time drift and data quality against investigate-and-retrain thresholds. [Stack sentence after the Databricks port: Lakeflow pipeline, MLflow registry with a champion alias, promotion gates.]
+- **Tested and not adopted.** Material-family and product-line aggregates, stockout-censoring features, item lifecycle and installed-base signals, rolling supplier lead times and a plant calendar were each added and measured; none improved held-out accuracy beyond the order book, and the smaller feature set was kept. The study and its results are in the [technical report](https://brimsystems.github.io/demand-forecasting-ml/docs/reports/technical_report.html).
+
 
 First, a full [data quality audit](https://bmdvs.github.io/demand-forecasting-ml/docs/reports/data_quality_audit.html) of the ERP. The audit report details the findings, including 16 types of data quality errors found recurring across the system, plus the process of fixing the errors and ensuring the ERP stays clean going forward. 
 
