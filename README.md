@@ -2,7 +2,7 @@
 
 This project was built on Azure Databricks: a Lakeflow pipeline cleans and transforms raw extracts, and a monthly job trains, gates, scores and monitors the model through MLflow and the Unity Catalog model registry. The work began with a full [data quality audit](https://brimsystems.github.io/demand-forecasting-ml/docs/reports/data_quality_audit.html) of the shop's ERP system, which found sixteen recurring error types across eight tables and remediated them so the records could be trusted. 
 
-A **demand forecasting ML model** was then built on the cleaned records. Every week it forecasts demand and sets the reorder decision for each of the shop's 1,300 stocked items. The model's code is found [HERE]. The model is detailed in the [model overview report](https://brimsystems.github.io/demand-forecasting-ml/docs/reports/model_overview.html) and summarized below.
+A **demand forecasting ML model** was then built on the cleaned records. Every week it forecasts demand and sets the reorder decision for each of the shop's 1,300 stocked items. The model's code is found [HERE]. The model is detailed in the [model overview report](https://bmdvs.github.io/demand-forecasting-ml/docs/reports/model_overview.html) and summarized below.
 
 - **Results.** The model has set every reorder decision the shop made from January to June 2026. The table compares that period with 2025, when buyers reordered by hand on the uncleaned records, and shows the same manual process run on the cleaned records over the same six months. The model significantly improved every production and purchasing KPI. Both methods carried less inventory than 2025 and freed cash tied in working capital, driven by recomputed reorder points and safety stock as a result of the data quality audit.
 
