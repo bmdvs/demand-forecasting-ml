@@ -1,17 +1,19 @@
 # Machine Learning Model: Demand Forecasting 
 
-The project began with a full [data quality audit](https://brimsystems.github.io/demand-forecasting-ml/docs/reports/data_quality_audit.html) of the shop's ERP system, which found sixteen recurring error types across eight tables and remediated them so the records could be trusted. 
+The project began with a full [data quality audit](https://brimsystems.github.io/demand-forecasting-ml/docs/reports/data_quality_audit.html) of the shop's ERP system, which found sixteen recurring error types across eight tables and documented the remediation process. 
 
 A **demand forecasting ML model** was then built on the cleaned records. This model makes weekly demand forecasts and reordering decisions for each of the shop's 1,300 stocked items. The ML model is detailed in the [model overview report](https://brimsystems.github.io/demand-forecasting-ml/docs/reports/model_overview.html) and summarized below.  
 
 - **Results.** Over a six month period (Jan. to Jun. 2026), the model has been in production and used to set every reordering decision the shop made. The table below compares the model's performance to 2025 when the shop's reordering decisions were done manually. The model achieved significant improvements across production and purchasing KPIs, while also reducing the shop's inventory balance and freeing up cash tied in working capital.
 
 <div align="center">
-<b>Model performance (1H '26) vs. shop's manual reordering performance (Avg. 1H/2H '25)</b>
 
-| Stockout events | Jobs held for material | Rush-freight spend | Avg. inventory balance |
-|---|---|---|---|
-| -36% | −43% | −46% | -5% |
+<b>ML-driven vs. Manual Reordering Performance on Cleaned ERP Records (1H 2026 against 2025)</b>
+
+| | Stockout days | Jobs held for material | Rush-freight spend | Avg. inventory |
+|---|---|---|---|---|
+| **Manual reordering on the cleaned records** | −7% | −11% | −19% | −11% (139 days of usage, from 160) |
+| **ML-driven reordering on the cleaned records** | −36% | −43% | −46% | −5% (148 days of usage, from 160) |
 
 </div>
 
