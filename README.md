@@ -12,7 +12,7 @@ A **demand forecasting ML model** was then built on the cleaned records. Every w
 
 | | Stockout days | Jobs held for material | Rush-freight spend | Avg. inventory balance |
 |---|---|---|---|---|
-| **Manual Reordering** | −7% | −11% | −19% | −11% (139 days of usage, from 160) |
+| Manual Reordering | −7% | −11% | −19% | −11% (139 days of usage, from 160) |
 | **ML-driven Reordering** | **−36%** | **−43%** | **−46%** | **−5% (148 days of usage, from 160)** |
 
 </div>
