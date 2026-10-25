@@ -240,3 +240,8 @@ ml/models/*.joblib
 
 # Metadata
 *.egg-info/
+
+# Signal update: pre-update reference archive and build change record
+reference/
+CHANGES_signal_update.md
+runs/

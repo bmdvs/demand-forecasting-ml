@@ -278,7 +278,7 @@ def run():
         else:
             refresh_rule = False
         cur = frame[frame["t"] == t_o]
-        pred = np.clip(np.expm1(model.predict(cur[FEATS])), 0, tr._CAP)
+        pred = np.clip(np.expm1(tr.predict(model, cur[FEATS])), 0, tr._CAP)
         for r_, pr in zip(cur.itertuples(index=False), pred):
             item = r_.item; a = attrs.loc[item]
             L = float(a["corrected_lead_days"]); h = int(r_.h)

@@ -45,9 +45,23 @@ def _wape(a, f):
     return np.abs(np.asarray(a) - np.asarray(f)).sum() / d if d else np.nan
 
 
+def predict(model, X):
+    """Predict on one thread. A random forest predicting across threads sums its
+    trees in whatever order the threads finish, so repeated runs differ in the
+    last bits; training stays parallel (every tree is seeded)."""
+    est = model.steps[-1][1] if hasattr(model, "steps") else model
+    if isinstance(est, RandomForestRegressor) and est.n_jobs != 1:
+        jobs, est.n_jobs = est.n_jobs, 1
+        try:
+            return model.predict(X)
+        finally:
+            est.n_jobs = jobs
+    return model.predict(X)
+
+
 def _fit_predict(model, Xtr, ytr, Xte):
     model.fit(Xtr, np.log1p(ytr))
-    return np.clip(np.expm1(model.predict(Xte)), 0, _CAP)
+    return np.clip(np.expm1(predict(model, Xte)), 0, _CAP)
 
 
 def _make(kind, p):
@@ -223,7 +237,7 @@ def _dirty_before_after(model, attrs):
             if c not in X:
                 X[c] = 0
         X = X[FEATURE_COLS].replace([np.inf, -np.inf], np.nan).fillna(0)
-        return np.array(acts), np.clip(np.expm1(model.predict(X)), 0, _CAP)
+        return np.array(acts), np.clip(np.expm1(predict(model, X)), 0, _CAP)
 
     recs = []
     for canon, members in clusters.items():

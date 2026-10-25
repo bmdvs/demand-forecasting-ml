@@ -52,7 +52,7 @@ def build_cycle_counts(sim, ledger, item_meta, dup_map, unreliable_nums, abc_by_
     pending = [(r.date, r.item_number, int(r.counted_qty), "ANNUAL") for r in sim["counts"].itertuples(index=False)]
 
     retired = {n for cl in dup_map.values() for n in cl["records"] if n != cl["primary"]}
-    unrel = [n for n in unreliable_nums if n in item_meta and not item_meta[n]["dead"] and n not in retired]
+    unrel = [n for n in sorted(unreliable_nums) if n in item_meta and not item_meta[n]["dead"] and n not in retired]
     rng.shuffle(unrel)
     rest = [n for n, m in item_meta.items() if not m["dead"] and n not in retired and n not in set(unrel)]
     rng.shuffle(rest)
