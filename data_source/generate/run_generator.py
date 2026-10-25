@@ -126,7 +126,10 @@ def run():
     print("[4/9] Production orders  (ERP)")
     production_orders = build_production_orders(builds, products, rng)
     print("[5/9] Service orders     (ERP)")
-    service_orders = build_service_orders(service_demand, item_meta, dup_map, plan, rng)
+    # service orders, supplier drift and the corrected masters each draw from their own
+    # stream, so a change in one channel's volume cannot move another's draws
+    service_orders = build_service_orders(service_demand, item_meta, dup_map, plan,
+                                          np.random.default_rng([C.RANDOM_SEED, 31]))
     events = build_consumption_events(production_orders, bom_true, bom_recorded, service_orders,
                                       manual_demand, item_meta, dup_map, omit_items,
                                       np.random.default_rng(C.RANDOM_SEED + 21))
@@ -148,13 +151,14 @@ def run():
 
     # ── Replenishment replay: purchase orders, rushes, shortages, counts ────
     print("[6/9] Purchase orders    (ERP) - replaying replenishment, this takes a minute")
-    drift_rate = draw_drift_rates(item_meta, rng)
+    drift_rate = draw_drift_rates(item_meta, np.random.default_rng([C.RANDOM_SEED, 32]))
     cost_by_item = plan.set_index("item_id")["unit_cost"].to_dict()
 
     # the corrected masters the remediation loaded, which the shop runs on from
     # the forward start; the demand model's monthly reorder points if it has them
     ev_c, im_c, meta_c, base_lead, _ = corrected_inputs(events, item_master, item_meta, dup_map, drift_rate,
-                                                        drift_supplier_id, abc_by_item, rng)
+                                                        drift_supplier_id, abc_by_item,
+                                                        np.random.default_rng([C.RANDOM_SEED, 33]))
     imc = im_c.set_index("item_number")
     forward = {"start": C.FORWARD_START, "never_closed": 0.0,
                "lead": imc["master_lead_time_days"].to_dict(),
