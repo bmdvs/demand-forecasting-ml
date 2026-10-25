@@ -102,7 +102,8 @@ def run():
     txh = tx[tx["txn_date"] < C.REMEDIATION_START.isoformat()]
     moved = txh.loc[txh["type"].isin(["ISSUE", "BACKFLUSH", "RECEIPT"]), "qty"].abs().sum()
     adj = txh.loc[txh["type"] == "ADJUST", "qty"].abs().sum()
-    _chk("Adjustment share of quantity moved (%)", adj / moved * 100, 15, 25)
+    adj_share = adj / moved * 100
+    _chk("Adjustment share of quantity moved (%)", adj_share, 15, 25)
     adj_rows = txh[txh["type"] == "ADJUST"]
     blank_reason = adj_rows["reason_code"].isna() | adj_rows["reason_code"].astype(str).isin(["", "nan", "ADJ", "VAR", "MISC", "COUNT"])
     _chk("Adjustments with blank/generic reason (%)", blank_reason.mean() * 100, 60, 75)
@@ -131,6 +132,11 @@ def run():
     floor = tx[tx["type"].isin(["ISSUE", "BACKFLUSH", "RECEIPT"])]
     shared = floor["user_id"].isin(C.SHARED_LOGINS).mean() * 100
     _chk("Floor/receiving txns under shared logins (%)", shared, 60, 85)
+
+    from . import validate_signals
+    signal_measures = validate_signals.run(_chk, adj_share)
+    _lines.extend(signal_measures.pop("info_lines"))
+    (TRUTH / "signal_checks.json").write_text(json.dumps(signal_measures, indent=2, default=float))
 
     n_fail = sum(1 for l in _lines if "[FAIL]" in l)
     print(f"\n{len(_lines) - n_fail}/{len(_lines)} checks pass, {n_fail} out of range")

@@ -35,6 +35,7 @@ from .generators.purchase_orders import assemble_purchase_orders
 from .generators.inventory_transactions import build_ledger, post_count_adjustments
 from .generators.cycle_counts import build_cycle_counts
 from .generators.buyer_spreadsheet import build_buyer_spreadsheet
+from .generators import signals as S
 
 TRUTH_DIR = C.REPO_ROOT / "data_source" / "truth"
 
@@ -118,18 +119,46 @@ def run():
     print("[2/9] Item master        (ERP)")
     item_master, dup_map, item_meta, defects = build_item_master(
         plan, suppliers, annual_by_item, drift_supplier_id, sup_frag, rng)
+    # ── Part supersession and the installed base ───────────────────────────
+    # superseded parts come from bill components outside the duplicate, UOM and
+    # omitted-bill cases; their successors are new records set up from them
+    sup = S.choose_supersessions(plan, bom_true, set(dup_map) | {int(i) for i in defects["m5_items"]}
+                                 | {int(i) for i in omit_items})
+    smap = S.supersession_map(sup)
+    ib, ib_units = S.installed_base(builds, products, bom_true, sup)
+    # parts on a product's bill (a part only on a subassembly no product calls has no installed base)
+    ib_items = sorted(set(service_demand["item_id"].astype(int)) & set(ib["item_id"].astype(int)))
+    old_service = service_demand
+    service_demand = S.apply_installed_base(service_demand, ib, on_bill)
+    plan = pd.concat([plan, S.successor_plan_rows(plan, sup)], ignore_index=True)
+    item_master, item_meta = S.add_successor_records(item_master, item_meta, sup, plan)
+    # demand totals as the shop now draws them: floor demand moves to the successor
+    # after the effective month, service follows the installed base
+    hand = direct.rename(columns={"demand_units": "qty"})[["item_id", "month", "qty"]].merge(
+        old_service.rename(columns={"qty": "svc"}), on=["item_id", "month"], how="left").fillna({"svc": 0})
+    hand["qty"] = (hand["qty"] - hand["svc"]).clip(lower=0)
+    direct_now = (pd.concat([S.transfer_monthly(hand[["item_id", "month", "qty"]], sup), service_demand])
+                  .groupby(["item_id", "month"], as_index=False)["qty"].sum())
+    bf_recorded_planned, bf_true_planned = bf_recorded, bf_true      # before any switch
+    # until the replay finds each actual switch, the planned dates stand in (ABC, policy)
+    bf_recorded = S.transfer_monthly(bf_recorded, sup)
+    bf_true = S.transfer_monthly(bf_true, sup)
+    total = (pd.concat([direct_now, bf_recorded]).groupby(["item_id", "month"], as_index=False)["qty"].sum())
+    wide = total.pivot(index="item_id", columns="month", values="qty").fillna(0).sort_index(axis=1)
+    annual_by_item = wide.iloc[:, -12:].sum(axis=1).to_dict()
     abc_by_item, value_by_item = _abc(plan, annual_by_item)   # after the M5 per-unit costing
     print("[3/9] Bill of materials  (ERP)")
-    bom_ds = _bom_dataset(bom_recorded, item_meta, dup_map)
+    bom_ds = S.bom_replacement_rows(_bom_dataset(bom_recorded, item_meta, dup_map), sup, item_meta)
 
     # ── Jobs, service orders and physical consumption ───────────────────────
     print("[4/9] Production orders  (ERP)")
-    production_orders = build_production_orders(builds, products, rng)
+    production_orders = S.add_required_dates(S.shutdown_shift_jobs(build_production_orders(builds, products, rng)))
     print("[5/9] Service orders     (ERP)")
     # service orders, supplier drift and the corrected masters each draw from their own
     # stream, so a change in one channel's volume cannot move another's draws
     service_orders = build_service_orders(service_demand, item_meta, dup_map, plan,
                                           np.random.default_rng([C.RANDOM_SEED, 31]))
+    service_orders = S.shutdown_shift_service(service_orders)
     events = build_consumption_events(production_orders, bom_true, bom_recorded, service_orders,
                                       manual_demand, item_meta, dup_map, omit_items,
                                       np.random.default_rng(C.RANDOM_SEED + 21))
@@ -192,6 +221,23 @@ def run():
                    buyer_nums, omit_items, rng, drift_rate=drift_rate,
                    forward=forward, release_by_job=release_by_job, booked_by_job=booked_by_job)
     production_orders = apply_delays(production_orders, sim["job_delays"])
+    # use-up effectivity: requirements from each switch on post to the successor. The
+    # other replays find their own switches, so they take the events as drawn.
+    events_drawn = events
+    events, service_orders = S.relabel_after_switch(events, service_orders, sim["switches"], item_meta)
+    bom_ds = S.apply_switches(bom_ds, sim["switches"])
+    # demand totals with the actual switch months, for the truth tables and the mix
+    sup_actual = pd.DataFrame([{"pred_id": int(item_meta[s["pred_number"]]["item_id"]),
+                                "succ_id": int(item_meta[s["succ_number"]]["item_id"]),
+                                "effective_date": s["switch"]} for s in sim["switches"] if s["switch"] is not None])
+    direct_now = (pd.concat([S.transfer_monthly(hand[["item_id", "month", "qty"]], sup_actual), service_demand])
+                  .groupby(["item_id", "month"], as_index=False)["qty"].sum())
+    bf_true = S.transfer_monthly(bf_true_planned, sup_actual)
+    total = (pd.concat([direct_now, S.transfer_monthly(bf_recorded_planned, sup_actual)])
+             .groupby(["item_id", "month"], as_index=False)["qty"].sum())
+    wide = total.pivot(index="item_id", columns="month", values="qty").fillna(0).sort_index(axis=1)
+    # a service line that found the bin empty ships when the stock returns
+    service_orders = S.apply_service_holds(service_orders, sim["service_holds"])
     purchase_orders, po_truth = assemble_purchase_orders(sim["po_lines"], suppliers, item_master, rng)
 
     # the same rule on the corrected masters over the whole history (the audit's 2025 counterfactual)
@@ -215,7 +261,7 @@ def run():
     fwd_rule = dict(forward)
     fwd_rule["order_book"] = False; fwd_rule["update_lead"] = False
     fwd_rule["schedule"] = {n: [(e[0], e[1], e[2]) for e in es] for n, es in rule_schedule.items()} if rule_schedule else None
-    sim_rule = simulate(events, item_master, item_meta, dup_map, plan, drift_supplier_id, sup_frag,
+    sim_rule = simulate(events_drawn, item_master, item_meta, dup_map, plan, drift_supplier_id, sup_frag,
                         buyer_nums, omit_items, np.random.default_rng(C.RANDOM_SEED + 13), drift_rate=drift_rate,
                         forward=fwd_rule, release_by_job=release_by_job)
     prod_for_windows = apply_delays(production_orders.drop(columns=["hold_reason", "delay_days"]), sim["job_delays"])
@@ -226,7 +272,7 @@ def run():
     print("[7/9] Inventory ledger   (ERP)")
     transactions, tx_truth = build_ledger(events, purchase_orders, sim["adjustments"],
                                           sim["job_delays"], item_master, item_meta, dup_map, plan,
-                                          omit_items, rng)
+                                          omit_items, rng, service_delays=sim["service_holds"])
     transactions = _add_stray_dead_txns(transactions, defects, rng)
     # the count program reads the ledger balance and posts what it finds
     print("[8/9] Cycle counts       (WMS)")
@@ -265,6 +311,8 @@ def run():
                  omit_items, po_truth, tx_truth, buyer_truth, bf_true, sorted(affected_products),
                  C.N_PRODUCTS, sim, primary, sorted(buyer_nums))
     (TRUTH_DIR / "counterfactual.json").write_text(json.dumps(counterfactual, indent=2))
+    direct_now.to_csv(TRUTH_DIR / "true_direct_demand.csv", index=False)
+    _write_signals(sup, ib, ib_units, ib_items, primary, sim, total, old_service)
     (TRUTH_DIR / "forward_results.json").write_text(json.dumps(forward_results, indent=2, default=float))
     _print_forward(forward_results)
     a, c = counterfactual["as_is"], counterfactual["corrected"]
@@ -275,6 +323,42 @@ def run():
           f"{c['jobs_delayed']:,}")
     _summary(total, item_master, purchase_orders, transactions, cycle_counts, production_orders,
              service_orders, defects, sim)
+
+
+def _write_signals(sup, ib, ib_units, ib_items, primary, sim, total, old_service):
+    """What the demand-signal mechanisms did, for the realism checks and the warehouse tests."""
+    ib_nums = [primary[i] for i in ib_items if i in primary]
+    sw = {s["pred_number"]: s for s in sim["switches"]}
+    keep = ib[ib["item_id"].isin(ib_items)]
+    payload = {
+        "supersessions": [{"pred_id": int(r.pred_id), "succ_id": int(r.succ_id),
+                           "pred_number": primary[int(r.pred_id)], "succ_number": primary[int(r.succ_id)],
+                           "effective_date": r.effective_date.isoformat(), "created_date": r.created_date.isoformat(),
+                           "switch_date": (sw[primary[int(r.pred_id)]]["switch"].isoformat()
+                                           if sw.get(primary[int(r.pred_id)], {}).get("switch") else None),
+                           "first_order_date": (sw[primary[int(r.pred_id)]]["first_order"].isoformat()
+                                                if sw.get(primary[int(r.pred_id)], {}).get("first_order") else None)}
+                          for r in sup.itertuples(index=False)],
+        # each bill part's own service draw by year, before the installed base
+        "own_service_by_year": {primary[int(i)]: {str(y): int(q) for y, q in g.groupby(pd.to_datetime(g["month"]).dt.year)["qty"].sum().items()}
+                                for i, g in old_service[old_service["item_id"].isin(ib_items)].groupby("item_id") if int(i) in primary},
+        "number_of_item": {str(k): v for k, v in primary.items()},
+        "ib_service_items": ib_nums,
+        "installed_base_monthly": [{"item_id": int(r.item_id), "month": r.month.isoformat(), "value": round(float(r.value), 3)}
+                                   for r in keep.itertuples(index=False)],
+        "installed_base_total": {m.isoformat(): round(float(v), 3) for m, v in ib.groupby("month")["value"].sum().items()},
+        "shutdown_weeks": [d.isoformat() for d in C.shutdown_weeks()],
+        "service_lines_held": len([v for v in sim["service_holds"].values() if v > 0]),
+        "service_held_days": int(sum(v for v in sim["service_holds"].values() if v > 0)),
+        "segment_mix": _segment_mix(total),
+    }
+    (TRUTH_DIR / "signals.json").write_text(json.dumps(payload, indent=1))
+
+
+def _segment_mix(total):
+    wide = total.pivot(index="item_id", columns="month", values="qty").fillna(0).sort_index(axis=1)
+    cls = pd.Series({i: classify(wide.loc[i].to_numpy(dtype=float)) for i in wide.index})
+    return {seg: float((cls == seg).mean() * 100) for seg in C.SEGMENTS}
 
 
 def _half(year, half):

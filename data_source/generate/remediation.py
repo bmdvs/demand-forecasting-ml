@@ -251,6 +251,18 @@ def _bom_change_log(cross, im, rng):
                      "component_item": comp, "qty_per": int(rng.integers(1, 8)),
                      "source": rng.choice(["engineering review", "floor observation"]),
                      "change_date": _week_date(int(rng.integers(3, 8)), rng)})
+    # part supersessions on use-up: the successor replaces the old part on each
+    # bill the day the old part's stock ran out
+    sig_fp = TRUTH / "signals.json"
+    bom = pd.read_csv(RAW / "erp" / "bill_of_materials.csv", low_memory=False)
+    if sig_fp.exists() and "replaces_item" in bom.columns:
+        for s in json.loads(sig_fp.read_text())["supersessions"]:
+            if not s.get("switch_date"):
+                continue
+            for r in bom[(bom["component_item"] == s["succ_number"]) & (bom["replaces_item"] == s["pred_number"])].itertuples(index=False):
+                rows.append({"product_number": r.product_number, "component_item": s["succ_number"],
+                             "qty_per": int(r.qty_per), "source": f"supersession on use-up, replaces {s['pred_number']}",
+                             "change_date": s["switch_date"]})
     return pd.DataFrame(rows)
 
 

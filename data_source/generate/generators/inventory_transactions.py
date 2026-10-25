@@ -25,7 +25,9 @@ from .. import config as C
 
 
 def build_ledger(events, purchase_orders, sim_adjustments, job_delays,
-                 item_master, item_meta, dup_map, plan, omitted_item_ids, rng):
+                 item_master, item_meta, dup_map, plan, omitted_item_ids, rng, service_delays=None):
+    from .signals import next_working_day
+    service_delays = service_delays or {}
     class_by_item = plan.set_index("item_id")["item_class"].to_dict()
     fam_by_item = plan.set_index("item_id")["family"].to_dict()
     recorded = {}
@@ -81,9 +83,12 @@ def build_ledger(events, purchase_orders, sim_adjustments, job_delays,
         if r.channel == "BACKFLUSH":
             dly = job_delays.get(r.job_id, 0)
             if dly:
-                d = min(d + timedelta(days=int(dly)), C.END_DATE)
+                d = min(next_working_day(d + timedelta(days=int(dly))), C.END_DATE)
             add(r.item_number, d, "BACKFLUSH", r.qty, uom_by_num.get(r.item_number, "EA"), r.job_id, "BACKFLUSH", "floor")
         elif r.channel == "SERVICE":
+            dly = service_delays.get((r.job_id, r.item_number), 0)
+            if dly:
+                d = min(next_working_day(d + timedelta(days=int(dly))), C.END_DATE)
             add(r.item_number, d, "ISSUE", r.qty, uom_by_num.get(r.item_number, "EA"), r.job_id, "SERVICE", "floor")
         else:
             # T6: a manual pull posted against a similar item
