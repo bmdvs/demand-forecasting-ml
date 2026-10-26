@@ -4,14 +4,14 @@ The project began with a full [data quality audit](https://brimsystems.github.io
 
 A **demand forecasting ML model** was then built on the cleaned records. This model makes weekly demand forecasts and reordering decisions for each of the shop's 1,300 stocked items. The ML model is detailed in the [model overview report](https://brimsystems.github.io/demand-forecasting-ml/docs/reports/model_overview.html) and summarized below.  
 
-- **Results.** Over a six month period (Jan. to Jun. 2026), the model has been in production and used to set every reordering decision the shop made. Compared to 2025, when the shop's reordering decisions were done manually, the model achieved improvements across production and purchasing KPIs, while also reducing the shop's inventory balance and freeing up cash tied in working capital.
+- **Results.** Over a six month period (Jan. to Jun. 2026), the model has been in production and used to set every reordering decision the shop made. The table below compares the model's performance to 2025 when the shop's reordering decisions were done manually. The model achieved significant improvements across production and purchasing KPIs, while also reducing the shop's inventory balance and freeing up cash tied in working capital.
 
 <div align="center">
-**Model performance (1H '26) vs. shop's manual reordering performance (Avg. 1H/2H '25)**
+<b>Model performance (1H '26) vs. shop's manual reordering performance (Avg. 1H/2H '25)</b>
 
 | Stockout events | Jobs held for material | Rush-freight spend | Avg. inventory balance |
 |---|---|---|---|
-| -34% | −32% | −38% | -10% |
+| -36% | −43% | −46% | -5% |
 
 </div>
 
