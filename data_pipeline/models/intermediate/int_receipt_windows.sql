@@ -4,7 +4,8 @@
 -- lines on stocked items. For each receipt (the anchor) the window is that receipt and
 -- the previous {{ var('lt_window') - 1 }} of the same key: the median and standard
 -- deviation of the lead time over it, and the median over the window before it (for the
--- trend). Built twice, keyed by canonical item and by canonical supplier. Medians are
+-- trend). Built three times, keyed by canonical item, by canonical supplier, and by
+-- canonical supplier x item class (supplier_class, "SUP-001|Mechanical"). Medians are
 -- taken by rank, not with list functions, so the model runs on any SQL engine.
 
 {% set n = var('lt_window') %}
@@ -16,10 +17,12 @@ with receipts as (
         coalesce(s.canonical_supplier_id, p.supplier_id)   as supplier_id,
         p.po_id, p.line,
         p.received_date,
-        p.actual_lead_days                                  as lead_days
+        p.actual_lead_days                                  as lead_days,
+        coalesce(im.item_class, 'MISC')                     as item_class
     from {{ ref('stg_erp__purchase_orders') }} p
     left join {{ ref('int_item_crosswalk') }} x on x.item_number = p.item_number
     left join {{ ref('stg_remediation__supplier_crosswalk') }} s on s.alias_supplier_id = p.supplier_id
+    left join {{ ref('stg_erp__item_master') }} im on im.item_number = coalesce(x.canonical_item_number, p.item_number)
     where p.received_date is not null
       and not p.is_rush
       and not p.is_generic_item
@@ -31,6 +34,8 @@ keyed as (
     select 'item' as key_type, canonical_item_number as key_id, received_date, po_id, line, lead_days from receipts
     union all
     select 'supplier', supplier_id, received_date, po_id, line, lead_days from receipts
+    union all
+    select 'supplier_class', supplier_id || '|' || item_class, received_date, po_id, line, lead_days from receipts
 
 ),
 

@@ -76,6 +76,7 @@ def run():
         "item_installed_base": "select * from mart_item_installed_base order by canonical_item_number, month",
         "job_requirements": "select * from int_job_requirements order by order_id, canonical_item_number",
         "dim_week": "select * from dim_week order by week",
+        "bom_resolved": "select * from int_bom_resolved order by parent, component_item, valid_from",
         "item_lifecycle": """select canonical_item_number, first_use_date, created_date, superseded_by,
                                     supersede_planned_date, supersede_switch_date, successor_created_date, supersedes
                              from mart_item_attributes order by canonical_item_number""",

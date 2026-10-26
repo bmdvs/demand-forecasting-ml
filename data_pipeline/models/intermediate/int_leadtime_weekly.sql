@@ -1,6 +1,7 @@
 {{ config(materialized="table") }}
 
--- Point-in-time supplier performance by week, for canonical items and for suppliers: the
+-- Point-in-time supplier performance by week, for canonical items, for suppliers, and for
+-- supplier x item class (key_type supplier_class, key "SUP-001|Mechanical"): the
 -- rolling lead-time statistics as of the last non-rush receipt dated before the week, the
 -- on-time and partial-receipt rates over the 13 weeks before it, and the purchase-order
 -- lines open at the start of the week. Nothing dated on or after the week enters a row.
@@ -18,10 +19,12 @@ lines as (
         coalesce(x.canonical_item_number, p.item_number)   as canonical_item_number,
         coalesce(s.canonical_supplier_id, p.supplier_id)   as supplier_id,
         p.order_date, p.promised_date, p.received_date, p.is_rush,
-        p.qty_ordered, p.qty_received
+        p.qty_ordered, p.qty_received,
+        coalesce(im.item_class, 'MISC')                    as item_class
     from {{ ref('stg_erp__purchase_orders') }} p
     left join {{ ref('int_item_crosswalk') }} x on x.item_number = p.item_number
     left join {{ ref('stg_remediation__supplier_crosswalk') }} s on s.alias_supplier_id = p.supplier_id
+    left join {{ ref('stg_erp__item_master') }} im on im.item_number = coalesce(x.canonical_item_number, p.item_number)
     where not p.is_generic_item
 
 ),
@@ -32,6 +35,9 @@ keyed as (
            is_rush, qty_ordered, qty_received from lines
     union all
     select 'supplier', supplier_id, order_date, promised_date, received_date, is_rush, qty_ordered, qty_received from lines
+    union all
+    select 'supplier_class', supplier_id || '|' || item_class, order_date, promised_date, received_date,
+           is_rush, qty_ordered, qty_received from lines
 
 ),
 
