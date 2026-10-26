@@ -25,6 +25,21 @@ vars:
   # ABC cut points on cumulative annual usage value.
   abc_a_cum: 0.80
   abc_b_cum: 0.95
+  # Demand-signal marts, kept in sync with data_source/generate/config.py.
+  first_monday: '2022-12-26'       # the Monday of the first history week
+  forward_end: '2026-06-30'        # last day of the forward window
+  first_origin_week: 13            # firm-requirement origins start at this history week
+  shutdown_weeks: ['2023-07-03', '2023-12-25', '2024-07-01', '2024-12-23', '2025-06-30', '2025-12-22', '2026-06-29']
+  ib_age_cut_1: 12                 # installed-base failure weight by unit age, months
+  ib_age_cut_2: 24
+  ib_weight_1: 0.25
+  ib_weight_2: 0.65
+  ib_weight_3: 1.00
+  ib_opening_years: 8              # years of builds in the field when the history opens (estimate)
+  service_backorder_days: 5        # a service line shipped more than this many days after order
+  lt_window: 8                     # receipts in the rolling lead-time statistics
+  lt_min_receipts: 4               # below this, the corrected master stands in
+  t1_unrecorded_share: 0.14        # share of an affected item's usage that escapes the ledger
 
 models:
   demand_forecasting:

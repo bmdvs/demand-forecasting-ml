@@ -20,5 +20,7 @@ select
     status,
     created_by,
     cast(created_date as date)               as created_date,
-    cast(last_updated as date)               as last_updated
+    cast(last_updated as date)               as last_updated,
+    -- Set on a part engineering has replaced; names the successor part number.
+    cast(superseded_by as varchar)           as superseded_by
 from source

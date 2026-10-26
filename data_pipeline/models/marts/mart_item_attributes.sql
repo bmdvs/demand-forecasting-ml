@@ -70,6 +70,27 @@ lead as (
     select item_number, recommended_lead_days
     from {{ ref('stg_remediation__lead_time_computation') }}
 
+),
+
+-- lifecycle: first recorded use, set-up date, and part supersession from the bill
+first_use as (
+
+    select canonical_item_number, min(cast(week as date)) as first_use_date
+    from {{ ref('int_recorded_usage') }}
+    group by 1
+
+),
+
+supersession as (
+
+    -- the old part's bill rows carry the planned date and, once used up, the switch date
+    select b.component_item as item_number,
+           min(b.planned_date) as supersede_planned_date,
+           min(b.expiry_date)  as supersede_switch_date
+    from {{ ref('stg_erp__bill_of_materials') }} b
+    where b.effectivity = 'USE_UP' and b.replaces_item is null
+    group by 1
+
 )
 
 select
@@ -83,9 +104,20 @@ select
     end                                                    as segment,
     coalesce(a.abc, 'C')                                   as abc,
     cast(coalesce(l.recommended_lead_days, im.master_lead_time_days, 21) as double) as corrected_lead_days,
-    cast(coalesce(y.annual_consumption, 0) as double)      as annual_consumption
+    cast(coalesce(y.annual_consumption, 0) as double)      as annual_consumption,
+    fu.first_use_date,
+    im.created_date,
+    im.superseded_by,
+    ss.supersede_planned_date,
+    ss.supersede_switch_date,
+    sc.created_date                                        as successor_created_date,
+    pr.item_number                                         as supersedes
 from items i
 left join {{ ref('stg_erp__item_master') }} im on im.item_number = i.canonical_item_number
+left join first_use fu using (canonical_item_number)
+left join supersession ss on ss.item_number = i.canonical_item_number
+left join {{ ref('stg_erp__item_master') }} sc on sc.item_number = im.superseded_by
+left join {{ ref('stg_erp__item_master') }} pr on pr.superseded_by = i.canonical_item_number
 left join pattern p using (canonical_item_number)
 left join {{ ref('stg_truth__abc_by_item') }} a using (item_id)
 left join lead l on l.item_number = i.canonical_item_number

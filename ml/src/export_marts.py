@@ -61,6 +61,27 @@ def run():
                                   corrected_lead_days, annual_consumption
                            from mart_item_attributes order by canonical_item_number""").fetchdf()
     attrs.to_parquet(MARTS / "item_attributes.parquet", index=False)
+
+    # demand-signal marts for the feature set: order book, lead times, shortages, families,
+    # installed base, calendar and item lifecycle (kept apart from the files above)
+    signals = {
+        "firm_requirements_weekly": "select * from mart_firm_requirements_weekly order by canonical_item_number, origin",
+        "item_leadtime_weekly": "select * from mart_item_leadtime_weekly order by canonical_item_number, week",
+        "supplier_leadtime_weekly": "select * from mart_supplier_leadtime_weekly order by supplier_id, week",
+        "shortage_weekly": "select * from mart_shortage_weekly order by canonical_item_number, week",
+        "item_family": "select * from int_item_family order by canonical_item_number",
+        "family_usage_weekly": "select * from mart_family_usage_weekly order by family, week",
+        "product_family_weekly": "select * from mart_product_family_weekly order by product_family, week",
+        "installed_base": "select * from mart_installed_base order by product_family, month",
+        "item_installed_base": "select * from mart_item_installed_base order by canonical_item_number, month",
+        "job_requirements": "select * from int_job_requirements order by order_id, canonical_item_number",
+        "dim_week": "select * from dim_week order by week",
+        "item_lifecycle": """select canonical_item_number, first_use_date, created_date, superseded_by,
+                                    supersede_planned_date, supersede_switch_date, successor_created_date, supersedes
+                             from mart_item_attributes order by canonical_item_number""",
+    }
+    for name, sql in signals.items():
+        con.execute(sql).fetchdf().to_parquet(MARTS / f"{name}.parquet", index=False)
     con.close()
 
     tot = lambda d: d["consumption"].sum()

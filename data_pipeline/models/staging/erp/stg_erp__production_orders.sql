@@ -14,6 +14,8 @@ select
     cast(booked_date as date)        as booked_date,
     cast(release_date as date)       as release_date,
     cast(due_date as date)           as due_date,
+    -- The Monday of the due week: when the job's material is required, known at booking.
+    cast(required_date as date)      as required_date,
     cast(completed_date as date)     as completed_date,
     status,
     hold_reason,

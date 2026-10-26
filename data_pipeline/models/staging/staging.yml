@@ -37,6 +37,17 @@ models:
     columns:
       - name: order_id
         tests: [unique, not_null]
+      - name: required_date
+        tests: [not_null]
+
+  - name: stg_erp__bill_of_materials
+    columns:
+      - name: effectivity
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['DATE', 'USE_UP']
 
   - name: stg_wms__cycle_counts
     columns:
