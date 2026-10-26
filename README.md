@@ -7,7 +7,8 @@ A **demand forecasting ML model** was then built on the cleaned records. This mo
 - **Results.** Over a six month period (Jan. to Jun. 2026), the model has been in production and used to set every reordering decision the shop made. Compared to 2025, when the shop's reordering decisions were done manually, the model achieved improvements across production and purchasing KPIs, while also reducing the shop's inventory balance and freeing up cash tied in working capital.
 
 <div align="center">
-  
+**Model performance (1H '26) vs. shop's manual reordering performance (Avg. 1H/2H '25)**
+
 | Stockout events | Jobs held for material | Rush-freight spend | Avg. inventory balance |
 |---|---|---|---|
 | -34% | −32% | −38% | -10% |
