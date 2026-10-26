@@ -1,0 +1,5 @@
+s1_pooled exit 0
+drift items: {'short_days': 226, 'avg_inventory_value': 17731.425, 'items': 11} | rule: {'short_days': 226, 'avg_inventory_value': 22139.201519337017, 'items': 11}
+s6_pooled exit 0
+drift items: {'short_days': 282, 'avg_inventory_value': 18821.162403314916, 'items': 11} | rule: {'short_days': 226, 'avg_inventory_value': 22139.201519337017, 'items': 11}
+main frozen files unchanged

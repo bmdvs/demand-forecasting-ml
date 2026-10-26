@@ -110,11 +110,14 @@ select
     m.item_median,
     s.pool_span_median,
     a.pool_hist_median,
-    case when coalesce(m.item_receipts, 0) >= {{ var('lt_min_receipts') }} and s.pool_span_median > 0
-              then m.item_median / s.pool_span_median
-         when a.pool_hist_median > 0
-              then g.corrected_lead_days / a.pool_hist_median
-    end                                                as longrun_ratio
+    -- bounded to [0.25, 4]: a thin pool can otherwise scale a part to an impossible lead time
+    -- (ELE-00383 reached 630 days unbounded)
+    least(4.0, greatest(0.25,
+        case when coalesce(m.item_receipts, 0) >= {{ var('lt_min_receipts') }} and s.pool_span_median > 0
+                  then m.item_median / s.pool_span_median
+             when a.pool_hist_median > 0
+                  then g.corrected_lead_days / a.pool_hist_median
+        end))                                          as longrun_ratio
 from grid g
 left join item_med m on m.canonical_item_number = g.canonical_item_number and m.week = g.week
 left join pool_span_med s on s.canonical_item_number = g.canonical_item_number and s.week = g.week

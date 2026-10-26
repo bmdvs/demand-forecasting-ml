@@ -1,0 +1,5 @@
+=== 12:49:58 s6_pooled generator
+=== 12:51:49 s6_pooled validate, remediation, truth, warehouse
+[0m16:52:15  Done. PASS=132 WARN=0 ERROR=0 SKIP=0 NO-OP=0 REUSED=0 TOTAL=132
+active-short share forward 3.9 %
+=== 12:52:17 s6_pooled done

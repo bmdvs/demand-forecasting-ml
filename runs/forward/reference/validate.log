@@ -1,0 +1,82 @@
+
+=== Volume and shape ===
+  [PASS] Item master records                                        2484   expect 2200..2600
+  [PASS] Live share of master (%)                                   60.5   expect 55.0..65.0
+  [PASS] Inventory transactions                                   186790   expect 150000..260000
+  [PASS] PO lines                                                  15107   expect 15000..40000
+  [PASS] Production orders                                          5841   expect 5000..7500
+  [PASS] Service orders                                             5272   expect 3500..5500
+  [PASS] Top 20% live items = % of spend                            71.3   expect 70.0..85.0
+  [PASS] Top 20% items = % of consumption value                     74.1   expect 70.0..80.0
+
+=== Pre-remediation defect levels ===
+  [PASS] Dead items (% of master)                                   39.5   expect 35.0..45.0
+  [PASS] Dead items still carrying a reorder point (%)              30.3   expect 25.0..35.0
+  [PASS] Live items lead-time diff > 3 days (%)                     63.0   expect 55.0..75.0
+  [PASS] Live items lead-time diff > 7 days (%)                     24.8   expect 20.0..30.0
+  [PASS] Live items in duplicate clusters (%)                        6.3   expect 5.0..8.0
+  [PASS] Number of duplicate clusters                                 84   expect 60..90
+  [PASS] UOM-mismatch items                                           48   expect 40..55
+  [PASS] Live items with a blocking blank field (%)                 12.8   expect 10.0..15.0
+  [PASS] Live items item_class = MISC (%)                           11.6   expect 10.0..14.0
+  [PASS] Products with a BOM omission (%)                            8.8   expect 4.0..12.0
+  [FAIL] Adjustment share of quantity moved (%)                     27.7   expect 15.0..25.0
+  [PASS] Adjustments with blank/generic reason (%)                  71.7   expect 60.0..75.0
+  [PASS] Free-text PO lines (%)                                     10.7   expect 10.0..14.0
+  [PASS] Free-text lines matching a stocked item (%)                55.0   expect 50.0..60.0
+  [PASS] Receipts posted on the peak weekday (%)                    47.8   expect 35.0..50.0
+  [PASS] PO lines open > 90 days (%)                                 5.7   expect 5.0..8.0
+  [PASS] Completed jobs left open (%)                                8.0   expect 6.0..10.0
+  [PASS] Floor/receiving txns under shared logins (%)               65.4   expect 60.0..85.0
+
+=== Ledger, inventory and mix guards ===
+  [PASS] Adjustment share vs reference 26.8 (+/- 3 pts)             27.7   expect 23.8..29.8
+  [PASS] Segment mix smooth vs Run 00c 32.2 (+/- 3 pts)             30.8   expect 29.2..35.2
+  [PASS] Segment mix erratic vs Run 00c 33.0 (+/- 3 pts)            31.7   expect 30.0..36.0
+  [PASS] Segment mix lumpy vs Run 00c 20.8 (+/- 3 pts)              21.6   expect 17.8..23.8
+  [PASS] Segment mix intermittent vs Run 00c 14.0 (+/- 3 pts)       16.0   expect 11.0..17.0
+  [PASS] Forward avg inventory under the rule vs Run 01 (%)          1.9   expect -5.0..5.0
+  [PASS] Forward stockout days under the rule vs Run 03 (%)         -4.2   expect -10.0..10.0
+  [INFO] Forward avg inventory under the model vs Run 01 (%)        +7.5   (reported, not gating)
+
+=== Requirement dates ===
+  [PASS] Jobs whose required date is the Monday of the due week (%)      100.0   expect 100.0..100.0
+
+=== Supersession ===
+  [PASS] Superseded parts                                             39   expect 30..50
+  [PASS] Supersessions switched by the end of the history             33   expect 1..39
+  [PASS] Old-part postings after the switch (not held, not T6)          0   expect 0..0
+  [INFO]   T6 mispostings excluded                                     7   (reported, not gating)
+  [PASS] T6 exclusions match the ledger truth (difference)             0   expect 0..0
+  [INFO] Old-part postings after the switch on held requirements          3   (reported, not gating)
+  [INFO]   units on those postings                                    45   (reported, not gating)
+  [PASS] Successor 13 wks after switch vs old part 13 wks before (median)       1.33   expect 0.70..1.50
+  [INFO]   same, successor window from the day after the switch       1.25   (reported, not gating)
+  [PASS] Weeks from planned date to switch (median)                 24.6   expect 2.0..30.0
+  [INFO] Parts not switched by the end of the history                  6   (reported, not gating)
+  [INFO]   their on-hand value at the end ($K)                      45.0   (reported, not gating)
+  [FAIL] Switches beginning with a successor stockout (%)           15.2   expect 0.0..10.0
+  [INFO]   of those, on parts in the M2 drift set                      3   (reported, not gating)
+  [INFO]   share of switch stockouts in the drift set (%)             60   (reported, not gating)
+  [INFO]   switches with a stockout outside the drift set (%)        6.1   (reported, not gating)
+  [PASS] Superseded parts' on-hand value at end vs 1.5x Run 01 ($K)       60.7   expect 0.0..174.3
+
+=== Installed base ===
+  [PASS] Service lines grouped on canonical parts (%)              100.0   expect 100.0..100.0
+  [PASS] Bill-part service units 2023-25 vs Run 01 (%)              -0.5   expect -5.0..5.0
+  [PASS] Spearman r, 2025 service units vs installed base x qty/unit       0.86   expect 0.50..0.90
+  [PASS] Service growth 2023-25, bill minus off-bill parts (pts)        6.6   expect 5.0..25.0
+  [INFO]   same, without counting successors with their parts        3.9   (reported, not gating)
+  [INFO] Same parts: bill service growth minus own-draw growth (pts)       10.3   (reported, not gating)
+  [INFO] Within-part 2025 r, service vs base (was 0.3-0.6)          0.14   (reported, not gating)
+  bill parts 76; service growth bill +15.1%, off-bill +8.6%; age-weighted base: Jan-23 to Dec-25 +35.5%, to Jun-26 +44.7%, annual mean 2023 to 2025 +24.2%
+
+=== Plant calendar ===
+  [PASS] Shutdown-week consumption vs adjacent weeks (max, %)        0.7   expect 0.0..5.0
+
+=== Service holds ===
+  [PASS] Service lines backordered, 2024-25 as-is (%)                3.2   expect 2.0..8.0
+  [FAIL] Service lines backordered, forward window (%)               1.9   expect 0.0..1.5
+
+59/62 checks pass, 3 out of range
+Recorded -> C:\Users\brian\projects\mfg-inventory-forecast-replay\data_source\truth\realism_checks.txt

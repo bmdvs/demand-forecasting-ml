@@ -1,0 +1,104 @@
+{
+ "model": {
+  "MEC-00130": {
+   "short_days": 22,
+   "avg_inventory_value": 566.5182320441988
+  },
+  "MEC-00183": {
+   "short_days": 0,
+   "avg_inventory_value": 468.32500000000005
+  },
+  "MEC-00282": {
+   "short_days": 0,
+   "avg_inventory_value": 450.58044198895027
+  },
+  "ELE-00383": {
+   "short_days": 181,
+   "avg_inventory_value": 0.0
+  },
+  "MEC-00529": {
+   "short_days": 0,
+   "avg_inventory_value": 66.98234806629834
+  },
+  "ELE-00581": {
+   "short_days": 0,
+   "avg_inventory_value": 4805.571740331491
+  },
+  "MEC-00660": {
+   "short_days": 0,
+   "avg_inventory_value": 1730.297872928177
+  },
+  "MEC-00756": {
+   "short_days": 0,
+   "avg_inventory_value": 312.55690607734806
+  },
+  "MEC-00777": {
+   "short_days": 0,
+   "avg_inventory_value": 5630.65458563536
+  },
+  "ELE-00900": {
+   "short_days": 79,
+   "avg_inventory_value": 697.6350828729281
+  },
+  "MEC-01118": {
+   "short_days": 0,
+   "avg_inventory_value": 4092.0401933701655
+  }
+ },
+ "rule": {
+  "MEC-00130": {
+   "short_days": 22,
+   "avg_inventory_value": 549.9240331491712
+  },
+  "MEC-00183": {
+   "short_days": 0,
+   "avg_inventory_value": 468.32500000000005
+  },
+  "MEC-00282": {
+   "short_days": 0,
+   "avg_inventory_value": 350.6332596685083
+  },
+  "ELE-00383": {
+   "short_days": 181,
+   "avg_inventory_value": 0.0
+  },
+  "MEC-00529": {
+   "short_days": 0,
+   "avg_inventory_value": 62.87792817679558
+  },
+  "ELE-00581": {
+   "short_days": 0,
+   "avg_inventory_value": 4509.996215469613
+  },
+  "MEC-00660": {
+   "short_days": 0,
+   "avg_inventory_value": 1641.0132872928177
+  },
+  "MEC-00756": {
+   "short_days": 0,
+   "avg_inventory_value": 241.25878453038672
+  },
+  "MEC-00777": {
+   "short_days": 0,
+   "avg_inventory_value": 9106.056961325967
+  },
+  "ELE-00900": {
+   "short_days": 23,
+   "avg_inventory_value": 1011.4261325966851
+  },
+  "MEC-01118": {
+   "short_days": 0,
+   "avg_inventory_value": 4197.6899171270725
+  }
+ },
+ "model_total": {
+  "short_days": 282,
+  "avg_inventory_value": 18821.162403314916,
+  "items": 11
+ },
+ "rule_total": {
+  "short_days": 226,
+  "avg_inventory_value": 22139.201519337017,
+  "items": 11
+ }
+}
