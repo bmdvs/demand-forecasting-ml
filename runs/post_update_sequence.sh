@@ -7,6 +7,8 @@
 #           policy on the static horizon, which replaces the reference schedule
 #   pass 2  the forward window replayed on the S1 schedule: generate, validate, remediate,
 #           truth, warehouse, marts, reliability, financials, the signals monitor
+# Pass 2 regenerates in place, so the pass-1 extracts, truth, marts and warehouse are copied
+# to runs/seq/pass1/ before it starts.
 # Usage: runs/post_update_sequence.sh <pythonhashseed>
 set -euo pipefail
 HSEED=${1:-1}
@@ -41,6 +43,11 @@ step "pass1 ladder: reference and S1"; $PY -u -m ml.src.signal_ladder --rungs re
 step "pass1 S1 policy, static horizon"; $PY -u -m ml.src.signal_policy S1 static $SEQ/policy $SEQ/ladder
 cp ml/data/policy/rop_schedule.json $SEQ/reference_rop_schedule.json
 cp $SEQ/policy/rop_schedule.json ml/data/policy/rop_schedule.json
+step "pass1 state copied to $SEQ/pass1"
+mkdir -p $SEQ/pass1/data_source $SEQ/pass1/ml/data
+cp -r data_source/raw data_source/truth $SEQ/pass1/data_source/
+cp data_source/demand_forecasting.duckdb $SEQ/pass1/data_source/
+cp -r ml/data/marts $SEQ/pass1/ml/data/
 generate pass2
 step "pass2 reliability";    $PY -u -m ml.src.reliability
 step "pass2 financials";     $PY -u -m ml.src.financials
