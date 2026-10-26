@@ -319,14 +319,27 @@ def choose_final(results: dict, chain: list) -> dict:
 
 
 # ── edges: results out ──────────────────────────────────────────────────────
-def _save(res, test, rung):
+def _save(res, test, rung, out=None):
+    out = out or OUT
     test[["item", "t", "week", "h", "target", "firm_h", "bf_window", "segment", "abc", "tier", "item_class"]
-         + [c for c in test.columns if c.startswith("pred")]].to_parquet(OUT / f"pred_{rung}.parquet", index=False)
+         + [c for c in test.columns if c.startswith("pred")]].to_parquet(out / f"pred_{rung}.parquet", index=False)
     slim = {k: v for k, v in res.items() if k != "models"}
-    (OUT / f"metrics_{rung}.json").write_text(json.dumps(slim, indent=1, default=float))
+    (out / f"metrics_{rung}.json").write_text(json.dumps(slim, indent=1, default=float))
     c = res["candidates"][res["winner"]]
     print(f"  {rung:<9} {res['winner']:<12} val {c['val_wape']*100:6.2f}%  test {c['test_wape']*100:6.2f}%"
           f"  corrected {c['test_wape_corrected']*100:6.2f}%  bias {res['scores_winner']['bias']*100:+6.1f}%", flush=True)
+
+
+def run_selected(rungs: list, out: Path):
+    """Only the named rungs, with the target change kept (the production path: the reference
+    and S1 for the policy), written to out."""
+    optuna.logging.set_verbosity(optuna.logging.WARNING)
+    out.mkdir(parents=True, exist_ok=True)
+    frame, ctx = prepare_frame(load_inputs())
+    frame.to_parquet(out / "frame.parquet", index=False)
+    for rung in rungs:
+        res, test = run_rung(frame, rung)
+        _save(res, test, rung, out)
 
 
 def main():
@@ -370,4 +383,12 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    # python -m ml.src.signal_ladder                                   the full ladder into runs/ladder
+    # python -m ml.src.signal_ladder --rungs reference S1 --out DIR    selected rungs into DIR
+    if "--rungs" in sys.argv:
+        a = sys.argv[sys.argv.index("--rungs") + 1:]
+        rungs = [x for x in a[:a.index("--out")]] if "--out" in a else a
+        out = Path(sys.argv[sys.argv.index("--out") + 1]) if "--out" in sys.argv else OUT
+        run_selected(rungs, out)
+    else:
+        main()

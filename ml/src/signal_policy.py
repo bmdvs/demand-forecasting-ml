@@ -10,7 +10,7 @@ There is no scheduled-share netting and no shrink of the forecast error for sche
 demand. Each monthly retrain re-estimates, from the trailing 52 weeks of out-of-sample
 uncovered-demand errors (the ladder's 2025 test predictions to start, then the forward
 predictions as their targets complete):
-  - the bias correction by demand pattern and criticality tier
+  - the bias correction by demand pattern (criticality enters through the fill targets)
   - each item's forecast-error standard deviation (pattern and tier as the fallback)
   - the loss function of the standardized errors by ABC class, for the fill-rate buffer
 The buffer formula, the fill-rate targets, lot sizing and the 20% hysteresis band are the
@@ -57,11 +57,13 @@ def lead_time_sd(po: pd.DataFrame, xw: dict, item_class: dict):
 
 
 def _error_stats(pool: pd.DataFrame):
-    """Bias factors by pattern x tier, per-item error sd, and standardized-error loss curves
-    by ABC from out-of-sample uncovered predictions (columns ua, pu, item, segment, tier, abc)."""
-    g = pool.groupby(["segment", "tier"])
+    """Bias factors by demand pattern, per-item error sd, and standardized-error loss curves by
+    ABC from out-of-sample uncovered predictions (columns ua, pu, item, segment, tier, abc).
+    The factors are by pattern only, as in the weekly model: a pattern x tier cell is too
+    small to hold its estimate from one year to the next."""
+    g = pool.groupby("segment")
     factor = (g["ua"].sum() / g["pu"].sum().replace(0, np.nan)).fillna(1.0).clip(0.2, 5.0).to_dict()
-    pool = pool.assign(pc=pool["pu"] * [factor.get((s, t), 1.0) for s, t in zip(pool["segment"], pool["tier"])])
+    pool = pool.assign(pc=pool["pu"] * pool["segment"].map(factor).fillna(1.0))
     err = pool["ua"] - pool["pc"]
     sd_item = err.groupby(pool["item"]).std()
     sd_grp = err.groupby([pool["segment"], pool["tier"]]).std()
@@ -88,6 +90,7 @@ def build_schedule(frame: pd.DataFrame, rung: str, result: dict, oos: pd.DataFra
     origins = [pd.Timestamp(C.FORWARD_START)] + [w for w in weeks if pd.Timestamp(C.FORWARD_START) < w <= pd.Timestamp(C.END_DATE)]
     pool = oos.copy()
     sched, prev, model, month = {}, {}, None, None
+    retrains = []          # what each monthly retrain estimated, for monitoring
     for o in origins:
         t_o = wi[pd.Timestamp(_monday(o.date()))]
         if month != (o.year, o.month):
@@ -97,6 +100,9 @@ def build_schedule(frame: pd.DataFrame, rung: str, result: dict, oos: pd.DataFra
             known = pool[(pool["t"] + pool["h"] <= t_o) & (pool["t"] >= t_o - 52)]
             factor, sd_item, sd_grp, loss, k_grid = _error_stats(known)
             month = (o.year, o.month)
+            retrains.append({"period": o.strftime("%Y-%m"), "trained_on": o.date().isoformat(), "training_rows": int(len(fit)),
+                             "error_rows": int(len(known)),
+                             "bias_factors": {s_: float(v) for s_, v in sorted(factor.items())}})
         cur = f[f["t"] == t_o]
         pu = L._predict(kind, model, cur[feats].astype(float), cap)
         if s4b:
@@ -110,7 +116,7 @@ def build_schedule(frame: pd.DataFrame, rung: str, result: dict, oos: pd.DataFra
         for r, p_u in zip(cur.itertuples(index=False), pu):
             item = r.item; a = attrs.loc[item]
             tier = tier_of.get(item, "standard"); h = int(r.h)
-            fac = factor.get((r.segment, tier), 1.0)
+            fac = factor.get(r.segment, 1.0)
             pc_u = float(p_u) * fac                                       # uncovered, over the model horizon
             Lt = float(a["corrected_lead_days"]) if horizon == "static" else float(r.lt_pooled26w)
             if not np.isfinite(Lt) or Lt <= 0:
@@ -142,7 +148,7 @@ def build_schedule(frame: pd.DataFrame, rung: str, result: dict, oos: pd.DataFra
                          round(point, 2), 1.0, round(q_lot, 1)]
             prev[item] = entry
             sched.setdefault(item, []).append(entry)
-    return sched
+    return sched, retrains
 
 
 def oos_pool(pred: pd.DataFrame, kind: str) -> pd.DataFrame:
@@ -152,9 +158,9 @@ def oos_pool(pred: pd.DataFrame, kind: str) -> pd.DataFrame:
                          "segment": pred["segment"], "tier": pred["tier"], "abc": pred["abc"]})
 
 
-def main(rung: str, horizon: str, out_dir: str):
+def main(rung: str, horizon: str, out_dir: str, ladder_dir: str | None = None):
     out = Path(out_dir); out.mkdir(parents=True, exist_ok=True)
-    lad = REPO / "runs" / "ladder"
+    lad = Path(ladder_dir) if ladder_dir else REPO / "runs" / "ladder"
     result = json.loads((lad / f"metrics_{rung}.json").read_text())
     inp = L.load_inputs()
     frame, ctx = L.prepare_frame(inp)
@@ -163,7 +169,8 @@ def main(rung: str, horizon: str, out_dir: str):
     po = pd.read_csv(L.RAW / "erp" / "purchase_orders.csv", low_memory=False)
     lt_sd = lead_time_sd(po, inp["xw"], attrs["item_class"].to_dict())
     oos = oos_pool(pd.read_parquet(lad / f"pred_{rung}.parquet"), result["winner"])
-    sched = build_schedule(frame, rung, result, oos, horizon, lt_sd, tier_of, attrs, ctx["weeks"])
+    sched, retrains = build_schedule(frame, rung, result, oos, horizon, lt_sd, tier_of, attrs, ctx["weeks"])
+    (out / "retrain_log.json").write_text(json.dumps(retrains, indent=1))
     origins = sorted({e[0] for es in sched.values() for e in es})
     meta = {"origins": origins, "hysteresis": HYSTERESIS, "model": f"{rung} {result['winner']}", "horizon": horizon,
             "fill_rate_target": FILL_TARGET, "criticality": tier_of, "order_line_cost": ORDER_LINE_COST,
@@ -176,4 +183,4 @@ def main(rung: str, horizon: str, out_dir: str):
 
 
 if __name__ == "__main__":
-    main(*sys.argv[1:4])
+    main(*sys.argv[1:5])

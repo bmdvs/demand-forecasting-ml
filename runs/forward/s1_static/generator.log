@@ -20,8 +20,8 @@ Full extracts -> C:\Users\brian\projects\mfg-inventory-forecast-replay\data_sour
   [       erp]  bill_of_materials            818 rows   38 KB
   [       erp]  production_orders          5,841 rows   626 KB
   [       erp]  service_orders            10,458 rows   632 KB
-  [       erp]  purchase_orders           15,178 rows   1.4 MB
-  [       erp]  inventory_transactions   186,938 rows   14.2 MB
+  [       erp]  purchase_orders           15,165 rows   1.4 MB
+  [       erp]  inventory_transactions   186,912 rows   14.2 MB
   [       wms]  cycle_counts               7,915 rows   407 KB
   [purchasing]  buyer_spreadsheet            120 rows   9 KB
 
@@ -41,13 +41,13 @@ Ground-truth -> C:\Users\brian\projects\mfg-inventory-forecast-replay\data_sourc
 Forward window and the two halves of last year
   1H25               fill  96.4% | stockouts  385 ( 3694 days) | jobs held   73 | rush  371  $143,301 | inventory  $3,706,495 (169 days) | lines  1902 | purchases $3,864,062
   2H25               fill  96.6% | stockouts  375 ( 4111 days) | jobs held  114 | rush  373  $168,058 | inventory  $3,480,033 (152 days) | lines  1929 | purchases $4,395,606
-  1H26               model       fill  98.0% | stockouts  225 ( 2478 days) | jobs held   57 | rush  238   $86,643 | inventory  $3,455,867 (150 days) | lines  2297 | purchases $3,906,712
+  1H26               model       fill  98.1% | stockouts  217 ( 2462 days) | jobs held   57 | rush  231   $85,561 | inventory  $3,432,274 (149 days) | lines  2285 | purchases $3,880,950
   1H26               dirty       fill  96.6% | stockouts  373 ( 4161 days) | jobs held  141 | rush  367  $150,474 | inventory  $3,340,610 (145 days) | lines  1841 | purchases $3,860,923
   1H26               clean_rule  fill  96.9% | stockouts  346 ( 3624 days) | jobs held   84 | rush  350  $125,562 | inventory  $3,203,826 (139 days) | lines  1566 | purchases $3,646,171
-  1H26_months_1_3    model       fill  97.5% | stockouts  142 ( 1709 days) | jobs held   37 | rush  161   $61,393 | inventory  $3,494,526 (144 days) | lines  1272 | purchases $2,362,744
+  1H26_months_1_3    model       fill  97.5% | stockouts  140 ( 1698 days) | jobs held   36 | rush  162   $61,947 | inventory  $3,483,372 (144 days) | lines  1265 | purchases $2,309,322
   1H26_months_1_3    dirty       fill  96.1% | stockouts  210 ( 2229 days) | jobs held   74 | rush  211   $88,183 | inventory  $3,395,296 (140 days) | lines   981 | purchases $2,095,945
   1H26_months_1_3    clean_rule  fill  96.7% | stockouts  180 ( 2072 days) | jobs held   47 | rush  194   $77,380 | inventory  $3,353,423 (139 days) | lines   798 | purchases $1,883,774
-  1H26_months_4_6    model       fill  98.6% | stockouts   83 (  769 days) | jobs held   20 | rush   77   $25,250 | inventory  $3,417,632 (155 days) | lines  1025 | purchases $1,543,968
+  1H26_months_4_6    model       fill  98.8% | stockouts   77 (  764 days) | jobs held   21 | rush   69   $23,613 | inventory  $3,381,738 (154 days) | lines  1020 | purchases $1,571,627
   1H26_months_4_6    dirty       fill  97.1% | stockouts  163 ( 1932 days) | jobs held   67 | rush  156   $62,291 | inventory  $3,286,525 (150 days) | lines   860 | purchases $1,764,979
   1H26_months_4_6    clean_rule  fill  97.2% | stockouts  166 ( 1552 days) | jobs held   37 | rush  156   $48,183 | inventory  $3,055,872 (139 days) | lines   768 | purchases $1,762,396
 Counterfactual 2025: inventory $3,592,333 -> $2,213,672  | purchases $8,259,668 -> $8,399,613  | rush freight $185,472 -> $123,219  | shortages 760 -> 438  | jobs delayed 187 -> 65
@@ -63,11 +63,11 @@ Demand-segment mix (classified)
   intermittent   16.0%
 
 Item master 2,484 records; dead 980 (39%)
-Rows  POs 15,178  transactions 186,938  production 5,841  service 10,458  cycle_counts 7,915
+Rows  POs 15,165  transactions 186,912  production 5,841  service 10,458  cycle_counts 7,915
 
-Replay  rush lines 2,299 (15.1% of lines), freight $557,865  | shortages 2,308 on 808 items  | jobs delayed 592
-  shortage causes: {'other': 1795, 'stale_lead_time': 322, 'phantom_on_order': 127, 'unrecorded_consumption': 64}
-  rush causes:     {'other': 1958, 'stale_lead_time': 272, 'phantom_on_order': 61, 'unrecorded_consumption': 8}
+Replay  rush lines 2,292 (15.1% of lines), freight $557,075  | shortages 2,300 on 808 items  | jobs delayed 592
+  shortage causes: {'other': 1791, 'stale_lead_time': 318, 'phantom_on_order': 127, 'unrecorded_consumption': 64}
+  rush causes:     {'other': 1955, 'stale_lead_time': 268, 'phantom_on_order': 61, 'unrecorded_consumption': 8}
 ========================================================================
 
-drift items: {'short_days': 213, 'avg_inventory_value': 21274.4041160221, 'items': 11} | rule: {'short_days': 226, 'avg_inventory_value': 22139.201519337017, 'items': 11}
+drift items: {'short_days': 213, 'avg_inventory_value': 21586.240801104974, 'items': 11} | rule: {'short_days': 226, 'avg_inventory_value': 22139.201519337017, 'items': 11}

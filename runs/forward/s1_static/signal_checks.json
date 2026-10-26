@@ -5,7 +5,7 @@
     "wrong_posts": 0,
     "held_posts": 3,
     "held_units": 45.0,
-    "ratio_median": 1.309090909090909,
+    "ratio_median": 1.3427672955974843,
     "ratio_in_range_share": 0.42424242424242425,
     "weeks_to_switch": [
       10.571428571428571,
@@ -95,14 +95,14 @@
     0.0,
     0.0,
     0.0,
-    0.0001643565441297321,
     0.0,
-    0.002523062366947883
+    0.0,
+    0.002543518003338367
   ],
   "service_holds": {
     "backorder_2024_25": 3.2453696115390915,
-    "backorder_forward": 2.0763563295378433,
-    "lines_held": 343,
-    "held_days_total": 3105
+    "backorder_forward": 2.1433355659745477,
+    "lines_held": 344,
+    "held_days_total": 3039
   }
 }

@@ -2,7 +2,7 @@
  "model": {
   "MEC-00130": {
    "short_days": 22,
-   "avg_inventory_value": 639.0696132596685
+   "avg_inventory_value": 589.6729281767956
   },
   "MEC-00183": {
    "short_days": 0,
@@ -10,11 +10,11 @@
   },
   "MEC-00282": {
    "short_days": 0,
-   "avg_inventory_value": 659.2014364640884
+   "avg_inventory_value": 664.2465193370166
   },
   "ELE-00383": {
    "short_days": 169,
-   "avg_inventory_value": 119.57569060773481
+   "avg_inventory_value": 122.89723756906078
   },
   "MEC-00529": {
    "short_days": 0,
@@ -26,7 +26,7 @@
   },
   "MEC-00660": {
    "short_days": 0,
-   "avg_inventory_value": 2478.2315745856354
+   "avg_inventory_value": 2824.15091160221
   },
   "MEC-00756": {
    "short_days": 0,
@@ -38,7 +38,7 @@
   },
   "ELE-00900": {
    "short_days": 22,
-   "avg_inventory_value": 1049.443867403315
+   "avg_inventory_value": 1056.3912707182321
   },
   "MEC-01118": {
    "short_days": 0,
@@ -93,7 +93,7 @@
  },
  "model_total": {
   "short_days": 213,
-  "avg_inventory_value": 21274.4041160221,
+  "avg_inventory_value": 21586.240801104974,
   "items": 11
  },
  "rule_total": {

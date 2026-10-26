@@ -177,57 +177,57 @@
     "1H26": {
       "model": {
         "fill_rate_by_tier": {
-          "line": 0.989163956701629,
-          "service": 0.9708179252627481,
-          "standard": 0.9755012824654987
+          "line": 0.9888433411197117,
+          "service": 0.9734210782405606,
+          "standard": 0.9762925208194592
         },
         "stockout_episodes_by_tier": {
-          "line": 64,
-          "service": 32,
-          "standard": 129
+          "line": 63,
+          "service": 33,
+          "standard": 121
         },
         "stockout_causes": {
-          "other": 180,
-          "stale_lead_time": 44,
+          "other": 176,
+          "stale_lead_time": 40,
           "unrecorded_consumption": 1
         },
         "start": "2026-01-01",
         "end": "2026-06-30",
         "days": 181,
         "items": 1339,
-        "fill_rate": 0.9804347624651365,
+        "fill_rate": 0.9810061680920921,
         "fill_rate_by_abc": {
-          "A": 0.9856730189298147,
-          "B": 0.9801349442962498,
-          "C": 0.9769454066631253
+          "A": 0.986826372649645,
+          "B": 0.9802238610806004,
+          "C": 0.977450415603654
         },
-        "stockout_episodes": 225,
+        "stockout_episodes": 217,
         "stockout_episodes_by_abc": {
-          "A": 54,
-          "B": 60,
-          "C": 111
+          "A": 48,
+          "B": 61,
+          "C": 108
         },
-        "stockout_days": 2478,
+        "stockout_days": 2462,
         "stockout_days_by_abc": {
-          "A": 640,
-          "B": 716,
-          "C": 1122
+          "A": 598,
+          "B": 727,
+          "C": 1137
         },
-        "items_short": 216,
+        "items_short": 212,
         "jobs": 800,
         "jobs_delayed": 57,
         "job_delay_days": 426,
         "job_delay_days_median": 6.0,
-        "rush_lines": 238,
-        "rush_freight": 56546.61,
-        "rush_premium": 30096.6,
-        "rush_spend": 86643.20999999999,
-        "avg_inventory_value": 3455866.5447052484,
-        "end_inventory_value": 3362358.6938999956,
+        "rush_lines": 231,
+        "rush_freight": 55755.770000000004,
+        "rush_premium": 29804.780000000002,
+        "rush_spend": 85560.55,
+        "avg_inventory_value": 3432274.275657182,
+        "end_inventory_value": 3344621.1614999967,
         "inventory_by_abc": {
-          "A": 2471569.5474585635,
-          "B": 656362.068480663,
-          "C": 327934.9287660221
+          "A": 2447242.396022099,
+          "B": 656117.9542541436,
+          "C": 328913.92538093915
         },
         "consumption_by_abc": {
           "A": 3109974.42,
@@ -235,35 +235,35 @@
           "C": 456802.09459999995
         },
         "inventory_by_month": {
-          "2026-01": 3486594.865011289,
-          "2026-02": 3455601.421514283,
-          "2026-03": 3537613.684080637,
-          "2026-04": 3547654.0007566605,
-          "2026-05": 3370894.2762161302,
-          "2026-06": 3335906.5727333305
+          "2026-01": 3483911.6600951594,
+          "2026-02": 3446923.922578568,
+          "2026-03": 3515752.2756709605,
+          "2026-04": 3506620.158939996,
+          "2026-05": 3334036.745229035,
+          "2026-06": 3306148.272756663
         },
-        "days_of_supply": 149.75723444952456,
-        "safety_stock_value": 1422433.4360101111,
-        "cycle_stock_value": 2033433.1086951373,
+        "days_of_supply": 148.73488219103223,
+        "safety_stock_value": 1418465.648381,
+        "cycle_stock_value": 2013808.6272761822,
         "excess_items": 175,
-        "excess_value": 1074066.4952867404,
-        "order_lines": 2297,
-        "regular_lines": 2059,
-        "purchases": 3906712.08,
+        "excess_value": 1070443.4850845304,
+        "order_lines": 2285,
+        "regular_lines": 2054,
+        "purchases": 3880949.61,
         "purchases_by_month": {
-          "2026-01": 1147343.82,
-          "2026-02": 571933.87,
-          "2026-03": 643466.18,
-          "2026-04": 518321.05,
-          "2026-05": 547966.9400000001,
-          "2026-06": 477680.22
+          "2026-01": 1097197.89,
+          "2026-02": 583125.79,
+          "2026-03": 628998.8099999999,
+          "2026-04": 533462.33,
+          "2026-05": 547063.86,
+          "2026-06": 491100.93
         },
         "consumption_value": 4176838.9146000003,
         "forecast_bias_by_segment": {
-          "lumpy": 0.00594635011591751,
-          "smooth": -0.01373037577611396,
-          "erratic": 0.06895624731999922,
-          "intermittent": 0.08925284412367222
+          "lumpy": 0.004231112972256421,
+          "smooth": -0.0140231768869792,
+          "erratic": 0.06974058077343723,
+          "intermittent": 0.002890735829722077
         }
       },
       "dirty": {
@@ -441,57 +441,57 @@
     "1H26_months_1_3": {
       "model": {
         "fill_rate_by_tier": {
-          "line": 0.9857301110690027,
-          "service": 0.9588617074388417,
-          "standard": 0.9689706549199975
+          "line": 0.9856353671690523,
+          "service": 0.9592611083374938,
+          "standard": 0.969054868173868
         },
         "stockout_episodes_by_tier": {
-          "line": 42,
+          "line": 41,
           "service": 19,
-          "standard": 81
+          "standard": 80
         },
         "stockout_causes": {
-          "other": 110,
-          "stale_lead_time": 31,
+          "other": 109,
+          "stale_lead_time": 30,
           "unrecorded_consumption": 1
         },
         "start": "2026-01-01",
         "end": "2026-03-31",
         "days": 90,
         "items": 1339,
-        "fill_rate": 0.9746835443037974,
+        "fill_rate": 0.9747317890978826,
         "fill_rate_by_abc": {
-          "A": 0.9868066317107861,
-          "B": 0.9774045289569196,
-          "C": 0.964259460730983
+          "A": 0.9870507567877386,
+          "B": 0.9775228814896639,
+          "C": 0.9641197918198124
         },
-        "stockout_episodes": 142,
+        "stockout_episodes": 140,
         "stockout_episodes_by_abc": {
-          "A": 28,
+          "A": 27,
           "B": 37,
-          "C": 77
+          "C": 76
         },
-        "stockout_days": 1709,
+        "stockout_days": 1698,
         "stockout_days_by_abc": {
-          "A": 317,
+          "A": 316,
           "B": 498,
-          "C": 894
+          "C": 884
         },
-        "items_short": 152,
+        "items_short": 150,
         "jobs": 425,
-        "jobs_delayed": 37,
-        "job_delay_days": 240,
+        "jobs_delayed": 36,
+        "job_delay_days": 239,
         "job_delay_days_median": 6.0,
-        "rush_lines": 161,
-        "rush_freight": 37054.03,
-        "rush_premium": 24339.11,
-        "rush_spend": 61393.14,
-        "avg_inventory_value": 3494525.6091583334,
-        "end_inventory_value": 3656493.0363999866,
+        "rush_lines": 162,
+        "rush_freight": 37899.380000000005,
+        "rush_premium": 24047.75,
+        "rush_spend": 61947.130000000005,
+        "avg_inventory_value": 3483371.6871216665,
+        "end_inventory_value": 3611601.157699989,
         "inventory_by_abc": {
-          "A": 2483028.930722222,
-          "B": 679446.0190000001,
-          "C": 332050.6594361111
+          "A": 2472762.3163888888,
+          "B": 678248.5752222223,
+          "C": 332360.79551055556
         },
         "consumption_by_abc": {
           "A": 1621494.04,
@@ -499,29 +499,29 @@
           "C": 238850.8991
         },
         "inventory_by_month": {
-          "2026-01": 3486594.865011289,
-          "2026-02": 3455601.421514283,
-          "2026-03": 3537613.684080637
+          "2026-01": 3483911.6600951594,
+          "2026-02": 3446923.922578568,
+          "2026-03": 3515752.2756709605
         },
-        "days_of_supply": 144.49716130746145,
-        "safety_stock_value": 1436145.2527129287,
-        "cycle_stock_value": 2058380.3564454047,
+        "days_of_supply": 144.03595133162978,
+        "safety_stock_value": 1423938.908902357,
+        "cycle_stock_value": 2059432.7782193094,
         "excess_items": 198,
-        "excess_value": 1219421.3480388888,
-        "order_lines": 1272,
-        "regular_lines": 1111,
-        "purchases": 2362743.87,
+        "excess_value": 1217685.2004833333,
+        "order_lines": 1265,
+        "regular_lines": 1103,
+        "purchases": 2309322.4899999998,
         "purchases_by_month": {
-          "2026-01": 1147343.82,
-          "2026-02": 571933.87,
-          "2026-03": 643466.18
+          "2026-01": 1097197.89,
+          "2026-02": 583125.79,
+          "2026-03": 628998.8099999999
         },
         "consumption_value": 2176563.8991,
         "forecast_bias_by_segment": {
-          "lumpy": -0.03911449662117653,
-          "smooth": -0.018597465892783,
-          "erratic": 0.03602320468759674,
-          "intermittent": 0.053810075535942636
+          "lumpy": -0.04147145088888893,
+          "smooth": -0.018827158011437677,
+          "erratic": 0.03688949644824029,
+          "intermittent": -0.029498469638792674
         }
       },
       "dirty": {
@@ -687,56 +687,56 @@
     "1H26_months_4_6": {
       "model": {
         "fill_rate_by_tier": {
-          "line": 0.9929397999743557,
-          "service": 0.9821818354370314,
-          "standard": 0.9822694559321123
+          "line": 0.992370816771381,
+          "service": 0.9868795672392522,
+          "standard": 0.9837934368118588
         },
         "stockout_episodes_by_tier": {
           "line": 22,
-          "service": 13,
-          "standard": 48
+          "service": 14,
+          "standard": 41
         },
         "stockout_causes": {
-          "other": 70,
-          "stale_lead_time": 13
+          "other": 67,
+          "stale_lead_time": 10
         },
         "start": "2026-04-01",
         "end": "2026-06-30",
         "days": 91,
         "items": 1339,
-        "fill_rate": 0.9864728824505198,
+        "fill_rate": 0.9875935469982652,
         "fill_rate_by_abc": {
-          "A": 0.9845464135021097,
-          "B": 0.983217889039845,
-          "C": 0.9900903371265786
+          "A": 0.9866033755274262,
+          "B": 0.983273569567251,
+          "C": 0.9912633487195893
         },
-        "stockout_episodes": 83,
+        "stockout_episodes": 77,
         "stockout_episodes_by_abc": {
-          "A": 26,
-          "B": 23,
-          "C": 34
+          "A": 21,
+          "B": 24,
+          "C": 32
         },
-        "stockout_days": 769,
+        "stockout_days": 764,
         "stockout_days_by_abc": {
-          "A": 323,
-          "B": 218,
-          "C": 228
+          "A": 282,
+          "B": 229,
+          "C": 253
         },
-        "items_short": 84,
+        "items_short": 80,
         "jobs": 375,
-        "jobs_delayed": 20,
-        "job_delay_days": 186,
-        "job_delay_days_median": 3.5,
-        "rush_lines": 77,
-        "rush_freight": 19492.58,
-        "rush_premium": 5757.490000000001,
-        "rush_spend": 25250.070000000003,
-        "avg_inventory_value": 3417632.3051362634,
-        "end_inventory_value": 3362358.6938999956,
+        "jobs_delayed": 21,
+        "job_delay_days": 187,
+        "job_delay_days_median": 3.0,
+        "rush_lines": 69,
+        "rush_freight": 17856.39,
+        "rush_premium": 5757.030000000001,
+        "rush_spend": 23613.42,
+        "avg_inventory_value": 3381738.374208791,
+        "end_inventory_value": 3344621.1614999967,
         "inventory_by_abc": {
-          "A": 2460236.0914835166,
-          "B": 633531.7877472527,
-          "C": 323864.4259054945
+          "A": 2422002.9143406595,
+          "B": 634230.526923077,
+          "C": 325504.93294505496
         },
         "consumption_by_abc": {
           "A": 1488480.38,
@@ -744,29 +744,29 @@
           "C": 217951.1955
         },
         "inventory_by_month": {
-          "2026-04": 3547654.0007566605,
-          "2026-05": 3370894.2762161302,
-          "2026-06": 3335906.5727333305
+          "2026-04": 3506620.158939996,
+          "2026-05": 3334036.745229035,
+          "2026-06": 3306148.272756663
         },
-        "days_of_supply": 155.48089005634031,
-        "safety_stock_value": 1407666.8641763076,
-        "cycle_stock_value": 2009965.4409599558,
-        "excess_items": 191,
-        "excess_value": 1165165.8535032966,
-        "order_lines": 1025,
-        "regular_lines": 948,
-        "purchases": 1543968.21,
+        "days_of_supply": 153.8479407423264,
+        "safety_stock_value": 1412571.3678195383,
+        "cycle_stock_value": 1969167.0063892528,
+        "excess_items": 203,
+        "excess_value": 1082741.880925275,
+        "order_lines": 1020,
+        "regular_lines": 951,
+        "purchases": 1571627.12,
         "purchases_by_month": {
-          "2026-04": 518321.05,
-          "2026-05": 547966.9400000001,
-          "2026-06": 477680.22
+          "2026-04": 533462.33,
+          "2026-05": 547063.86,
+          "2026-06": 491100.93
         },
         "consumption_value": 2000275.0155000002,
         "forecast_bias_by_segment": {
-          "lumpy": 0.09042663251116091,
-          "smooth": -0.005613285711500487,
-          "erratic": 0.12935238898527993,
-          "intermittent": 0.15118413486984514
+          "lumpy": 0.0899144895786137,
+          "smooth": -0.006011336850908248,
+          "erratic": 0.1299864185148383,
+          "intermittent": 0.059486351263727616
         }
       },
       "dirty": {
@@ -932,134 +932,134 @@
   "schedule_used": true,
   "status_weekly": {
     "2026-01-05": {
-      "ORDER NOW": 58,
-      "ORDER SOON": 97,
+      "ORDER NOW": 55,
+      "ORDER SOON": 100,
       "OK": 1139
     },
     "2026-01-12": {
-      "ORDER NOW": 53,
-      "ORDER SOON": 106,
-      "OK": 1135
+      "ORDER NOW": 52,
+      "ORDER SOON": 104,
+      "OK": 1138
     },
     "2026-01-19": {
-      "ORDER NOW": 41,
-      "ORDER SOON": 104,
-      "OK": 1149
+      "ORDER NOW": 45,
+      "ORDER SOON": 107,
+      "OK": 1142
     },
     "2026-01-26": {
-      "ORDER NOW": 53,
-      "ORDER SOON": 112,
-      "OK": 1129
+      "ORDER NOW": 46,
+      "ORDER SOON": 113,
+      "OK": 1135
     },
     "2026-02-02": {
-      "ORDER NOW": 57,
-      "ORDER SOON": 98,
-      "OK": 1139
+      "ORDER NOW": 50,
+      "ORDER SOON": 99,
+      "OK": 1145
     },
     "2026-02-09": {
-      "ORDER NOW": 46,
-      "ORDER SOON": 109,
-      "OK": 1139
+      "ORDER NOW": 40,
+      "ORDER SOON": 117,
+      "OK": 1137
     },
     "2026-02-16": {
-      "ORDER NOW": 45,
-      "ORDER SOON": 124,
-      "OK": 1125
+      "ORDER NOW": 41,
+      "ORDER SOON": 129,
+      "OK": 1124
     },
     "2026-02-23": {
-      "ORDER NOW": 44,
-      "ORDER SOON": 135,
-      "OK": 1115
+      "ORDER NOW": 41,
+      "ORDER SOON": 134,
+      "OK": 1119
     },
     "2026-03-02": {
-      "ORDER NOW": 48,
-      "ORDER SOON": 135,
-      "OK": 1111
+      "ORDER NOW": 50,
+      "ORDER SOON": 122,
+      "OK": 1122
     },
     "2026-03-09": {
       "ORDER NOW": 49,
-      "ORDER SOON": 136,
-      "OK": 1109
+      "ORDER SOON": 119,
+      "OK": 1126
     },
     "2026-03-16": {
-      "ORDER NOW": 50,
-      "ORDER SOON": 123,
-      "OK": 1121
+      "ORDER NOW": 47,
+      "ORDER SOON": 111,
+      "OK": 1136
     },
     "2026-03-23": {
-      "ORDER NOW": 41,
-      "ORDER SOON": 120,
-      "OK": 1133
+      "ORDER NOW": 48,
+      "ORDER SOON": 115,
+      "OK": 1131
     },
     "2026-03-30": {
-      "ORDER NOW": 30,
-      "ORDER SOON": 130,
-      "OK": 1134
+      "ORDER NOW": 31,
+      "ORDER SOON": 123,
+      "OK": 1140
     },
     "2026-04-06": {
-      "ORDER NOW": 60,
-      "ORDER SOON": 133,
-      "OK": 1101
+      "ORDER NOW": 65,
+      "ORDER SOON": 123,
+      "OK": 1106
     },
     "2026-04-13": {
-      "ORDER NOW": 58,
-      "ORDER SOON": 136,
-      "OK": 1100
+      "ORDER NOW": 55,
+      "ORDER SOON": 141,
+      "OK": 1098
     },
     "2026-04-20": {
       "ORDER NOW": 60,
-      "ORDER SOON": 130,
-      "OK": 1104
+      "ORDER SOON": 134,
+      "OK": 1100
     },
     "2026-04-27": {
-      "ORDER NOW": 53,
-      "ORDER SOON": 131,
-      "OK": 1110
+      "ORDER NOW": 59,
+      "ORDER SOON": 129,
+      "OK": 1106
     },
     "2026-05-04": {
       "ORDER NOW": 66,
-      "ORDER SOON": 133,
-      "OK": 1095
+      "ORDER SOON": 125,
+      "OK": 1103
     },
     "2026-05-11": {
-      "ORDER NOW": 57,
+      "ORDER NOW": 56,
       "ORDER SOON": 132,
-      "OK": 1105
+      "OK": 1106
     },
     "2026-05-18": {
-      "ORDER NOW": 51,
+      "ORDER NOW": 49,
       "ORDER SOON": 131,
-      "OK": 1112
-    },
-    "2026-05-25": {
-      "ORDER NOW": 52,
-      "ORDER SOON": 137,
-      "OK": 1105
-    },
-    "2026-06-01": {
-      "ORDER NOW": 47,
-      "ORDER SOON": 133,
       "OK": 1114
     },
+    "2026-05-25": {
+      "ORDER NOW": 54,
+      "ORDER SOON": 130,
+      "OK": 1110
+    },
+    "2026-06-01": {
+      "ORDER NOW": 49,
+      "ORDER SOON": 133,
+      "OK": 1112
+    },
     "2026-06-08": {
-      "ORDER NOW": 59,
-      "ORDER SOON": 134,
-      "OK": 1101
+      "ORDER NOW": 63,
+      "ORDER SOON": 124,
+      "OK": 1107
     },
     "2026-06-15": {
-      "ORDER NOW": 70,
-      "ORDER SOON": 129,
-      "OK": 1095
+      "ORDER NOW": 56,
+      "ORDER SOON": 132,
+      "OK": 1106
     },
     "2026-06-22": {
-      "ORDER NOW": 59,
-      "ORDER SOON": 135,
-      "OK": 1100
+      "ORDER NOW": 62,
+      "ORDER SOON": 134,
+      "OK": 1098
     },
     "2026-06-29": {
-      "ORDER NOW": 42,
-      "ORDER SOON": 129,
-      "OK": 1123
+      "ORDER NOW": 43,
+      "ORDER SOON": 131,
+      "OK": 1120
     }
   },
   "monthly": {
@@ -1095,27 +1095,27 @@
           "B": 18,
           "C": 32
         },
-        "stockout_days": 722,
+        "stockout_days": 720,
         "stockout_days_by_abc": {
           "A": 142,
           "B": 214,
-          "C": 366
+          "C": 364
         },
         "items_short": 81,
         "jobs": 155,
         "jobs_delayed": 14,
         "job_delay_days": 94,
         "job_delay_days_median": 5.0,
-        "rush_lines": 79,
-        "rush_freight": 21083.160000000003,
-        "rush_premium": 13711.14,
-        "rush_spend": 34794.3,
-        "avg_inventory_value": 3486594.86501129,
-        "end_inventory_value": 3531482.707299996,
+        "rush_lines": 80,
+        "rush_freight": 21406.760000000002,
+        "rush_premium": 13711.66,
+        "rush_spend": 35118.42,
+        "avg_inventory_value": 3483911.6600951613,
+        "end_inventory_value": 3526749.3268999956,
         "inventory_by_abc": {
-          "A": 2472613.688064516,
-          "B": 686881.8961290322,
-          "C": 327099.280817742
+          "A": 2470720.5074193547,
+          "B": 686282.4877419354,
+          "C": 326908.664933871
         },
         "consumption_by_abc": {
           "A": 534012.2999999999,
@@ -1123,18 +1123,18 @@
           "C": 84170.9952
         },
         "inventory_by_month": {
-          "2026-01": 3486594.865011289
+          "2026-01": 3483911.6600951594
         },
-        "days_of_supply": 150.94550743347227,
-        "safety_stock_value": 1421630.4524742002,
-        "cycle_stock_value": 2064964.41253709,
+        "days_of_supply": 150.82934316911295,
+        "safety_stock_value": 1406321.4645147999,
+        "cycle_stock_value": 2077590.1955803614,
         "excess_items": 238,
         "excess_value": 1167255.9783548387,
-        "order_lines": 591,
-        "regular_lines": 512,
-        "purchases": 1147343.8199999998,
+        "order_lines": 585,
+        "regular_lines": 505,
+        "purchases": 1097197.8900000001,
         "purchases_by_month": {
-          "2026-01": 1147343.82
+          "2026-01": 1097197.89
         },
         "consumption_value": 716049.4051999999
       },
@@ -1219,54 +1219,54 @@
         "fill_rate_by_tier": {
           "line": 0.9849348354318533,
           "service": 0.9720930232558139,
-          "standard": 0.9664776584275047
+          "standard": 0.9663378988140399
         },
         "stockout_episodes_by_tier": {
           "line": 17,
           "service": 4,
-          "standard": 24
+          "standard": 23
         },
         "stockout_causes": {
-          "other": 36,
+          "other": 35,
           "stale_lead_time": 9
         },
         "start": "2026-02-01",
         "end": "2026-02-28",
         "days": 28,
         "items": 1339,
-        "fill_rate": 0.9748324904606284,
+        "fill_rate": 0.9747685903638654,
         "fill_rate_by_abc": {
           "A": 0.9922324320750975,
           "B": 0.9816701165704325,
-          "C": 0.9565717775272454
+          "C": 0.9564073656520106
         },
-        "stockout_episodes": 45,
+        "stockout_episodes": 44,
         "stockout_episodes_by_abc": {
           "A": 8,
           "B": 7,
-          "C": 30
+          "C": 29
         },
-        "stockout_days": 568,
+        "stockout_days": 547,
         "stockout_days_by_abc": {
           "A": 105,
           "B": 132,
-          "C": 331
+          "C": 310
         },
-        "items_short": 65,
+        "items_short": 63,
         "jobs": 130,
         "jobs_delayed": 9,
         "job_delay_days": 59,
         "job_delay_days_median": 7.0,
         "rush_lines": 47,
-        "rush_freight": 8992.490000000002,
-        "rush_premium": 5241.8099999999995,
-        "rush_spend": 14234.300000000001,
-        "avg_inventory_value": 3455601.4215142857,
-        "end_inventory_value": 3476520.2531999913,
+        "rush_freight": 9472.77,
+        "rush_premium": 5289.889999999999,
+        "rush_spend": 14762.66,
+        "avg_inventory_value": 3446923.9225785714,
+        "end_inventory_value": 3460740.0085999924,
         "inventory_by_abc": {
-          "A": 2434254.0625,
-          "B": 688127.3521428572,
-          "C": 333220.0068714286
+          "A": 2427809.966785714,
+          "B": 685854.5299999999,
+          "C": 333259.42579285713
         },
         "consumption_by_abc": {
           "A": 516857.22000000003,
@@ -1274,18 +1274,18 @@
           "C": 65929.53659999999
         },
         "inventory_by_month": {
-          "2026-02": 3455601.421514283
+          "2026-02": 3446923.922578568
         },
-        "days_of_supply": 139.2888972787166,
-        "safety_stock_value": 1439072.877602,
-        "cycle_stock_value": 2016528.5439122857,
+        "days_of_supply": 138.93912335792595,
+        "safety_stock_value": 1427486.6227452501,
+        "cycle_stock_value": 2019437.2998333212,
         "excess_items": 236,
-        "excess_value": 1371552.4728464284,
-        "order_lines": 330,
-        "regular_lines": 283,
-        "purchases": 571933.87,
+        "excess_value": 1369883.4980035713,
+        "order_lines": 323,
+        "regular_lines": 276,
+        "purchases": 583125.79,
         "purchases_by_month": {
-          "2026-02": 571933.87
+          "2026-02": 583125.79
         },
         "consumption_value": 694648.6166
       },
@@ -1368,57 +1368,57 @@
     "2026-03": {
       "model": {
         "fill_rate_by_tier": {
-          "line": 0.9881602506714413,
-          "service": 0.9355509355509355,
-          "standard": 0.9685968557650841
+          "line": 0.9878692927484333,
+          "service": 0.9369369369369369,
+          "standard": 0.9689889050064688
         },
         "stockout_episodes_by_tier": {
-          "line": 6,
+          "line": 5,
           "service": 5,
           "standard": 22
         },
         "stockout_causes": {
           "other": 25,
-          "stale_lead_time": 7,
+          "stale_lead_time": 6,
           "unrecorded_consumption": 1
         },
         "start": "2026-03-01",
         "end": "2026-03-31",
         "days": 31,
         "items": 1339,
-        "fill_rate": 0.9731904735261754,
+        "fill_rate": 0.973404949737966,
         "fill_rate_by_abc": {
-          "A": 0.9880580854722629,
-          "B": 0.9727102219443576,
-          "C": 0.9628928522556219
+          "A": 0.9887905228966308,
+          "B": 0.9730853391684902,
+          "C": 0.9626191670847968
         },
-        "stockout_episodes": 33,
+        "stockout_episodes": 32,
         "stockout_episodes_by_abc": {
-          "A": 6,
+          "A": 5,
           "B": 12,
           "C": 15
         },
-        "stockout_days": 419,
+        "stockout_days": 431,
         "stockout_days_by_abc": {
-          "A": 70,
+          "A": 69,
           "B": 152,
-          "C": 197
+          "C": 210
         },
-        "items_short": 48,
+        "items_short": 47,
         "jobs": 140,
-        "jobs_delayed": 14,
-        "job_delay_days": 87,
-        "job_delay_days_median": 6.5,
+        "jobs_delayed": 13,
+        "job_delay_days": 86,
+        "job_delay_days_median": 7.0,
         "rush_lines": 35,
-        "rush_freight": 6978.38,
-        "rush_premium": 5386.16,
-        "rush_spend": 12364.54,
-        "avg_inventory_value": 3537613.6840806454,
-        "end_inventory_value": 3656493.0363999866,
+        "rush_freight": 7019.85,
+        "rush_premium": 5046.2,
+        "rush_spend": 12066.05,
+        "avg_inventory_value": 3515752.275670968,
+        "end_inventory_value": 3611601.157699989,
         "inventory_by_abc": {
-          "A": 2537498.893064516,
-          "B": 664168.9377419355,
-          "C": 335945.85327419353
+          "A": 2515406.247580645,
+          "B": 663344.7680645161,
+          "C": 337001.26002580643
         },
         "consumption_by_abc": {
           "A": 570624.52,
@@ -1426,18 +1426,18 @@
           "C": 88750.3673
         },
         "inventory_by_month": {
-          "2026-03": 3537613.684080637
+          "2026-03": 3515752.2756709605
         },
-        "days_of_supply": 143.19220565501487,
-        "safety_stock_value": 1448317.9530404,
-        "cycle_stock_value": 2089295.7310402454,
-        "excess_items": 266,
-        "excess_value": 1394012.3102032258,
-        "order_lines": 351,
-        "regular_lines": 316,
-        "purchases": 643466.1799999999,
+        "days_of_supply": 142.30732008851177,
+        "safety_stock_value": 1438718.1822155998,
+        "cycle_stock_value": 2077034.0934553682,
+        "excess_items": 264,
+        "excess_value": 1386319.2021258064,
+        "order_lines": 357,
+        "regular_lines": 322,
+        "purchases": 628998.81,
         "purchases_by_month": {
-          "2026-03": 643466.18
+          "2026-03": 628998.8099999999
         },
         "consumption_value": 765865.8773
       },
@@ -1521,56 +1521,56 @@
     "2026-04": {
       "model": {
         "fill_rate_by_tier": {
-          "line": 0.9969123796557425,
-          "service": 0.9877245508982035,
-          "standard": 0.9855641572235312
+          "line": 0.9957454050374405,
+          "service": 0.9919161676646706,
+          "standard": 0.9871161973147836
         },
         "stockout_episodes_by_tier": {
-          "line": 3,
-          "service": 4,
-          "standard": 13
+          "line": 5,
+          "service": 5,
+          "standard": 11
         },
         "stockout_causes": {
           "other": 19,
-          "stale_lead_time": 1
+          "stale_lead_time": 2
         },
         "start": "2026-04-01",
         "end": "2026-04-30",
         "days": 30,
         "items": 1339,
-        "fill_rate": 0.9900817536609469,
+        "fill_rate": 0.9910250651334112,
         "fill_rate_by_abc": {
-          "A": 0.9890758266152588,
-          "B": 0.9805949628148241,
-          "C": 0.99758164714235
+          "A": 0.9932527164388363,
+          "B": 0.9804699706268358,
+          "C": 0.996827298544551
         },
-        "stockout_episodes": 20,
+        "stockout_episodes": 21,
         "stockout_episodes_by_abc": {
-          "A": 9,
+          "A": 7,
           "B": 8,
-          "C": 3
+          "C": 6
         },
-        "stockout_days": 220,
+        "stockout_days": 210,
         "stockout_days_by_abc": {
-          "A": 111,
-          "B": 88,
-          "C": 21
+          "A": 89,
+          "B": 89,
+          "C": 32
         },
-        "items_short": 24,
+        "items_short": 26,
         "jobs": 109,
-        "jobs_delayed": 2,
-        "job_delay_days": 11,
-        "job_delay_days_median": 5.5,
+        "jobs_delayed": 4,
+        "job_delay_days": 17,
+        "job_delay_days_median": 3.0,
         "rush_lines": 19,
-        "rush_freight": 3602.62,
-        "rush_premium": 2720.6499999999996,
-        "rush_spend": 6323.2699999999995,
-        "avg_inventory_value": 3547654.000756667,
-        "end_inventory_value": 3429078.450899993,
+        "rush_freight": 3559.4700000000003,
+        "rush_premium": 2610.76,
+        "rush_spend": 6170.2300000000005,
+        "avg_inventory_value": 3506620.15894,
+        "end_inventory_value": 3405878.724499999,
         "inventory_by_abc": {
-          "A": 2571898.0390000003,
-          "B": 644727.41,
-          "C": 331028.5517566667
+          "A": 2528481.660666666,
+          "B": 646414.2925,
+          "C": 331724.2057733333
         },
         "consumption_by_abc": {
           "A": 538619.9700000001,
@@ -1578,18 +1578,18 @@
           "C": 74415.7542
         },
         "inventory_by_month": {
-          "2026-04": 3547654.0007566605
+          "2026-04": 3506620.158939996
         },
-        "days_of_supply": 149.22051720323807,
-        "safety_stock_value": 1404658.8214115,
-        "cycle_stock_value": 2142995.1793451672,
-        "excess_items": 243,
-        "excess_value": 1244680.3062833333,
-        "order_lines": 347,
-        "regular_lines": 328,
-        "purchases": 518321.04999999993,
+        "days_of_supply": 147.4945622207587,
+        "safety_stock_value": 1416308.907536,
+        "cycle_stock_value": 2090311.251404,
+        "excess_items": 240,
+        "excess_value": 1232564.2348033334,
+        "order_lines": 349,
+        "regular_lines": 330,
+        "purchases": 533462.3300000001,
         "purchases_by_month": {
-          "2026-04": 518321.05
+          "2026-04": 533462.33
         },
         "consumption_value": 713237.1742
       },
@@ -1673,56 +1673,56 @@
     "2026-05": {
       "model": {
         "fill_rate_by_tier": {
-          "line": 0.991806331471136,
-          "service": 0.9724664507172606,
-          "standard": 0.9794038162312669
+          "line": 0.9911312849162012,
+          "service": 0.9835724201758446,
+          "standard": 0.9805503234788305
         },
         "stockout_episodes_by_tier": {
           "line": 10,
-          "service": 7,
-          "standard": 18
+          "service": 5,
+          "standard": 15
         },
         "stockout_causes": {
-          "other": 28,
-          "stale_lead_time": 7
+          "other": 25,
+          "stale_lead_time": 5
         },
         "start": "2026-05-01",
         "end": "2026-05-31",
         "days": 31,
         "items": 1339,
-        "fill_rate": 0.9836308103464733,
+        "fill_rate": 0.9852629569533263,
         "fill_rate_by_abc": {
-          "A": 0.9774491563482389,
-          "B": 0.9827805311983734,
-          "C": 0.9888414055080722
+          "A": 0.9767755180599217,
+          "B": 0.9822722073961113,
+          "C": 0.9937796771130104
         },
-        "stockout_episodes": 35,
+        "stockout_episodes": 30,
         "stockout_episodes_by_abc": {
-          "A": 9,
+          "A": 8,
           "B": 9,
-          "C": 17
+          "C": 13
         },
-        "stockout_days": 271,
+        "stockout_days": 259,
         "stockout_days_by_abc": {
-          "A": 111,
-          "B": 80,
-          "C": 80
+          "A": 100,
+          "B": 87,
+          "C": 72
         },
-        "items_short": 43,
+        "items_short": 37,
         "jobs": 139,
         "jobs_delayed": 8,
-        "job_delay_days": 104,
+        "job_delay_days": 105,
         "job_delay_days_median": 8.0,
-        "rush_lines": 34,
-        "rush_freight": 9045.140000000001,
-        "rush_premium": 1897.8600000000001,
-        "rush_spend": 10943.000000000002,
-        "avg_inventory_value": 3370894.276216129,
-        "end_inventory_value": 3416262.3218000024,
+        "rush_lines": 30,
+        "rush_freight": 8196.77,
+        "rush_premium": 2255.379999999999,
+        "rush_spend": 10452.15,
+        "avg_inventory_value": 3334036.7452290324,
+        "end_inventory_value": 3373031.2420000015,
         "inventory_by_abc": {
-          "A": 2412856.7937096776,
-          "B": 634732.355483871,
-          "C": 323305.1270225806
+          "A": 2372920.9662903226,
+          "B": 635697.3051612903,
+          "C": 325418.47377741936
         },
         "consumption_by_abc": {
           "A": 504017.42,
@@ -1730,18 +1730,18 @@
           "C": 64250.888699999996
         },
         "inventory_by_month": {
-          "2026-05": 3370894.2762161302
+          "2026-05": 3334036.745229035
         },
-        "days_of_supply": 156.11787016469933,
-        "safety_stock_value": 1431366.69209,
-        "cycle_stock_value": 1939527.5841261288,
-        "excess_items": 233,
-        "excess_value": 1240218.034066129,
-        "order_lines": 338,
-        "regular_lines": 304,
-        "purchases": 547966.94,
+        "days_of_supply": 154.41086936143057,
+        "safety_stock_value": 1434932.2071475,
+        "cycle_stock_value": 1899104.5380815323,
+        "excess_items": 238,
+        "excess_value": 1234069.7291983871,
+        "order_lines": 331,
+        "regular_lines": 301,
+        "purchases": 547063.8600000001,
         "purchases_by_month": {
-          "2026-05": 547966.9400000001
+          "2026-05": 547063.86
         },
         "consumption_value": 669351.4487
       },
@@ -1825,56 +1825,56 @@
     "2026-06": {
       "model": {
         "fill_rate_by_tier": {
-          "line": 0.9901209082866411,
-          "service": 0.9848581958019548,
-          "standard": 0.9814926013296161
+          "line": 0.9902683574166913,
+          "service": 0.9835763499439193,
+          "standard": 0.9833797984130388
         },
         "stockout_episodes_by_tier": {
-          "line": 9,
-          "service": 2,
-          "standard": 17
+          "line": 7,
+          "service": 4,
+          "standard": 15
         },
         "stockout_causes": {
           "other": 23,
-          "stale_lead_time": 5
+          "stale_lead_time": 3
         },
         "start": "2026-06-01",
         "end": "2026-06-30",
         "days": 30,
         "items": 1339,
-        "fill_rate": 0.9854314456334415,
+        "fill_rate": 0.9862129774357741,
         "fill_rate_by_abc": {
-          "A": 0.9867982306907112,
-          "B": 0.9869300911854103,
-          "C": 0.9836258901437838
+          "A": 0.9892820687308609,
+          "B": 0.9878799392097264,
+          "C": 0.983172313693473
         },
-        "stockout_episodes": 28,
+        "stockout_episodes": 26,
         "stockout_episodes_by_abc": {
-          "A": 8,
-          "B": 6,
-          "C": 14
+          "A": 6,
+          "B": 7,
+          "C": 13
         },
-        "stockout_days": 278,
+        "stockout_days": 295,
         "stockout_days_by_abc": {
-          "A": 101,
-          "B": 50,
-          "C": 127
+          "A": 93,
+          "B": 53,
+          "C": 149
         },
-        "items_short": 32,
+        "items_short": 31,
         "jobs": 127,
-        "jobs_delayed": 10,
-        "job_delay_days": 71,
-        "job_delay_days_median": 3.5,
-        "rush_lines": 24,
-        "rush_freight": 6844.82,
-        "rush_premium": 1138.98,
-        "rush_spend": 7983.799999999999,
-        "avg_inventory_value": 3335906.5727333333,
-        "end_inventory_value": 3362358.6938999956,
+        "jobs_delayed": 9,
+        "job_delay_days": 65,
+        "job_delay_days_median": 3.0,
+        "rush_lines": 20,
+        "rush_freight": 6100.150000000001,
+        "rush_premium": 890.8900000000001,
+        "rush_spend": 6991.040000000001,
+        "avg_inventory_value": 3306148.272756667,
+        "end_inventory_value": 3344621.1614999967,
         "inventory_by_abc": {
-          "A": 2397532.751666667,
-          "B": 621095.5788333333,
-          "C": 317278.2422333333
+          "A": 2366242.181,
+          "B": 620531.0904999999,
+          "C": 319375.00125666667
         },
         "consumption_by_abc": {
           "A": 445842.99,
@@ -1882,18 +1882,18 @@
           "C": 79284.55260000001
         },
         "inventory_by_month": {
-          "2026-06": 3335906.5727333305
+          "2026-06": 3306148.272756663
         },
-        "days_of_supply": 162.0194298934601,
-        "safety_stock_value": 1391113.4360572002,
-        "cycle_stock_value": 1944793.1366761331,
-        "excess_items": 227,
-        "excess_value": 1179774.8573033335,
+        "days_of_supply": 160.57411879385472,
+        "safety_stock_value": 1391692.664584,
+        "cycle_stock_value": 1914455.608172667,
+        "excess_items": 228,
+        "excess_value": 1178678.5110366666,
         "order_lines": 340,
-        "regular_lines": 316,
-        "purchases": 477680.22000000003,
+        "regular_lines": 320,
+        "purchases": 491100.93000000005,
         "purchases_by_month": {
-          "2026-06": 477680.22
+          "2026-06": 491100.93
         },
         "consumption_value": 617686.3926
       },

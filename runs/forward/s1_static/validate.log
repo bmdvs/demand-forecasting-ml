@@ -2,8 +2,8 @@
 === Volume and shape ===
   [PASS] Item master records                                        2484   expect 2200..2600
   [PASS] Live share of master (%)                                   60.5   expect 55.0..65.0
-  [PASS] Inventory transactions                                   186938   expect 150000..260000
-  [PASS] PO lines                                                  15178   expect 15000..40000
+  [PASS] Inventory transactions                                   186912   expect 150000..260000
+  [PASS] PO lines                                                  15165   expect 15000..40000
   [PASS] Production orders                                          5841   expect 5000..7500
   [PASS] Service orders                                             5272   expect 3500..5500
   [PASS] Top 20% live items = % of spend                            71.6   expect 70.0..85.0
@@ -12,32 +12,32 @@
 === Pre-remediation defect levels ===
   [PASS] Dead items (% of master)                                   39.5   expect 35.0..45.0
   [PASS] Dead items still carrying a reorder point (%)              30.3   expect 25.0..35.0
-  [PASS] Live items lead-time diff > 3 days (%)                     63.9   expect 55.0..75.0
-  [PASS] Live items lead-time diff > 7 days (%)                     25.0   expect 20.0..30.0
+  [PASS] Live items lead-time diff > 3 days (%)                     64.1   expect 55.0..75.0
+  [PASS] Live items lead-time diff > 7 days (%)                     24.2   expect 20.0..30.0
   [PASS] Live items in duplicate clusters (%)                        6.3   expect 5.0..8.0
   [PASS] Number of duplicate clusters                                 84   expect 60..90
   [PASS] UOM-mismatch items                                           48   expect 40..55
   [PASS] Live items with a blocking blank field (%)                 12.8   expect 10.0..15.0
   [PASS] Live items item_class = MISC (%)                           11.6   expect 10.0..14.0
   [PASS] Products with a BOM omission (%)                            8.8   expect 4.0..12.0
-  [FAIL] Adjustment share of quantity moved (%)                     28.7   expect 15.0..25.0
-  [PASS] Adjustments with blank/generic reason (%)                  72.0   expect 60.0..75.0
+  [FAIL] Adjustment share of quantity moved (%)                     27.9   expect 15.0..25.0
+  [PASS] Adjustments with blank/generic reason (%)                  71.7   expect 60.0..75.0
   [PASS] Free-text PO lines (%)                                     10.7   expect 10.0..14.0
   [PASS] Free-text lines matching a stocked item (%)                55.0   expect 50.0..60.0
-  [PASS] Receipts posted on the peak weekday (%)                    48.2   expect 35.0..50.0
+  [PASS] Receipts posted on the peak weekday (%)                    47.6   expect 35.0..50.0
   [PASS] PO lines open > 90 days (%)                                 5.7   expect 5.0..8.0
   [PASS] Completed jobs left open (%)                                8.0   expect 6.0..10.0
-  [PASS] Floor/receiving txns under shared logins (%)               65.3   expect 60.0..85.0
+  [PASS] Floor/receiving txns under shared logins (%)               65.4   expect 60.0..85.0
 
 === Ledger, inventory and mix guards ===
-  [PASS] Adjustment share vs reference 26.8 (+/- 3 pts)             28.7   expect 23.8..29.8
+  [PASS] Adjustment share vs reference 26.8 (+/- 3 pts)             27.9   expect 23.8..29.8
   [PASS] Segment mix smooth vs Run 00c 32.2 (+/- 3 pts)             30.8   expect 29.2..35.2
   [PASS] Segment mix erratic vs Run 00c 33.0 (+/- 3 pts)            31.7   expect 30.0..36.0
   [PASS] Segment mix lumpy vs Run 00c 20.8 (+/- 3 pts)              21.6   expect 17.8..23.8
   [PASS] Segment mix intermittent vs Run 00c 14.0 (+/- 3 pts)       16.0   expect 11.0..17.0
   [PASS] Forward avg inventory under the rule vs Run 01 (%)          1.9   expect -5.0..5.0
   [PASS] Forward stockout days under the rule vs Run 03 (%)         -4.2   expect -10.0..10.0
-  [INFO] Forward avg inventory under the model vs Run 01 (%)       +10.8   (reported, not gating)
+  [INFO] Forward avg inventory under the model vs Run 01 (%)       +10.0   (reported, not gating)
 
 === Requirement dates ===
   [PASS] Jobs whose required date is the Monday of the due week (%)      100.0   expect 100.0..100.0
@@ -46,12 +46,12 @@
   [PASS] Superseded parts                                             39   expect 30..50
   [PASS] Supersessions switched by the end of the history             33   expect 1..39
   [PASS] Old-part postings after the switch (not held, not T6)          0   expect 0..0
-  [INFO]   T6 mispostings excluded                                    12   (reported, not gating)
+  [INFO]   T6 mispostings excluded                                     3   (reported, not gating)
   [PASS] T6 exclusions match the ledger truth (difference)             0   expect 0..0
   [INFO] Old-part postings after the switch on held requirements          3   (reported, not gating)
   [INFO]   units on those postings                                    45   (reported, not gating)
-  [PASS] Successor 13 wks after switch vs old part 13 wks before (median)       1.31   expect 0.70..1.50
-  [INFO]   same, successor window from the day after the switch       1.22   (reported, not gating)
+  [PASS] Successor 13 wks after switch vs old part 13 wks before (median)       1.34   expect 0.70..1.50
+  [INFO]   same, successor window from the day after the switch       1.24   (reported, not gating)
   [PASS] Weeks from planned date to switch (median)                 24.6   expect 2.0..30.0
   [INFO] Parts not switched by the end of the history                  6   (reported, not gating)
   [INFO]   their on-hand value at the end ($K)                      45.0   (reported, not gating)
