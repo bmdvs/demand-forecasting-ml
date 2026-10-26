@@ -245,3 +245,8 @@ ml/models/*.joblib
 reference/
 CHANGES_signal_update.md
 runs/
+
+# Azure Databricks port: spec, record and deviations (account-identifying, kept local)
+CLAUDE.md
+PORT_RECORD.md
+PORT_DEVIATIONS.md
