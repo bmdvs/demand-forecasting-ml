@@ -250,3 +250,9 @@ runs/
 CLAUDE.md
 PORT_RECORD.md
 PORT_DEVIATIONS.md
+
+# Databricks bundle state and local Spark state
+.databricks/
+spark-warehouse/
+metastore_db/
+derby.log

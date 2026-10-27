@@ -1,0 +1,36 @@
+bundle:
+  name: dfm
+
+# The workspace host is not set here: it comes from the CLI profile (DATABRICKS_CONFIG_PROFILE) or
+# DATABRICKS_HOST, so no workspace identifier is committed.
+
+include:
+  - resources/*.yml
+
+variables:
+  catalog:
+    description: Unity Catalog catalog for all schemas
+    default: dfm
+  landing_root:
+    description: Landing volume path holding the source extracts
+    default: /Volumes/dfm/landing/exports
+  extract_pass:
+    description: Landing pass folder the bronze tables read (pass1 or pass2); changing it is a full refresh
+    default: pass1
+  serverless_pipeline:
+    description: Run the pipeline on serverless compute
+    default: true
+  deploy_sp:
+    description: Application id of the deploy service principal, the prod run-as identity (BUNDLE_VAR_deploy_sp; never committed)
+    default: ""
+
+targets:
+  dev:
+    mode: development
+    default: true
+    variables:
+      catalog: dfm_dev
+  prod:
+    mode: production
+    workspace:
+      root_path: /Workspace/Shared/.bundle/${bundle.name}/${bundle.target}

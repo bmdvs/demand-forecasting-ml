@@ -1,0 +1,21 @@
+# dfm_pipeline: the warehouse. SQL sources under pipelines/ (bronze streaming tables from the landing
+# volume, silver staging, data-quality and intermediate views, gold marts, private integrity checks),
+# serverless with Photon, triggered. dfm.pass selects the landing pass folder the bronze tables read.
+resources:
+  pipelines:
+    dfm_pipeline:
+      name: dfm_pipeline
+      catalog: ${var.catalog}
+      schema: bronze
+      continuous: false
+      serverless: ${var.serverless_pipeline}
+      photon: true
+      channel: CURRENT
+      root_path: ..
+      libraries:
+        - glob:
+            include: ../pipelines/**
+      configuration:
+        dfm.landing_root: ${var.landing_root}
+        dfm.pass: ${var.extract_pass}
+        spark.sql.session.timeZone: UTC
