@@ -7,6 +7,8 @@ its archive's sha256 manifest, read with the same type inference the warehouse's
 of day are kept as the extract's text. After each upload the file is read back from the volume and
 its checksum and row count are compared with the local file. A landing manifest (source checksum, rows,
 column types, Parquet checksum, volume path) is written to the volume under _manifest/ and locally.
+Reference files delivered as JSON (the forward-window results) are landed unchanged at
+<source>/<name>/<pass>/<file>, with the same checksum and read-back verification.
 
 Usage:
   python infra/land_extracts.py --profile PROFILE [--catalog dfm] [--pass pass1|pass2|all]
@@ -35,6 +37,8 @@ ARCHIVES = {
     "pass2": Path(os.environ.get("DFM_PASS2_ROOT", REPO / "reference" / "2026-10_post_signal_update")),
 }
 LOCAL_MANIFESTS = REPO / "runs" / "landing"
+# Files landed as delivered, without conversion: (source, archive-relative path)
+AS_DELIVERED = [("truth", "data_source/truth/forward_results.json")]
 
 
 def sha256(path: Path) -> str:
@@ -74,11 +78,12 @@ def volume_root(catalog: str) -> str:
     return f"dbfs:/Volumes/{catalog}/landing/exports"
 
 
-def read_back(profile: str, remote: str, tmp: Path) -> tuple[str, int, int]:
-    """Download a landed file and return its checksum, bytes and Parquet row count."""
+def read_back(profile: str, remote: str, tmp: Path) -> tuple[str, int, int | None]:
+    """Download a landed file and return its checksum, bytes and Parquet row count (None for other files)."""
     local = tmp / ("readback_" + remote.rsplit("/", 1)[-1])
     db(profile, "fs", "cp", remote, str(local), "--overwrite")
-    out = (sha256(local), local.stat().st_size, pq.ParquetFile(local).metadata.num_rows)
+    rows = pq.ParquetFile(local).metadata.num_rows if local.suffix == ".parquet" else None
+    out = (sha256(local), local.stat().st_size, rows)
     local.unlink()
     return out
 
@@ -115,6 +120,21 @@ def land(profile: str, catalog: str, pass_name: str) -> dict:
                 "path": remote.removeprefix("dbfs:"),
             })
             print(f"  {pass_name} {source}/{table}: {rows:,} rows, {p_bytes:,} bytes, read back ok")
+        for source, rel in AS_DELIVERED:
+            src = archive / rel
+            src_sha, src_bytes = sha256(src), src.stat().st_size
+            if files.get(rel, {}).get("sha256") != src_sha:
+                raise RuntimeError(f"{rel}: checksum does not match {archive / 'MANIFEST.json'}")
+            remote = f"{volume_root(catalog)}/{source}/{src.stem}/{pass_name}/{src.name}"
+            db(profile, "fs", "mkdir", remote.rsplit("/", 1)[0])
+            db(profile, "fs", "cp", str(src), remote, "--overwrite")
+            if read_back(profile, remote, tmp) != (src_sha, src_bytes, None):
+                raise RuntimeError(f"{remote}: read-back mismatch")
+            entries.append({
+                "source": source, "table": src.stem, "pass": pass_name, "file": rel, "as_delivered": True,
+                "file_sha256": src_sha, "file_bytes": src_bytes, "path": remote.removeprefix("dbfs:"),
+            })
+            print(f"  {pass_name} {source}/{src.name}: {src_bytes:,} bytes as delivered, read back ok")
     manifest = {"landed_at": datetime.now(timezone.utc).isoformat(timespec="seconds"), "catalog": catalog,
                 "pass": pass_name, "archive": archive.relative_to(REPO).as_posix() if archive.is_relative_to(REPO) else str(archive),
                 "archive_git_commit": json.loads((archive / "MANIFEST.json").read_text()).get("git_commit"),
@@ -136,10 +156,14 @@ def check(profile: str, catalog: str, pass_name: str) -> bool:
     with tempfile.TemporaryDirectory() as t:
         tmp = Path(t)
         for e in manifest["files"]:
-            r_sha, r_bytes, r_rows = read_back(profile, "dbfs:" + e["path"], tmp)
-            good = (r_sha, r_bytes, r_rows) == (e["parquet_sha256"], e["parquet_bytes"], e["rows"])
+            got = read_back(profile, "dbfs:" + e["path"], tmp)
+            if e.get("as_delivered"):
+                want = (e["file_sha256"], e["file_bytes"], None)
+            else:
+                want = (e["parquet_sha256"], e["parquet_bytes"], e["rows"])
+            good = got == want
             ok &= good
-            print(f"  {'ok  ' if good else 'DIFF'} {e['path']} rows {r_rows:,}")
+            print(f"  {'ok  ' if good else 'DIFF'} {e['path']} {got[1]:,} bytes")
     found = set()
     for source in sorted({e["source"] for e in manifest["files"]}):
         for entry in json.loads(db(profile, "fs", "ls", f"{volume_root(catalog)}/{source}", "-o", "json") or "[]"):
@@ -171,8 +195,10 @@ def main() -> None:
         sys.exit(0 if all(results) else 1)
     for ps in passes:
         m = land(a.profile, a.catalog, ps)
-        print(f"{ps}: {len(m['files'])} extracts, {sum(e['rows'] for e in m['files']):,} rows, "
-              f"{sum(e['parquet_bytes'] for e in m['files']):,} bytes")
+        tables = [e for e in m["files"] if not e.get("as_delivered")]
+        print(f"{ps}: {len(tables)} extracts, {sum(e['rows'] for e in tables):,} rows, "
+              f"{sum(e['parquet_bytes'] for e in tables):,} bytes; "
+              f"{len(m['files']) - len(tables)} files as delivered")
 
 
 if __name__ == "__main__":
