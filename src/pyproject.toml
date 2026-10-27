@@ -1,0 +1,34 @@
+[project]
+name = "dfm"
+version = "0.1.0"
+description = "Weekly demand forecasting and reorder policy for purchased parts, run as Databricks job tasks"
+requires-python = ">=3.12,<3.13"
+authors = [{ name = "Brian Davis" }]
+# The model's numeric libraries are pinned to the versions the reference outputs were built on;
+# the job cluster installs them over the runtime's own versions (see the port record).
+dependencies = [
+    "numpy==2.5.4",
+    "pandas==2.3.3",
+    "scipy==1.18.1",
+    "scikit-learn==1.9.1",
+    "joblib==1.6.0",
+    "threadpoolctl==3.7.0",
+    "xgboost==3.4.1",
+    "optuna==5.0.0",
+    "shap==0.54.1",
+    "mlflow==3.8.1",
+]
+
+[project.scripts]
+dfm-check-env = "dfm.entrypoints:check_environment"
+dfm-train = "dfm.entrypoints:train"
+dfm-promote = "dfm.entrypoints:promote"
+dfm-score = "dfm.entrypoints:score"
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["dfm*"]

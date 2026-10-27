@@ -7,13 +7,13 @@ Items:
   NEW-1    a part first used 20 weeks before the origin
   OLD-1 /  a superseded pair: the successor NEW-2 is created on 2025-03-03 and the bill
   NEW-2    switches on 2025-04-07
-Run:  python -m pytest ml/tests -q
+Run:  python -m pytest tests -q
 """
 import numpy as np
 import pandas as pd
 import pytest
 
-from ml.src import signal_features as SF
+from dfm import features as SF
 
 WEEKS = pd.date_range("2024-12-30", periods=40, freq="W-MON")
 ORIGIN = pd.Timestamp("2025-03-17")
