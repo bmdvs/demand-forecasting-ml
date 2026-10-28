@@ -1,6 +1,6 @@
 # Machine Learning Model: Demand Forecasting 
 
-This project was built on Azure Databricks: source extracts land in Unity Catalog, a Lakeflow pipeline cleans and transforms them, and a monthly job trains, gates, scores and monitors the model through MLflow and the Unity Catalog model registry. It includes a full [data quality audit](https://brimsystems.github.io/demand-forecasting-ml/docs/reports/data_quality_audit.html) of the shop's ERP system, which found sixteen recurring error types across eight tables and remediated them so the records could be trusted. 
+This project was built on Azure Databricks: source extracts land in Unity Catalog, a Lakeflow pipeline cleans and transforms them, and a monthly job trains, gates, scores and monitors the model through MLflow and the Unity Catalog model registry. The work began with a full [data quality audit](https://brimsystems.github.io/demand-forecasting-ml/docs/reports/data_quality_audit.html) of the shop's ERP system, which found sixteen recurring error types across eight tables and remediated them so the records could be trusted. 
 
 A **demand forecasting ML model** was then built on the cleaned records. Every week it forecasts demand and sets the reorder decision for each of the shop's 1,300 stocked items. The model is detailed in the [model overview](https://brimsystems.github.io/demand-forecasting-ml/docs/reports/model_overview.html) and summarized below.
 
