@@ -7,6 +7,15 @@ bundle:
 include:
   - resources/*.yml
 
+# The package wheel, built into an emptied dist/bundle/ so only the current wheel is attached.
+artifacts:
+  dfm_wheel:
+    type: whl
+    build: python infra/build_wheel.py
+    path: .
+    files:
+      - source: dist/bundle/*.whl
+
 variables:
   catalog:
     description: Unity Catalog catalog for all schemas
@@ -15,11 +24,20 @@ variables:
     description: Landing volume path holding the source extracts
     default: /Volumes/dfm/landing/exports
   extract_pass:
-    description: Landing pass folder the bronze tables read (pass1 or pass2); changing it is a full refresh
+    description: Landing pass folder the bronze tables and the monitor's forward results read (pass1 or pass2); changing it is a full refresh
     default: pass1
   serverless_pipeline:
     description: Run the pipeline on serverless compute
     default: true
+  node_type:
+    description: Single-node job cluster type
+    default: Standard_D4ds_v5
+  spark_version:
+    description: Databricks Runtime for job clusters (18 LTS, Python 3.12, which the wheel requires)
+    default: 18.x-scala2.13
+  experiment_root:
+    description: MLflow experiment root for the train, score and monitor runs, split by target
+    default: /Shared/dfm
   deploy_sp:
     description: Application id of the deploy service principal, the prod run-as identity (BUNDLE_VAR_deploy_sp; never committed)
     default: ""
@@ -30,7 +48,15 @@ targets:
     default: true
     variables:
       catalog: dfm_dev
+      experiment_root: /Shared/dfm_dev
   prod:
     mode: production
     workspace:
       root_path: /Workspace/Shared/.bundle/${bundle.name}/${bundle.target}
+    # The monthly job runs as the deploy service principal. The pipeline keeps running as its owner:
+    # changing a pipeline's owner or run-as identity needs a metastore admin.
+    resources:
+      jobs:
+        dfm_monthly:
+          run_as:
+            service_principal_name: ${var.deploy_sp}

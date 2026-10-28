@@ -6,8 +6,10 @@ gates and moves the champion alias only when every gate passes and auto_promote 
   selection       the challenger is the selection rules' pick from the run's logged results
   parity          the registered model scores the 2025 test rows as the train task did, within 1e-9
   completeness    every item in use for 13 weeks or more at the planning-window start has a forecast
-  bias            corrected bias by demand pattern within 10% on the latest matured month; fails closed
-                  until a matured month exists
+  bias            the champion's own planning-window forecasts (gold.reorder_schedule) against the actuals
+                  in the current tables, as the monitor scores them: on the latest month with 80% of its
+                  forecasts matured, corrected bias within 10% for every pattern with 150 scored
+                  forecasts; fails closed when there is no champion schedule or no such month
   beats_baseline  validation WAPE on total demand below the best simple method chosen by pattern
 Every gate result is a tag on the version, with keys free of Unity Catalog's reserved characters; a
 rejected version leaves the champion where it is.
@@ -27,6 +29,7 @@ MODEL = "demand_models"
 CHAMPION = "champion"
 BIAS_LIMIT = 0.10
 RESERVED_TAG_CHARACTERS = frozenset(".=><%&?\\")
+TAG_VALUE_MAX = 256
 IDENTITY_TAGS = ("source_run_id", "candidate", "rung", "job_run_id", "dfm_version")
 
 
@@ -36,6 +39,12 @@ def tag_key(key: str) -> str:
     if not key or bad:
         raise ValueError(f"tag key {key!r} contains reserved characters {bad}")
     return key
+
+
+def tag_value(value: str) -> str:
+    """A model version tag value within Unity Catalog's length limit (longer values end in '...')."""
+    s = str(value)
+    return s if len(s) <= TAG_VALUE_MAX else s[: TAG_VALUE_MAX - 3] + "..."
 
 
 def model_name(catalog: str) -> str:
@@ -86,17 +95,34 @@ def gate_completeness(model: Any, frame: pd.DataFrame, universe: list, t_fwd: in
                 {"completeness_items": str(len(universe)), "completeness_missing": str(len(missing))})
 
 
-def gate_bias(pred: pd.DataFrame, kind: str, month: str | None) -> Gate:
-    """Corrected bias, (forecast - actual) / actual, by demand pattern on the origins of one month."""
-    if month is None:
-        return Gate("bias", False, "no matured month: fails closed")
-    p = pred[pd.to_datetime(pred["week"]).dt.strftime("%Y-%m") == month]
-    col = f"predc_{kind}"
-    by = {sg: float((g[col].sum() - g["target"].sum()) / g["target"].sum()) for sg, g in p.groupby("segment")}
+def gate_bias(schedule: pd.DataFrame | None, champion: str | None, frame: pd.DataFrame,
+              weeks: pd.DatetimeIndex) -> Gate:
+    """Corrected bias, (forecast - actual) / actual, by demand pattern on the champion's issued
+    planning-window forecasts, for the latest month the monitor would judge on accuracy."""
+    from . import monitoring as M
+
+    if champion is None:
+        return Gate("bias", False, "no champion: fails closed")
+    if schedule is None or schedule.empty:
+        return Gate("bias", False, "no issued schedule: fails closed")
+    issued_by = sorted(set(schedule["model_version"]))
+    if issued_by != [champion]:
+        return Gate("bias", False, f"schedule issued by {', '.join(issued_by)}, champion is {champion}: fails closed",
+                    {"bias_schedule": ",".join(issued_by)})
+    months = M.month_bias(M.live_forecasts(M.table_entries(schedule), frame, weeks))
+    seen = ", ".join(f"{m.period} {m.n_scored}/{m.n_forecasts}" for m in months)
+    matured = [m for m in months if m.matured]
+    if not matured:
+        return Gate("bias", False, f"no month with {M.MATURED:.0%} of its forecasts matured ({seen}): fails closed",
+                    {"bias_schedule": champion})
+    m = matured[-1]
+    by = m.pattern_bias
     ok = bool(by) and all(abs(v) <= BIAS_LIMIT for v in by.values())
-    detail = f"{month}, {len(p)} rows: " + ", ".join(f"{k} {v:+.4f}" for k, v in sorted(by.items()))
-    tags = {"bias_month": month, **{f"bias_{k}": f"{v:+.4f}" for k, v in sorted(by.items())}}
-    return Gate("bias", ok, detail + f" (limit {BIAS_LIMIT:.2f})", tags)
+    detail = (f"{champion} schedule, {m.period}, {m.n_scored} of {m.n_forecasts} scored: "
+              + ", ".join(f"{k} {v:+.4f}" for k, v in sorted(by.items())) + f" (limit {BIAS_LIMIT:.2f})")
+    tags = {"bias_schedule": champion, "bias_month": m.period, "bias_months_scored": seen,
+            **{f"bias_{k}": f"{v:+.4f}" for k, v in sorted(by.items())}}
+    return Gate("bias", ok, detail, tags)
 
 
 def gate_beats_baseline(result: dict, val: pd.DataFrame) -> Gate:
@@ -152,6 +178,29 @@ class MlflowRegistry:
     def run_text(self, run_id: str, path: str) -> str:
         return self.mlflow.artifacts.load_text(f"runs:/{run_id}/{path}")
 
+    def run_frame(self, run_id: str, path: str) -> pd.DataFrame:
+        import tempfile
+
+        with tempfile.TemporaryDirectory() as d:
+            return pd.read_parquet(self.mlflow.artifacts.download_artifacts(f"runs:/{run_id}/{path}", dst_path=d))
+
+    def version_run(self, name: str, version: str) -> str:
+        """The run a model version was registered from."""
+        return str(self.client.get_model_version(name, version).run_id)
+
+    def latest_issue(self, experiment: str, exclude_job_run_id: str) -> dict | None:
+        """The latest finished score run outside the given job run: the schedule in force before it."""
+        exp = self.client.get_experiment_by_name(experiment)
+        if exp is None:
+            return None
+        for r in self.client.search_runs([exp.experiment_id], filter_string="attributes.status = 'FINISHED'",
+                                         order_by=["attributes.start_time DESC"], max_results=50):
+            if exclude_job_run_id and r.data.tags.get("job_run_id", "") == exclude_job_run_id:
+                continue
+            return {"run_id": r.info.run_id, "job_run_id": r.data.tags.get("job_run_id", ""),
+                    "model_version": r.data.tags["model_version"]}
+        return None
+
     def register(self, run_id: str, name: str) -> str:
         return str(self.mlflow.register_model(f"runs:/{run_id}/model", name).version)
 
@@ -189,11 +238,11 @@ def decide(registry: Registry, name: str, version: str, gates: list[Gate], auto_
     failed = [g.name for g in gates if not g.passed]
     for g in gates:
         registry.set_tag(name, version, tag_key(f"gate_{g.name}"), "pass" if g.passed else "fail")
-        registry.set_tag(name, version, tag_key(f"gate_{g.name}_detail"), g.detail[:4900])
+        registry.set_tag(name, version, tag_key(f"gate_{g.name}_detail"), tag_value(g.detail))
         for k, v in g.tags.items():
-            registry.set_tag(name, version, tag_key(k), v)
+            registry.set_tag(name, version, tag_key(k), tag_value(v))
     if failed:
-        registry.set_tag(name, version, tag_key("failed_gates"), ",".join(failed))
+        registry.set_tag(name, version, tag_key("failed_gates"), tag_value(",".join(failed)))
     else:
         registry.delete_tag(name, version, "failed_gates")
     if not auto_promote:
@@ -216,7 +265,8 @@ def register_or_reuse(registry: Registry, run_id: str, name: str) -> tuple[str, 
 
 
 def evaluate_gates(model: Any, run_tags: dict[str, str], results: dict, frame: pd.DataFrame,
-                   pred: pd.DataFrame, lifecycle: pd.DataFrame, weeks: pd.DatetimeIndex) -> list[Gate]:
+                   pred: pd.DataFrame, lifecycle: pd.DataFrame, weeks: pd.DatetimeIndex,
+                   schedule: pd.DataFrame | None, champion: str | None) -> list[Gate]:
     from . import config as C
     wk = tasks.week_indices(weeks)
     test = tasks.test_rows(frame, tasks.POLICY_RUNG)
@@ -226,6 +276,6 @@ def evaluate_gates(model: Any, run_tags: dict[str, str], results: dict, frame: p
         gate_selection(run_tags, results),
         gate_parity(model, test, pred),
         gate_completeness(model, frame, tasks.completeness_universe(lifecycle, C.FORWARD_START), wk["fwd"]),
-        gate_bias(pred, model.kind, tasks.latest_matured_month(frame, weeks)),
+        gate_bias(schedule, champion, frame, weeks),
         gate_beats_baseline(results[tasks.POLICY_RUNG], val),
     ]

@@ -146,17 +146,6 @@ def week_indices(weeks: pd.DatetimeIndex) -> dict:
     return {"fwd": wi[pd.Timestamp(F._monday(C.FORWARD_START))], "test0": t_test0, "val0": t_test0 - 26}
 
 
-def latest_matured_month(frame: pd.DataFrame, weeks: pd.DatetimeIndex) -> str | None:
-    """The latest calendar month of origins in which every reference row's target window has closed
-    by the planning-window start (all its forecasts are out of sample and matured)."""
-    t_fwd = week_indices(weeks)["fwd"]
-    ref = frame[frame["is_reference_row"]]
-    month = pd.to_datetime(ref["week"]).dt.strftime("%Y-%m")
-    closed = (ref["t"] + ref["h"] <= t_fwd).groupby(month).all()
-    closed = closed[closed]
-    return str(closed.index.max()) if len(closed) else None
-
-
 def completeness_universe(lifecycle: pd.DataFrame, origin: date, weeks_needed: int = 13) -> list:
     """Items in use for at least weeks_needed weeks before the origin."""
     first = pd.to_datetime(lifecycle["first_use_date"])

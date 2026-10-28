@@ -1,6 +1,6 @@
 [project]
 name = "dfm"
-version = "0.1.0"
+version = "0.2.0"
 description = "Weekly demand forecasting and reorder policy for purchased parts, run as Databricks job tasks"
 requires-python = ">=3.12,<3.13"
 authors = [{ name = "Brian Davis" }]
@@ -24,6 +24,7 @@ dfm-check-env = "dfm.entrypoints:check_environment"
 dfm-train = "dfm.entrypoints:train"
 dfm-promote = "dfm.entrypoints:promote"
 dfm-score = "dfm.entrypoints:score"
+dfm-monitor = "dfm.entrypoints:monitor"
 
 [build-system]
 requires = ["setuptools>=68"]

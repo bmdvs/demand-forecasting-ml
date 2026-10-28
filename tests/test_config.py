@@ -1,6 +1,5 @@
 """dfm.config carries the extract generator's calendar and lot constants unchanged."""
 from data_source.generate import config as G
-
 from dfm import config as C
 
 

@@ -36,6 +36,14 @@ def test_tag_keys_reject_reserved_characters():
     assert R.tag_key("gate_selection_detail") == "gate_selection_detail"
 
 
+def test_tag_values_within_length_limit():
+    s = Stub()
+    long = R.Gate("bias", False, "x" * 400, {"bias_months_scored": "y" * 300})
+    R.decide(s, "m", "1", [long], True)
+    assert all(len(v) <= R.TAG_VALUE_MAX for v in s.tags.values())
+    assert s.tags[("1", "gate_bias_detail")].endswith("...") and R.tag_value("short") == "short"
+
+
 def test_decide_moves_champion_only_when_all_pass_and_allowed():
     ok = [R.Gate("selection", True, "d"), R.Gate("bias", True, "d", {"bias_month": "2025-06"})]
     s = Stub()

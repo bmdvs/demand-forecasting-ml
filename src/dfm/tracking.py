@@ -56,6 +56,13 @@ def log_text_artifacts(files: dict[str, str]) -> None:
             mlflow.log_artifact(str(p))
 
 
+def log_frame_artifact(df: pd.DataFrame, name: str) -> None:
+    with tempfile.TemporaryDirectory() as d:
+        p = Path(d) / name
+        df.to_parquet(p, index=False)
+        mlflow.log_artifact(str(p))
+
+
 def log_inputs(spark: Any, catalog: str, tables: dict[str, str]) -> None:
     """Input lineage: each table read, by name (materialized views cannot be read by load_delta)."""
     for full in tables.values():

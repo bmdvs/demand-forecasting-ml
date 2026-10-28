@@ -1,10 +1,12 @@
-"""Console entry points for the monthly job's Python wheel tasks: dfm-train, dfm-promote, dfm-score, and
-dfm-check-env (the runtime check run before training on a new cluster image).
+"""Console entry points for the monthly job's Python wheel tasks: dfm-train, dfm-promote, dfm-score,
+dfm-monitor, and dfm-check-env (the runtime check run before training on a new cluster image).
 
-Every entry point reads --catalog; train and promote read --experiment-root (MLflow experiments by
-deployment target) and --job-run-id (the job run, which links the challenger run to its promotion);
-promote reads --auto-promote and, outside a job, --run-id. Options accept hyphens or underscores, so the
-job's keyword-argument form (--name=value) works.
+Every entry point reads --catalog; train, promote, score and monitor read --experiment-root (MLflow
+experiments by deployment target) and --job-run-id (the job run, which links the challenger run to its
+promotion and tells the monitor which schedule was issued before this run); promote reads --auto-promote
+and, outside a job, --run-id; monitor reads --forward-results (the forward results file of the landed
+pass). Every entry point accepts every option, since the job passes its parameters to every task.
+Options accept hyphens or underscores, so the job's keyword-argument form (--name=value) works.
 """
 from __future__ import annotations
 
@@ -14,6 +16,7 @@ import json
 import logging
 import time
 from importlib.metadata import PackageNotFoundError, requires, version
+from pathlib import Path
 from typing import Any
 
 import pandas as pd
@@ -43,6 +46,7 @@ def parse(prog: str, argv: list[str] | None = None) -> argparse.Namespace:
     _flag(p, "job-run-id", default=None)
     _flag(p, "run-id", default=None, help="promote: the challenger run, outside a job")
     _flag(p, "auto-promote", type=_bool, default=True)
+    _flag(p, "forward-results", default=None, help="monitor: the forward results file of the landed pass")
     return p.parse_args(argv)
 
 
@@ -110,6 +114,7 @@ def train(argv: list[str] | None = None) -> None:
         LOG.info("input lineage logged in %.0f s", time.time() - t1)
         tracking.log_text_artifacts(docs)
         mlflow.log_dict(hashes, "sha256.json")
+        tracking.log_frame_artifact(tasks.predictions(tr.tests[tasks.POLICY_RUNG]), f"pred_{tasks.POLICY_RUNG}.parquet")
         wm = tr.weekly_metrics
         mlflow.log_metrics({"weekly_test_wape": wm["overall"]["model"], "weekly_baseline_wape": wm["overall"]["baseline"],
                             **{f"val_wape_{r}": w for r, w in tr.selection["validation_wape"].items()},
@@ -158,14 +163,17 @@ def promote(argv: list[str] | None = None) -> None:
     LOG.info("%s version %s from run %s", "reusing" if reused else "registered", ver, run_id)
     identity = (run_id, tags.get("candidate", ""), tags.get("rung", ""), str(args.job_run_id or ""), _version())
     for k, v in zip(R.IDENTITY_TAGS, identity, strict=True):
-        reg.set_tag(name, ver, R.tag_key(k), v)
+        reg.set_tag(name, ver, R.tag_key(k), R.tag_value(v))
     model = reg.load(name, ver)
     frame = store.read_output("gold", "feature_frame")
     frame["week"] = pd.to_datetime(frame["week"])
     pred = store.read_output("gold", "backtest_predictions")
     pred = pred[pred["rung"] == tasks.POLICY_RUNG]
+    current = reg.alias_version(name, R.CHAMPION)
+    schedule = store.read_output("gold", "reorder_schedule") if store.has_output("gold", "reorder_schedule") else None
     gates = R.evaluate_gates(model, tags, results, frame, pred, store.mart("item_lifecycle"),
-                             tasks.weeks_of(store.mart("consumption_weekly")))
+                             tasks.weeks_of(store.mart("consumption_weekly")), schedule,
+                             f"{R.MODEL}/{current}" if current else None)
     for g in gates:
         LOG.info("gate %s %s: %s", g.name, "pass" if g.passed else "fail", g.detail)
     status = R.decide(reg, name, ver, gates, args.auto_promote)
@@ -209,6 +217,99 @@ def score(argv: list[str] | None = None) -> None:
         mlflow.log_dict({k: hashlib.sha256(v.encode()).hexdigest() for k, v in texts.items()}, "sha256.json")
         mlflow.log_metrics({f"rows_{k}": v for k, v in rows.items()} | {"score_seconds": time.time() - t0})
     LOG.info("tables written %s", rows)
+
+
+# ── monitor ─────────────────────────────────────────────────────────────────
+PROFILED_TABLES = [("gold", "reorder_schedule"), ("gold", "feature_frame"), ("monitoring", "forecast_errors")]
+
+
+def monitor(argv: list[str] | None = None) -> None:
+    """The monthly statuses of the schedule in force over the planning window (the latest schedule issued
+    before this job run) against the current tables: monitoring.monthly_status, pattern_metrics,
+    cell_bias, feature_drift, bias_factors, lead_time_reviews, retrain_log, forecast_errors and
+    monitoring_summary; then a refresh of the data profiles."""
+    import mlflow
+
+    from .. import monitoring as M
+    from .. import registry as R
+    from .. import tracking
+    from .. import training as T
+
+    args, spark, store = setup("dfm-monitor", argv)
+    if not args.forward_results:
+        raise ValueError("--forward-results is required")
+    reg = R.MlflowRegistry()
+    root = args.experiment_root.rstrip("/")
+    job = str(args.job_run_id or "")
+    issue = reg.latest_issue(f"{root}/score", job)
+    if issue is None:
+        LOG.info("no schedule was issued before job run %s: nothing to judge", job or "(manual)")
+        return
+    label = issue["model_version"]
+    name = R.model_name(args.catalog)
+    source = reg.version_run(name, label.split("/")[-1])
+    parent = reg.run_tags(source)["mlflow.parentRunId"]
+    LOG.info("judging the schedule issued by %s in job run %s (score run %s; training run %s)",
+             label, issue["job_run_id"], issue["run_id"], parent)
+    issued = M.Issued(json.loads(reg.run_text(parent, f"metrics_{tasks.POLICY_RUNG}.json")),
+                      reg.run_frame(parent, f"pred_{tasks.POLICY_RUNG}.parquet"),
+                      json.loads(reg.run_text(issue["run_id"], "rop_schedule.json")),
+                      json.loads(reg.run_text(issue["run_id"], "retrain_log.json")))
+    t0 = time.time()
+    inp = tasks.load_inputs(store)
+    frame, ctx = T.prepare_frame(inp)
+    rd = store.read_output
+    cur = M.Current(inp, frame, ctx, store.mart("supplier_leadtime_weekly"),
+                    store.extract("erp", "item_master").set_index("item_number")["primary_supplier_id"],
+                    json.loads(Path(args.forward_results).read_text(encoding="utf-8")),
+                    M.short_weeks(rd("gold", "mart_shortage_weekly")),
+                    M.uom_gap(rd("silver", "int_transactions_corrected"), rd("silver", "stg_erp__inventory_transactions"),
+                              rd("silver", "stg_remediation__uom_conversions"), rd("gold", "mart_item_attributes")))
+    summary, tables = M.monitor(issued, cur)
+    LOG.info("monitored in %.0f s: %s", time.time() - t0,
+             ", ".join(f"{p['period']} {p['status']}" for p in summary["periods"]))
+    text = json.dumps(summary, indent=2, default=float)
+    files = {"monitoring_summary.json": text,
+             **{f"{k}.csv": tables[k].to_csv(index=False) for k in ["feature_drift", "retrain_log", "bias_factors",
+                                                                   "lead_time_reviews"]}}
+    by_month = {"monthly_status": M.status_rows(summary), "pattern_metrics": M.pattern_rows(summary),
+                "cell_bias": M.cell_rows(summary), "feature_drift": tables["feature_drift"].copy(),
+                "bias_factors": tables["bias_factors"].astype({"change": float, "corrected_bias": float}),
+                "lead_time_reviews": tables["lead_time_reviews"].reindex(columns=["period", "level", "id"]).astype(str),
+                "retrain_log": tables["retrain_log"].copy()}
+    for t in by_month.values():
+        t.insert(0, "model_version", label)
+    out = {**by_month, "forecast_errors": M.error_rows(tables["live"], ctx["weeks"], label),
+           "monitoring_summary": pd.DataFrame([{"issued_job_run_id": issue["job_run_id"], "model_version": label,
+                                                 "latest_status": summary["latest_status"], "summary_json": text}])}
+    rows = {k: store.write(v, "monitoring", k) for k, v in out.items()}
+    LOG.info("tables written %s", rows)
+    mlflow.set_experiment(experiment_id=tracking.ensure_experiment(f"{root}/monitor"))
+    with mlflow.start_run(run_name=f"monitor {job or 'manual'}"):
+        mlflow.set_tags({"job_run_id": job, "catalog": args.catalog, "model_version": label,
+                         "issued_job_run_id": issue["job_run_id"], "latest_status": summary["latest_status"],
+                         "dfm_version": _version()})
+        tracking.log_text_artifacts(files)
+        mlflow.log_dict({k: hashlib.sha256(v.encode()).hexdigest() for k, v in files.items()}, "sha256.json")
+        mlflow.log_metrics({f"rows_{k}": v for k, v in rows.items()} | {"monitor_seconds": time.time() - t0})
+    for msg in _refresh_profiles(store):
+        LOG.info("data profile %s", msg)
+
+
+def _refresh_profiles(store: Any) -> list[str]:
+    """Refresh the data profiles on the profiled tables, where they exist."""
+    from databricks.sdk import WorkspaceClient
+
+    w = WorkspaceClient()
+    out = []
+    for schema, table in PROFILED_TABLES:
+        name = store.tables.name(schema, table)
+        try:
+            r = w.quality_monitors.run_refresh(table_name=name)
+            out.append(f"{name}: refresh {r.refresh_id} {r.state}")
+        except Exception as e:  # noqa: BLE001  (no profile on the table, or no permission: reported)
+            out.append(f"{name}: not refreshed: {str(e)[:200]}")
+    return out
 
 
 # ── runtime check ───────────────────────────────────────────────────────────

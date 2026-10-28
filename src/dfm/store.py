@@ -181,6 +181,9 @@ class SparkTables:
         df = self.spark.table(self.name(schema, table))
         return (df.select(*columns) if columns else df).toArrow()
 
+    def exists(self, schema: str, table: str) -> bool:
+        return bool(self.spark.catalog.tableExists(self.name(schema, table)))
+
 
 class DirectoryTables:
     """Parquet exports of the platform tables (one file per table) and the landed extract files."""
@@ -235,6 +238,11 @@ class TableStore:
             return self.tables.read(schema, table).to_pandas()
         return pd.read_parquet(Path(self.out) / schema / f"{table}.parquet")
 
+    def has_output(self, schema: str, table: str) -> bool:
+        if isinstance(self.tables, SparkTables):
+            return self.tables.exists(schema, table)
+        return self.out is not None and (Path(self.out) / schema / f"{table}.parquet").exists()
+
 
 class FileStore:
     """A local archive of the warehouse's exported mart files (marts) and the CSV extracts (raw)."""
@@ -257,6 +265,9 @@ class FileStore:
 
     def read_output(self, schema: str, table: str) -> pd.DataFrame:
         return pd.read_parquet(Path(self.out) / schema / f"{table}.parquet")
+
+    def has_output(self, schema: str, table: str) -> bool:
+        return self.out is not None and (Path(self.out) / schema / f"{table}.parquet").exists()
 
 
 def _write_local(out: Path | None, pdf: pd.DataFrame, schema: str, table: str) -> int:
