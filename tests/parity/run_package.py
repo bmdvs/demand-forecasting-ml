@@ -7,8 +7,11 @@ run uses). Outputs, in the reference layout:
   <out>/ladder/frame.parquet, metrics_<rung>.json, pred_<rung>.parquet
   <out>/policy/rop_schedule.json, retrain_log.json
 
+With --score-archive the policy scores a second archive's tables with the model trained on the first, as
+dfm-score does at pass 2 when the champion was trained at pass 1.
+
 Usage:
-  python tests/parity/run_package.py --archive DIR --out DIR [--no-shap]
+  python tests/parity/run_package.py --archive DIR --out DIR [--no-shap] [--score-archive DIR]
   python tests/parity/run_package.py --tables DIR --landing DIR [--pass pass1] --out DIR [--no-shap]
 """
 from __future__ import annotations
@@ -35,6 +38,7 @@ def main() -> None:
     ap.add_argument("--pass", dest="pass_name", default="pass1")
     ap.add_argument("--out", required=True)
     ap.add_argument("--no-shap", action="store_true")
+    ap.add_argument("--score-archive", help="score this archive's tables with the model trained on --archive")
     a = ap.parse_args()
     if a.archive:
         arch = Path(a.archive)
@@ -65,6 +69,9 @@ def main() -> None:
     feats = res["features"]
     result = json.loads(tasks.metrics_document(res))
     t1 = time.time()
+    if a.score_archive:
+        sa = Path(a.score_archive)
+        store = S.FileStore(sa / "ml" / "data" / "marts", sa / "data_source" / "raw")
     doc, retrains, _ = tasks.score(store, result, lambda test: T._predict(kind, model, test[feats].astype(float), cap))
     print(f"scored in {time.time() - t1:.0f} s", flush=True)
     (out / "policy" / "rop_schedule.json").write_text(tasks.schedule_document_text(doc))
