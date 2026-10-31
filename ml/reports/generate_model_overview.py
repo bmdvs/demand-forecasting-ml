@@ -51,9 +51,6 @@ n_scored_items = queue_items.nunique()
 unscored = sorted(set(attrs["canonical_item_number"]) - set(queue_items))
 sup = SR.supersessions()
 assert set(unscored) <= set(sup["superseded_by"]), "an unscored item is not a successor part"
-sched = SR.rop_schedule()
-n_points = sum(len(v) for v in sched["items"].values())
-n_origins = len(sched["origins"])
 
 
 def money(x):
@@ -469,24 +466,21 @@ toc = ('<a href="#summary">Executive Summary</a><hr>'
        '<a href="#accuracy" class="sub">Accuracy and Validation</a>'
        '<a href="#limits" class="sub">Assumptions &amp; Limitations</a>')
 
-_NUM = {1: "one", 2: "two", 3: "three", 4: "four", 5: "five", 6: "six", 7: "seven", 8: "eight", 9: "nine"}
-UNSCORED_TEXT = (f"all but {_NUM.get(len(unscored), len(unscored))} successor parts with no usage history yet"
-                 if len(unscored) != 1 else "all but one successor part with no usage history yet")
 
 body = f"""
 {B.section("summary", "Section 1", "Executive Summary")}
-<p>The demand forecasting model sets the reorder decisions for {n_scored_items:,} of the shop's {n_items:,} stocked
-items, {UNSCORED_TEXT}. The model takes the parts that booked jobs will draw as known and forecasts the rest of
+<p>The demand forecasting model sets the reorder decisions for each of the shop's {n_items:,} stocked items. The
+model takes the parts that booked jobs will draw as known and forecasts the rest of
 each item's usage before a new order could arrive, then turns the total into a reorder point and order quantity. It
 has been live for the past six months, from January through June 2026. Its reorder points and order quantities are
 loaded straight into the ERP's purchasing screen, where the buyers release the suggested orders.</p>
 <p>Before the model, reordering was done manually and ran on data that was messy and couldn't be trusted. Much of
 the reordering process was labor-intensive and imprecise: stock levels and lead times were stale, stock on hand was
 unverified, safety stock was inflated, and rush orders were relied upon to compensate for shortfalls. The result
-was the shop carrying excess inventory, roughly {dos25:.0f} days of usage, yet still logging elevated stockout days,
+was the shop carrying excess inventory, {dos25:.0f} days of usage, yet still logging elevated stockout days,
 held jobs for missing material and rush freight spend.</p>
 <p>The results below compare January to June 2026 with 2025 as the shop recorded it, with 2025's two halves
-averaged to a six-month basis. Over the model's first six months, stockout days fell
+averaged to a six-month basis. Stockout days fell
 <strong>{fall(half('stockout_days'), mod['stockout_days'])}</strong>, jobs held for material fell
 <strong>{fall(half('jobs_delayed'), mod['jobs_delayed'])}</strong> and rush spend fell
 <strong>{fall(half('rush_spend'), mod['rush_spend'])}</strong>, while average inventory fell
@@ -494,8 +488,7 @@ averaged to a six-month basis. Over the model's first six months, stockout days 
 {mod['days_of_supply']:.0f} days of usage from {dos25:.0f}.</p>
 <p>Over the same six months of demand, the model also beat the two ways the shop could have reordered without it:
 the status quo, as the shop ran in 2025, and manual reordering on the cleaned records. It cut stockout days, held
-jobs and rush spend the furthest of the three, and carried more inventory than manual reordering on the cleaned
-records and slightly more than the status quo.</p>
+jobs and rush spend the furthest of the three, and carried slightly more inventory than either.</p>
 {B.chart("Status quo, manual reordering on the cleaned records and the model, January to June 2026", charts["outcomes"])}
 
 {B.section("modeloverview", "Section 2", "Model Overview")}
@@ -538,8 +531,7 @@ with no demand at all). One representative item within each pattern is shown bel
 <p>Part of each item's usage is known before it happens. On the {n_bill_items:,} parts that sit on a bill of
 materials, the component requirements of booked jobs account for about a third
 ({pct(firm_share_bill, 0)}) of total usage over the item's lead time; floor pulls and service issues are the rest,
-and that remainder is what the model forecasts. Parts on no bill have no booked requirements, so their usage is
-forecast in full.</p>
+and that remainder is what the model forecasts. Parts that sit on no bill are forecast in full.</p>
 <p>{CAT_TEXT}</p>
 {B.chart("Items in each category, by demand pattern", charts["catseg"])}
 <p>{TBL_TEXT}</p>
@@ -547,9 +539,7 @@ forecast in full.</p>
 {B.section("performance", "Section 3", "Model Performance")}
 
 {B.section("scoring", "Section 3.1", "Scoring Summary")}
-<p>From January to June 2026 the model refreshed the reorder points of all {n_scored_items:,} items it scores at
-every one of its {n_origins} weekly refreshes, {n_points:,} reorder points in all. On the buyers' queue across the
-{n_weeks} Monday refreshes it made {n_calls:,} predictions: <strong>{status_tot['ORDER NOW']:,}</strong>
+<p>Across the {n_weeks} Monday refreshes of the buyers' queue, it made {n_calls:,} predictions: <strong>{status_tot['ORDER NOW']:,}</strong>
 ({status_tot['ORDER NOW'] / n_calls:.0%}) were marked ORDER NOW and <strong>{status_tot['ORDER SOON']:,}</strong>
 ({status_tot['ORDER SOON'] / n_calls:.0%}) ORDER SOON, and the rest were OK. In a typical week that is about
 {status_tot['ORDER NOW'] / n_weeks:.0f} items to order now and {status_tot['ORDER SOON'] / n_weeks:.0f} to order soon,
@@ -572,8 +562,8 @@ error is scored on total usage over each item's lead time.</p>
 1H 2026 to the same period of time under a status quo scenario where the shop did not use the model. This
 status quo scenario assumes the shop operated
 in 1H 2026 as it did throughout 2025, including with stale lead times and reorder points, the buyers'
-four-and-a-half-month lots and with the data errors fully intact. The middle column keeps the buyers' manual
-reordering but runs it on the cleaned records.</p>
+four-and-a-half-month lots and with the data errors fully intact. The middle column is the buyers' manual
+reordering run on the cleaned records.</p>
 {compare_table()}
 <p>The model carries more stock than manual reordering on the cleaned records and slightly more than the status
 quo over the same six months.</p>
@@ -585,7 +575,7 @@ quo over the same six months.</p>
   <li><strong>It forecasts demand, not supply.</strong> The model predicts how much the shop will use; it takes each
       supplier's lead time from its recent deliveries, refreshed monthly, and does not predict a late delivery. The buffer covers
       the usual spread of deliveries, not a supplier failure.</li>
-  <li><strong>The booking window is measured.</strong> Customer orders are booked {BOOK_LO} to {BOOK_HI} days before
+  <li><strong>Booking visibility.</strong> Customer orders are booked {BOOK_LO} to {BOOK_HI} days before
       their jobs are released.</li>
   <li><strong>Expediting is held constant.</strong> All three replays expedite the same items the purchasing
       manager tracked before go-live, so rush spend reflects how often those items were at risk, not a change in
