@@ -174,7 +174,7 @@ def main() -> None:
     print(f"  replay.forward_replay              {len(df):>9,} rows")
     manifest = {"created": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"), "catalog": a.catalog,
                 "issued_run": a.issued_run, "monitor_run": a.monitor_run, "pass": a.pass_name, "entries": entries}
-    (out / "MANIFEST.json").write_text(json.dumps(manifest, indent=1) + "\n", encoding="utf-8")
+    (out / "MANIFEST.json").write_bytes((json.dumps(manifest, indent=1) + "\n").encode("utf-8"))
     n = sum(len(e["files"]) for e in entries)
     print(f"{len(entries)} entries, {n} files -> {out}")
 
