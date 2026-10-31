@@ -46,6 +46,8 @@ pred["fc"] = pred[f"predc_{WIN}"]                                    # bias-corr
 LADDER = [("reference", "Reference (usage history)"), ("S1", "Order book"), ("S2", "Product families"),
           ("S3", "Shortage history"), ("S4a", "Lifecycle"), ("S4b", "Lifecycle, longer history"),
           ("S5", "Supply"), ("S6", "Calendar")]
+RUNG_NAME = {"reference": "Reference", "S1": "Order book", "S2": "Families", "S3": "Shortage", "S4a": "Lifecycle",
+             "S4b": "Lifecycle on longer history", "S5": "Supply", "S6": "Calendar"}
 LM = {r: json.loads((SR.LADDER / f"metrics_{r}.json").read_text(encoding="utf-8")) for r, _ in LADDER}
 LX = json.loads((SR.LADDER / "ladder_extra.json").read_text(encoding="utf-8"))
 
@@ -542,7 +544,7 @@ def ops_table():
                                 "overall WAPE is more than 3 points above the 2025 reference, WAPE for a demand "
                                 "pattern is more than 5 points above its 2025 level, or corrected bias, overall or "
                                 "for a pattern, is outside &plusmn;10%. Safety buffers are recalibrated when achieved "
-                                "fill rate is more than 1 point below target for a criticality group; stockout days or "
+                                "fill rate is more than 1 point below target for a criticality group; stockout episodes or "
                                 "jobs held for material above the 2025 monthly average call for investigation. The "
                                 "promotion's bias gate applies the monitor's bias rule to the schedule in force. See the "
                                 "<a href=\"monitoring_report.html\">monitoring report</a>"],
@@ -562,7 +564,7 @@ def _rung_table(key, labels, title_col):
             cells.append(f"{pct(raw, 1)} / {pct(cor, 1)}" if raw is not None and cor is not None
                          else (pct(raw, 1) if raw is not None else ""))
         rows.append(cells)
-    return B.data_table([title_col] + [r for r, _ in LADDER], rows, right=list(range(1, len(LADDER) + 1)))
+    return B.data_table([title_col] + [RUNG_NAME[r] for r, _ in LADDER], rows, right=list(range(1, len(LADDER) + 1)))
 
 
 def appendix_tables():
@@ -570,7 +572,7 @@ def appendix_tables():
     tier = _rung_table("by_tier", ["line", "service", "standard"], "Criticality")
     cls = _rung_table("by_item_class", sorted(LM["S1"]["scores_winner"]["by_item_class"]), "Item category")
     abc = _rung_table("by_abc", ["A", "B", "C"], "Value class")
-    bias_rows = [[r] + [f"{LM[r]['candidates'][LM[r]['winner']]['bias_factors'][s]:.3f}" for s in SEG_ORDER] for r, _ in LADDER]
+    bias_rows = [[RUNG_NAME[r]] + [f"{LM[r]['candidates'][LM[r]['winner']]['bias_factors'][s]:.3f}" for s in SEG_ORDER] for r, _ in LADDER]
     bias = B.data_table(["Rung"] + [s.capitalize() for s in SEG_ORDER], bias_rows, right=[1, 2, 3, 4])
     sm = LM["S1"]["simple"]
     simple_rows = [["4-week rate", pct(sm["ma4"])], ["13-week rate", pct(sm["ma13"])], ["52-week rate", pct(sm["ma52"])],
@@ -659,12 +661,9 @@ order book up to that date, and its target is the usage over the following lead 
 every forecast needs a full year of usage behind it. A 26-week validation block before 2025 was used to tune and
 compare the candidates, and 2025 was held out to score the winner. Each split keeps its whole forecast horizon
 before the next window starts, so no training target overlaps a validation week and no validation target overlaps
-2025. We chose to use the full 2025 year of data for model testing, because the bias correction for each demand
-pattern and the safety-buffer multiples are calibrated on its errors, and both need a full year to reflect the
-seasonal demand of certain items.</p>
-<p>The first six months of 2026 are the model's live output. In live use the model is retrained monthly on every
-forecast date whose outcome is already known. Because 2025 serves both to calibrate the model and to report
-held-out accuracy, the fully out-of-sample test is the live performance from January to June 2026.</p>
+2025.</p>
+<p>The first six months of 2026 are the model's live output; the model is retrained monthly on every forecast date
+whose outcome is known.</p>
 {split_table()}
 {B.chart("Weekly Usage by Split", charts["volume"])}
 <p>The model's {len(FEATS)} features fall into four groups. The first is Rolling Usage, including usage windows (4,
@@ -681,7 +680,10 @@ zero-heavy usage.</p>
 weeks-since-last-usage and variability features move against the usage windows, as expected for intermittent items.
 Unit cost runs against usage ({cmat.loc['std_cost', 's13']:+.2f} to {cmat.loc['std_cost', 'mean_all']:+.2f}), because
 expensive items are used in smaller quantities. Last year's usage correlates only {cmat.loc['s52', 'ly']:+.2f} with the
-52-week total, so its timing adds information beyond the average level.</p>
+52-week total, so its timing adds information beyond the average level. The order-book features correlate weakly
+with the target because the target is usage net of booked requirements; their value is in the booked quantity itself,
+which enters the forecast directly, and in <code>book_cover</code>, which the model uses to read how much of an item's
+usage the book already explains.</p>
 {B.chart("Feature Correlation Heatmap (numeric features, Spearman)", charts["corr"])}
 <p>The target is heavily right-skewed: most lead-time windows use a few dozen units, while fasteners and
 consumables run to thousands. The model is therefore trained on log(1 + usage), so the few very high-volume items do
@@ -738,7 +740,9 @@ the held-out year shows the same shape more strongly. The safety buffer absorbs 
 {B.chart("Calibration: Mean Forecast vs Mean Actual, by Forecast Decile", charts["calib"])}
 <p>Error varies by demand pattern. Smooth items are forecast best and intermittent items worst, since an item used
 a few times a year at random offers little to learn from. The table compares the model with the order book plus the
-best simple method for each pattern, in the held-out year and live.</p>
+best simple method for each pattern, in the held-out year and live. The model's gain over the order book plus the
+best simple method is concentrated in lumpy and intermittent items in the held-out year; on smooth items the simple
+method is as good.</p>
 {pattern_table()}
 {B.chart("Live WAPE by Demand Pattern, Model vs Order Book + Best Simple Method", charts["pattern"])}
 <p>Plotted against actual usage on log scales, the live forecasts cluster around the diagonal across four orders
@@ -822,8 +826,8 @@ of the cycle), and an item ordered often needs more.</p>
   monitored.</li>
   <li><strong>Supply is taken as given.</strong> Lead times are refreshed from recent receipts and their variability
   enters the buffer, but late deliveries are not forecast.</li>
-  <li><strong>Simulated data.</strong> The model is trained and evaluated on synthetic ERP data with embedded
-  patterns and deliberate noise. Real-world accuracy depends on the signal in the shop's own data.</li>
+  <li><strong>Simulated data.</strong> The model is trained and evaluated on generated ERP data; accuracy on a
+  shop's own records depends on the signal in them.</li>
 </ul>
 
 {B.section("ops", "Section 7", "Deployment & Operations")}
@@ -832,8 +836,8 @@ of the cycle), and an item ordered often needs more.</p>
 <p>Getting the numbers into the ERP takes two planning fields per item per week, the reorder point and the order
 quantity. They are written through the ERP's API where it offers one, and otherwise through its import utility after
 the purchasing manager reviews the queue; the buyers review the queue in both cases.</p>
-<p>Every reported figure comes from a fixed-seed run archived with a checksum manifest and reproduced on the
-platform at the stated tolerances.</p>
+<p>Every reported figure comes from a fixed-seed run, archived with a checksum manifest and reproduced on the
+platform.</p>
 
 {B.section("appendix", "Appendix", "Feature Study Tables")}
 <p>Held-out 2025 WAPE on total demand for the selected model at each rung, raw / bias-corrected.</p>
