@@ -125,6 +125,16 @@ _rq = (pd.to_datetime(_jobs["required_date"]) - pd.to_datetime(_jobs["release_da
 _vis = (pd.to_datetime(_jobs["required_date"]) - pd.to_datetime(_jobs["booked_date"])).dt.days
 BK, RQ, VIS = (int(_bk.min()), int(_bk.max())), (int(_rq.min()), int(_rq.max())), (int(_vis.min()), int(_vis.max()))
 
+# receipts per item in 2025 (purchase-order lines received), 25th to 90th percentile
+_pol = pd.read_csv(RAW / "erp" / "purchase_orders.csv", low_memory=False)
+_rcpt = _pol[pd.to_datetime(_pol["received_date"], errors="coerce").dt.year == 2025].groupby("item_number").size()
+RCPT_LO, RCPT_HI = int(_rcpt.quantile(0.25)), int(_rcpt.quantile(0.90))
+
+# Optuna trials per candidate, from the package
+import sys as _sys  # noqa: E402
+_sys.path.insert(0, str(REPO / "src"))
+from dfm.training import N_TRIALS  # noqa: E402
+
 # standardized 2025 errors of the bias-corrected forecast, as the buffer calibration uses them
 _res = pred["target"] - pred["fc"]
 z_err = (_res / _res.groupby(pred["item"]).transform("std")).replace([np.inf, -np.inf], np.nan).dropna()
@@ -644,7 +654,7 @@ body = f"""
   <div><div class="mc-label">Target</div><div class="mc-value">Units an item will use over its supplier lead time, net of the component requirements of jobs booked by the forecast date; the forecast is those requirements plus that remainder</div></div>
   <div><div class="mc-label">Prediction Type</div><div class="mc-value">Regression on log(1 + usage), one forecast per item per week</div></div>
   <div><div class="mc-label">Features</div><div class="mc-value">{len(FEATS)} (rolling usage, calendar, item attributes, order book)</div></div>
-  <div><div class="mc-label">Tuning</div><div class="mc-value">Optuna, 12 trials per candidate, validation WAPE on total lead-time demand</div></div>
+  <div><div class="mc-label">Tuning</div><div class="mc-value">Optuna, {N_TRIALS} trials per candidate, validation WAPE on total lead-time demand</div></div>
   <div><div class="mc-label">Cadence</div><div class="mc-value">Refreshed every Monday; retrained monthly</div></div>
   <div><div class="mc-label">Outputs</div><div class="mc-value">Reorder point and order quantity per item, loaded into the ERP</div></div>
   <div><div class="mc-label">Held-out 2025 WAPE, total demand</div><div class="mc-value">{pct(test_w)}</div></div>
@@ -703,7 +713,7 @@ the booked requirements itself: forecasting them too would count them twice.</p>
 
 {B.section("selection", "Section 3.1", "Model Selection")}
 <p>Three candidates, a ridge regression, a random forest and an XGBoost gradient-boosted model, were each tuned
-with Optuna (12 trials per model) on the validation weeks, using weighted absolute percentage error (WAPE) on total
+with Optuna ({N_TRIALS} trials per model) on the validation weeks, using weighted absolute percentage error (WAPE) on total
 lead-time demand (the booked requirements plus the forecast remainder) as the objective. The selection rule picks the
 lowest validation WAPE on total demand; the booster is preferred only when it finishes within half a point of the
 best, and within 0.3 points the smaller feature set wins. The models were then refit on train plus validation and
@@ -813,7 +823,7 @@ of the cycle), and an item ordered often needs more.</p>
   <li><strong>Accuracy and operating result are not the same measure.</strong> The order book's gain in forecast
   accuracy did not move the forward results by as much, because the ERP already netted released jobs before the
   model saw them.</li>
-  <li><strong>Item-level lead times are not observable at low receipt counts.</strong> At 2 to 5 receipts a year, a
+  <li><strong>Item-level lead times are not observable at low receipt counts.</strong> At {RCPT_LO} to {RCPT_HI} receipts a year, a
   26-week statistic cannot track a drift in an item's lead time; supplier-level pooling can, and is used for review
   rather than for the reorder point.</li>
   <li><strong>Bias on intermittent items in live use.</strong> After bias correction, the forecasts for intermittent

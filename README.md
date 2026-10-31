@@ -123,7 +123,7 @@ mkdir -p runs/seq/pass1/data_source && cp -r data_source/raw data_source/truth r
 # 2. Land the extracts in the Unity Catalog volume (pass 1 now, pass 2 after the replay)
 python infra/land_extracts.py --profile <profile> --pass pass1
 
-# 3. Pass 2: replay January to June 2026 on the schedule the model issued, then land the replayed extracts
+# 3. Pass 2: replay January to June 2026 on the schedule the model issued (the generator replays on the schedule in ml/data/policy/ when one is present), then land the replayed extracts
 python -m data_source.generate.run_generator
 python -m data_source.generate.validate
 python -m data_source.generate.remediation
