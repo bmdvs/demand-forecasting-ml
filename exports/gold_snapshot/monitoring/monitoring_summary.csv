@@ -1,0 +1,929 @@
+issued_job_run_id,model_version,latest_status,summary_json
+989811679653429,demand_models/1,INVESTIGATE,"{
+  ""model"": ""S1 RandomForest, static horizon"",
+  ""periods"": [
+    {
+      ""period"": ""2026-01"",
+      ""n_forecasts"": 6680,
+      ""n_scored"": 6670,
+      ""wape"": 0.42472072179799175,
+      ""base_wape"": 0.4623220843936883,
+      ""bias"": -0.014751392002005119,
+      ""target_drift"": 0.053781770208819225,
+      ""prediction_drift"": 0.05440679866856827,
+      ""pattern_wape"": {
+        ""erratic"": 0.46214853015596236,
+        ""intermittent"": 0.5662893624515675,
+        ""lumpy"": 0.44013832398872305,
+        ""smooth"": 0.34264040217406766
+      },
+      ""pattern_bias"": {
+        ""erratic"": 0.013133161970143702,
+        ""intermittent"": 0.029335857696372,
+        ""lumpy"": -0.07375022173651369,
+        ""smooth"": -0.005200539096761133
+      },
+      ""worst_wape_gap"": 0.00040420336927560196,
+      ""worst_bias"": 0.07375022173651369,
+      ""cell_bias"": {
+        ""erratic|line"": 0.009701256755527904,
+        ""erratic|service"": 0.17455006107989257,
+        ""erratic|standard"": -0.029132212409104886,
+        ""intermittent|line"": -0.08807617028217254,
+        ""intermittent|service"": 0.02598187482299637,
+        ""intermittent|standard"": 0.14456561085972858,
+        ""lumpy|line"": 0.04692515779981962,
+        ""lumpy|service"": -0.07628773620135927,
+        ""lumpy|standard"": -0.08166698978932396,
+        ""smooth|line"": -0.02663362308341922,
+        ""smooth|standard"": 0.09412727753337234
+      },
+      ""bias_factors"": {
+        ""erratic"": 1.474215200532229,
+        ""intermittent"": 1.6988509480087455,
+        ""lumpy"": 1.2453834406901616,
+        ""smooth"": 1.223043817885762
+      },
+      ""bias_factor_change"": {},
+      ""bias_factor_levels"": {
+        ""erratic"": 0,
+        ""intermittent"": 0,
+        ""lumpy"": 0,
+        ""smooth"": 0
+      },
+      ""n_features"": 24,
+      ""n_features_drifted"": 0,
+      ""lead_time_reviews_items"": [
+        ""CON-00419"",
+        ""CON-00845"",
+        ""ELE-00037"",
+        ""FAS-00012"",
+        ""FAS-00644"",
+        ""FAS-00760"",
+        ""FAS-01071"",
+        ""FAS-01091"",
+        ""FAS-01094"",
+        ""MEC-00038"",
+        ""MEC-00152"",
+        ""MEC-00183"",
+        ""MEC-00254"",
+        ""MEC-00281"",
+        ""MEC-00371"",
+        ""MEC-00374"",
+        ""MEC-00693"",
+        ""MEC-00751"",
+        ""MEC-00945"",
+        ""MEC-00999"",
+        ""MEC-01323"",
+        ""MEC-01334""
+      ],
+      ""lead_time_reviews_suppliers"": [],
+      ""data_quality"": {
+        ""short_week_share"": 0.08551157580283794,
+        ""active_short_share"": 0.03902165795369679,
+        ""uom_gap"": {
+          ""items"": 47,
+          ""on_hand_value_as_booked"": 12106.451800000003,
+          ""on_hand_value_converted"": 290510.13200000004,
+          ""understatement_of_total"": 0.08275284869777018
+        },
+        ""null_feature_share"": 0.0342814371257485,
+        ""unseen_items"": 2
+      },
+      ""fill_by_tier"": {
+        ""line"": 0.9841944902881807,
+        ""service"": 0.9645399972078738,
+        ""standard"": 0.969269757837432
+      },
+      ""fill_gap"": 0.02046000279212623,
+      ""stockout_events"": 65,
+      ""jobs_held"": 14,
+      ""rush_spend"": 35505.64,
+      ""end_inventory"": 3528780.7916999967,
+      ""fill_rate"": 0.9748210834247506,
+      ""ref_events"": 63.333333333333336,
+      ""ref_held"": 15.583333333333334,
+      ""matured"": true,
+      ""model_levels"": {
+        ""overall_wape"": 0,
+        ""overall_bias"": 0,
+        ""pattern_wape"": 1,
+        ""pattern_bias"": 0,
+        ""bias_factors"": 0
+      },
+      ""primary"": {
+        ""overall_wape"": false,
+        ""overall_bias"": false,
+        ""pattern_wape"": true,
+        ""pattern_bias"": false,
+        ""bias_factors"": false,
+        ""service"": true,
+        ""outcomes"": true
+      },
+      ""secondary"": {
+        ""target_drift"": false,
+        ""prediction_drift"": false,
+        ""feature_drift"": false
+      },
+      ""status"": ""INVESTIGATE""
+    },
+    {
+      ""period"": ""2026-02"",
+      ""n_forecasts"": 5344,
+      ""n_scored"": 5332,
+      ""wape"": 0.4387512280367608,
+      ""base_wape"": 0.4580620887913309,
+      ""bias"": -0.012392130368787727,
+      ""target_drift"": 0.042887121544869386,
+      ""prediction_drift"": 0.04751274117107525,
+      ""pattern_wape"": {
+        ""erratic"": 0.5112994477552152,
+        ""intermittent"": 0.5610755951612209,
+        ""lumpy"": 0.45868514290731877,
+        ""smooth"": 0.3245527290663248
+      },
+      ""pattern_bias"": {
+        ""erratic"": 0.028688935076669447,
+        ""intermittent"": 0.05903796977915537,
+        ""lumpy"": -0.049993502217148766,
+        ""smooth"": -0.041772115165862315
+      },
+      ""worst_wape_gap"": 0.0,
+      ""worst_bias"": 0.05903796977915537,
+      ""cell_bias"": {
+        ""erratic|line"": 0.030327489883846412,
+        ""erratic|service"": 0.08337124515503877,
+        ""erratic|standard"": 0.010978943826591968,
+        ""intermittent|line"": -0.013871190339275443,
+        ""intermittent|standard"": 0.02935848017621157,
+        ""lumpy|line"": 0.16666824085005907,
+        ""lumpy|service"": -0.027486328976034927,
+        ""lumpy|standard"": -0.06941746821771055,
+        ""smooth|line"": -0.06546786878151319,
+        ""smooth|standard"": 0.05304537521815001
+      },
+      ""bias_factors"": {
+        ""erratic"": 1.4692309850046792,
+        ""intermittent"": 1.7376739428906465,
+        ""lumpy"": 1.2479207180393639,
+        ""smooth"": 1.218246755574632
+      },
+      ""bias_factor_change"": {
+        ""erratic"": -0.003380928052939991,
+        ""intermittent"": 0.022852502114683038,
+        ""lumpy"": 0.0020373463033973582,
+        ""smooth"": -0.003922232581513474
+      },
+      ""bias_factor_levels"": {
+        ""erratic"": 0,
+        ""intermittent"": 0,
+        ""lumpy"": 0,
+        ""smooth"": 0
+      },
+      ""n_features"": 24,
+      ""n_features_drifted"": 1,
+      ""lead_time_reviews_items"": [
+        ""ELE-00037"",
+        ""FAS-00012"",
+        ""FAS-00644"",
+        ""FAS-00665"",
+        ""FAS-00760"",
+        ""FAS-01071"",
+        ""FAS-01091"",
+        ""FAS-01094"",
+        ""MEC-00038"",
+        ""MEC-00070"",
+        ""MEC-00075"",
+        ""MEC-00146"",
+        ""MEC-00152"",
+        ""MEC-00183"",
+        ""MEC-00212"",
+        ""MEC-00254"",
+        ""MEC-00271"",
+        ""MEC-00281"",
+        ""MEC-00371"",
+        ""MEC-00374"",
+        ""MEC-00693"",
+        ""MEC-00726"",
+        ""MEC-00750"",
+        ""MEC-00751"",
+        ""MEC-00827"",
+        ""MEC-00897"",
+        ""MEC-00945"",
+        ""MEC-00999"",
+        ""MEC-01323"",
+        ""RM-01156""
+      ],
+      ""lead_time_reviews_suppliers"": [
+        ""SUP-029""
+      ],
+      ""data_quality"": {
+        ""short_week_share"": 0.07916355489171023,
+        ""active_short_share"": 0.039581777445855115,
+        ""uom_gap"": {
+          ""items"": 47,
+          ""on_hand_value_as_booked"": 12106.451800000003,
+          ""on_hand_value_converted"": 290510.13200000004,
+          ""understatement_of_total"": 0.08275284869777018
+        },
+        ""null_feature_share"": 0.033869760479041916,
+        ""unseen_items"": 2
+      },
+      ""fill_by_tier"": {
+        ""line"": 0.9815330240777557,
+        ""service"": 0.9720930232558139,
+        ""standard"": 0.966297967495907
+      },
+      ""fill_gap"": 0.01870203250409297,
+      ""stockout_events"": 45,
+      ""jobs_held"": 9,
+      ""rush_spend"": 13152.330000000002,
+      ""end_inventory"": 3419240.805099993,
+      ""fill_rate"": 0.9733445310645756,
+      ""ref_events"": 63.333333333333336,
+      ""ref_held"": 15.583333333333334,
+      ""matured"": true,
+      ""model_levels"": {
+        ""overall_wape"": 0,
+        ""overall_bias"": 0,
+        ""pattern_wape"": 0,
+        ""pattern_bias"": 0,
+        ""bias_factors"": 0
+      },
+      ""primary"": {
+        ""overall_wape"": false,
+        ""overall_bias"": false,
+        ""pattern_wape"": false,
+        ""pattern_bias"": false,
+        ""bias_factors"": false,
+        ""service"": true,
+        ""outcomes"": false
+      },
+      ""secondary"": {
+        ""target_drift"": false,
+        ""prediction_drift"": false,
+        ""feature_drift"": false
+      },
+      ""status"": ""INVESTIGATE""
+    },
+    {
+      ""period"": ""2026-03"",
+      ""n_forecasts"": 6680,
+      ""n_scored"": 6627,
+      ""wape"": 0.4557452633507982,
+      ""base_wape"": 0.4500356773923681,
+      ""bias"": 0.05183471358767456,
+      ""target_drift"": 0.027679769778294814,
+      ""prediction_drift"": 0.054376085374210126,
+      ""pattern_wape"": {
+        ""erratic"": 0.5359533764020257,
+        ""intermittent"": 0.7152341762086514,
+        ""lumpy"": 0.44703963892905657,
+        ""smooth"": 0.33236062763041957
+      },
+      ""pattern_bias"": {
+        ""erratic"": 0.07454487464428548,
+        ""intermittent"": 0.269246024173028,
+        ""lumpy"": 0.051605416064151324,
+        ""smooth"": -0.009840787953673755
+      },
+      ""worst_wape_gap"": 0.03226190547455976,
+      ""worst_bias"": 0.269246024173028,
+      ""cell_bias"": {
+        ""erratic|line"": 0.1245538972091601,
+        ""erratic|service"": -0.003618831379454063,
+        ""erratic|standard"": 0.04923601887051716,
+        ""intermittent|line"": 0.23043081076373773,
+        ""intermittent|service"": 0.5986030729833545,
+        ""intermittent|standard"": 0.24046547766201648,
+        ""lumpy|line"": 0.15584946236559147,
+        ""lumpy|service"": 0.13804266259591058,
+        ""lumpy|standard"": 0.018922182896498947,
+        ""smooth|line"": -0.026350266213272095,
+        ""smooth|standard"": 0.027136015361383933
+      },
+      ""bias_factors"": {
+        ""erratic"": 1.4649070350725788,
+        ""intermittent"": 1.7750310842636092,
+        ""lumpy"": 1.2589461798439332,
+        ""smooth"": 1.212621090124252
+      },
+      ""bias_factor_change"": {
+        ""erratic"": -0.002943002139372042,
+        ""intermittent"": 0.021498360797664207,
+        ""lumpy"": 0.008835065918203266,
+        ""smooth"": -0.004617837416465265
+      },
+      ""bias_factor_levels"": {
+        ""erratic"": 0,
+        ""intermittent"": 2,
+        ""lumpy"": 0,
+        ""smooth"": 0
+      },
+      ""n_features"": 24,
+      ""n_features_drifted"": 0,
+      ""lead_time_reviews_items"": [
+        ""CON-00181"",
+        ""CON-00234"",
+        ""CON-00339"",
+        ""CON-00360"",
+        ""CON-00381"",
+        ""CON-00401"",
+        ""CON-00713"",
+        ""CON-00973"",
+        ""CON-00994"",
+        ""CON-01006"",
+        ""CON-01073"",
+        ""CON-01228"",
+        ""ELE-00037"",
+        ""FAS-00012"",
+        ""FAS-00644"",
+        ""FAS-00665"",
+        ""FAS-00760"",
+        ""FAS-01071"",
+        ""FAS-01091"",
+        ""FAS-01094"",
+        ""MEC-00038"",
+        ""MEC-00070"",
+        ""MEC-00075"",
+        ""MEC-00146"",
+        ""MEC-00152"",
+        ""MEC-00183"",
+        ""MEC-00212"",
+        ""MEC-00271"",
+        ""MEC-00281"",
+        ""MEC-00371"",
+        ""MEC-00374"",
+        ""MEC-00693"",
+        ""MEC-00726"",
+        ""MEC-00751"",
+        ""MEC-00827"",
+        ""MEC-00897"",
+        ""MEC-00945"",
+        ""MEC-00999"",
+        ""MEC-01323"",
+        ""RM-01156"",
+        ""SVC-00201""
+      ],
+      ""lead_time_reviews_suppliers"": [],
+      ""data_quality"": {
+        ""short_week_share"": 0.07826736370425691,
+        ""active_short_share"": 0.037490664675130694,
+        ""uom_gap"": {
+          ""items"": 47,
+          ""on_hand_value_as_booked"": 12106.451800000003,
+          ""on_hand_value_converted"": 290510.13200000004,
+          ""understatement_of_total"": 0.08275284869777018
+        },
+        ""null_feature_share"": 0.033982035928143715,
+        ""unseen_items"": 2
+      },
+      ""fill_by_tier"": {
+        ""line"": 0.9900179051029543,
+        ""service"": 0.9424809424809425,
+        ""standard"": 0.9681656015995609
+      },
+      ""fill_gap"": 0.04251905751905749,
+      ""stockout_events"": 32,
+      ""jobs_held"": 14,
+      ""rush_spend"": 13032.61,
+      ""end_inventory"": 3571613.8893999895,
+      ""fill_rate"": 0.9745053059549786,
+      ""ref_events"": 63.333333333333336,
+      ""ref_held"": 15.583333333333334,
+      ""matured"": true,
+      ""model_levels"": {
+        ""overall_wape"": 0,
+        ""overall_bias"": 0,
+        ""pattern_wape"": 1,
+        ""pattern_bias"": 2,
+        ""bias_factors"": 2
+      },
+      ""primary"": {
+        ""overall_wape"": false,
+        ""overall_bias"": false,
+        ""pattern_wape"": true,
+        ""pattern_bias"": true,
+        ""bias_factors"": true,
+        ""service"": true,
+        ""outcomes"": false
+      },
+      ""secondary"": {
+        ""target_drift"": false,
+        ""prediction_drift"": false,
+        ""feature_drift"": false
+      },
+      ""status"": ""RETRAIN""
+    },
+    {
+      ""period"": ""2026-04"",
+      ""n_forecasts"": 5344,
+      ""n_scored"": 4669,
+      ""wape"": 0.44747756703413255,
+      ""base_wape"": 0.44694375616659765,
+      ""bias"": 0.05725473400406764,
+      ""target_drift"": 0.026453406157140452,
+      ""prediction_drift"": 0.04342040027800804,
+      ""pattern_wape"": {
+        ""erratic"": 0.5091874388649836,
+        ""intermittent"": 0.6500473734581028,
+        ""lumpy"": 0.4543405302068155,
+        ""smooth"": 0.34380653990103655
+      },
+      ""pattern_bias"": {
+        ""erratic"": 0.09303001770603417,
+        ""intermittent"": 0.2432815291365376,
+        ""lumpy"": 0.01939196000053476,
+        ""smooth"": 0.016318146288400504
+      },
+      ""worst_wape_gap"": 0.0015703410962444875,
+      ""worst_bias"": 0.2432815291365376,
+      ""cell_bias"": {
+        ""erratic|line"": 0.11455969035238833,
+        ""erratic|service"": 0.020438280569270894,
+        ""erratic|standard"": 0.0969240931068191,
+        ""intermittent|line"": 0.2508576027736505,
+        ""intermittent|standard"": 0.18856642066420654,
+        ""lumpy|line"": 0.08814802721088422,
+        ""lumpy|service"": 0.07062490460442643,
+        ""lumpy|standard"": 0.00029038662864162623,
+        ""smooth|line"": 0.007051407861071117,
+        ""smooth|standard"": 0.05853321639380784
+      },
+      ""bias_factors"": {
+        ""erratic"": 1.4504820826116054,
+        ""intermittent"": 1.8108486217357396,
+        ""lumpy"": 1.2683027208340598,
+        ""smooth"": 1.2182001830553548
+      },
+      ""bias_factor_change"": {
+        ""erratic"": -0.009847008796881607,
+        ""intermittent"": 0.020178540978615933,
+        ""lumpy"": 0.007432042084028145,
+        ""smooth"": 0.0046008542788342766
+      },
+      ""bias_factor_levels"": {
+        ""erratic"": 0,
+        ""intermittent"": 2,
+        ""lumpy"": 0,
+        ""smooth"": 0
+      },
+      ""n_features"": 24,
+      ""n_features_drifted"": 1,
+      ""lead_time_reviews_items"": [
+        ""CON-00181"",
+        ""CON-00234"",
+        ""CON-00339"",
+        ""CON-00360"",
+        ""CON-00401"",
+        ""CON-00973"",
+        ""CON-00994"",
+        ""CON-01006"",
+        ""CON-01073"",
+        ""ELE-00037"",
+        ""ELE-00900"",
+        ""MEC-00038"",
+        ""MEC-00067"",
+        ""MEC-00070"",
+        ""MEC-00075"",
+        ""MEC-00146"",
+        ""MEC-00152"",
+        ""MEC-00183"",
+        ""MEC-00212"",
+        ""MEC-00271"",
+        ""MEC-00276"",
+        ""MEC-00281"",
+        ""MEC-00322"",
+        ""MEC-00371"",
+        ""MEC-00374"",
+        ""MEC-00516"",
+        ""MEC-00693"",
+        ""MEC-00726"",
+        ""MEC-00751"",
+        ""MEC-00827"",
+        ""MEC-00829"",
+        ""MEC-00897"",
+        ""MEC-00924-A"",
+        ""MEC-00945"",
+        ""MEC-00999"",
+        ""MEC-01275"",
+        ""MEC-01323"",
+        ""RM-01138"",
+        ""RM-01156"",
+        ""RM-01181"",
+        ""SVC-00201""
+      ],
+      ""lead_time_reviews_suppliers"": [],
+      ""data_quality"": {
+        ""short_week_share"": 0.07673637042569081,
+        ""active_short_share"": 0.035847647498132934,
+        ""uom_gap"": {
+          ""items"": 47,
+          ""on_hand_value_as_booked"": 12106.451800000003,
+          ""on_hand_value_converted"": 290510.13200000004,
+          ""understatement_of_total"": 0.08275284869777018
+        },
+        ""null_feature_share"": 0.03125,
+        ""unseen_items"": 2
+      },
+      ""fill_by_tier"": {
+        ""line"": 0.9952105416707187,
+        ""service"": 0.9904790419161676,
+        ""standard"": 0.9767754964658364
+      },
+      ""fill_gap"": 0.008224503534163596,
+      ""stockout_events"": 30,
+      ""jobs_held"": 4,
+      ""rush_spend"": 7420.120000000001,
+      ""end_inventory"": 3406689.985499996,
+      ""fill_rate"": 0.985643697780972,
+      ""ref_events"": 63.333333333333336,
+      ""ref_held"": 15.583333333333334,
+      ""matured"": true,
+      ""model_levels"": {
+        ""overall_wape"": 0,
+        ""overall_bias"": 0,
+        ""pattern_wape"": 1,
+        ""pattern_bias"": 2,
+        ""bias_factors"": 2
+      },
+      ""primary"": {
+        ""overall_wape"": false,
+        ""overall_bias"": false,
+        ""pattern_wape"": true,
+        ""pattern_bias"": true,
+        ""bias_factors"": true,
+        ""service"": false,
+        ""outcomes"": false
+      },
+      ""secondary"": {
+        ""target_drift"": false,
+        ""prediction_drift"": false,
+        ""feature_drift"": false
+      },
+      ""status"": ""RETRAIN""
+    },
+    {
+      ""period"": ""2026-05"",
+      ""n_forecasts"": 5344,
+      ""n_scored"": 2559,
+      ""wape"": 0.46105627866268256,
+      ""base_wape"": 0.4692015806647895,
+      ""bias"": -0.018797005166919865,
+      ""target_drift"": 0.14364299658827132,
+      ""prediction_drift"": 0.0494042477165373,
+      ""pattern_wape"": {
+        ""erratic"": 0.5575206039683841,
+        ""intermittent"": 0.6712058782753363,
+        ""lumpy"": 0.4401106034025539,
+        ""smooth"": 0.3380679507890293
+      },
+      ""pattern_bias"": {
+        ""erratic"": 0.1021967145060476,
+        ""intermittent"": 0.19394482184943865,
+        ""lumpy"": -0.13231842846069103,
+        ""smooth"": -0.10779421978836747
+      },
+      ""worst_wape_gap"": 0.025345966836100242,
+      ""worst_bias"": 0.19394482184943865,
+      ""cell_bias"": {
+        ""erratic|line"": 0.13845958491428473,
+        ""erratic|standard"": 0.19254739652870487,
+        ""intermittent|standard"": 0.24962987189970015,
+        ""lumpy|standard"": -0.1416075142771265,
+        ""smooth|line"": -0.14852488187616034,
+        ""smooth|standard"": -0.02875208019393309
+      },
+      ""bias_factors"": {
+        ""erratic"": 1.4423899921157288,
+        ""intermittent"": 1.7849232985371601,
+        ""lumpy"": 1.2694949185265905,
+        ""smooth"": 1.2284267069051036
+      },
+      ""bias_factor_change"": {
+        ""erratic"": -0.005578897245877457,
+        ""intermittent"": -0.014316670586042357,
+        ""lumpy"": 0.0009399945872123894,
+        ""smooth"": 0.008394781081135338
+      },
+      ""bias_factor_levels"": {
+        ""erratic"": 2,
+        ""intermittent"": 2,
+        ""lumpy"": 2,
+        ""smooth"": 2
+      },
+      ""n_features"": 24,
+      ""n_features_drifted"": 1,
+      ""lead_time_reviews_items"": [
+        ""CON-00234"",
+        ""CON-00339"",
+        ""CON-00360"",
+        ""CON-00401"",
+        ""CON-00973"",
+        ""CON-00994"",
+        ""CON-01006"",
+        ""CON-01073"",
+        ""ELE-00037"",
+        ""FIT-00988"",
+        ""HDW-00836-A"",
+        ""MEC-00038"",
+        ""MEC-00067"",
+        ""MEC-00070"",
+        ""MEC-00075"",
+        ""MEC-00146"",
+        ""MEC-00152"",
+        ""MEC-00183"",
+        ""MEC-00212"",
+        ""MEC-00271"",
+        ""MEC-00276"",
+        ""MEC-00281"",
+        ""MEC-00322"",
+        ""MEC-00371"",
+        ""MEC-00374"",
+        ""MEC-00455"",
+        ""MEC-00463"",
+        ""MEC-00506"",
+        ""MEC-00513"",
+        ""MEC-00515"",
+        ""MEC-00516"",
+        ""MEC-00592"",
+        ""MEC-00693"",
+        ""MEC-00726"",
+        ""MEC-00750"",
+        ""MEC-00751"",
+        ""MEC-00761"",
+        ""MEC-00792"",
+        ""MEC-00797"",
+        ""MEC-00827"",
+        ""MEC-00829"",
+        ""MEC-00897"",
+        ""MEC-00924-A"",
+        ""MEC-00945"",
+        ""MEC-00970"",
+        ""MEC-00999"",
+        ""MEC-01150"",
+        ""MEC-01163"",
+        ""MEC-01275"",
+        ""MEC-01308"",
+        ""MEC-01323"",
+        ""RM-01138"",
+        ""RM-01156"",
+        ""RM-01181"",
+        ""SVC-00201""
+      ],
+      ""lead_time_reviews_suppliers"": [],
+      ""data_quality"": {
+        ""short_week_share"": 0.07710978342046303,
+        ""active_short_share"": 0.03939507094846901,
+        ""uom_gap"": {
+          ""items"": 47,
+          ""on_hand_value_as_booked"": 12106.451800000003,
+          ""on_hand_value_converted"": 290510.13200000004,
+          ""understatement_of_total"": 0.08275284869777018
+        },
+        ""null_feature_share"": 0.03330838323353293,
+        ""unseen_items"": 2
+      },
+      ""fill_by_tier"": {
+        ""line"": 0.9909683426443203,
+        ""service"": 0.9690729600493598,
+        ""standard"": 0.9762713946441732
+      },
+      ""fill_gap"": 0.015927039950640154,
+      ""stockout_events"": 36,
+      ""jobs_held"": 7,
+      ""rush_spend"": 9927.5,
+      ""end_inventory"": 3343988.923200002,
+      ""fill_rate"": 0.9814068912856734,
+      ""ref_events"": 63.333333333333336,
+      ""ref_held"": 15.583333333333334,
+      ""matured"": false,
+      ""model_levels"": {
+        ""overall_wape"": 0,
+        ""overall_bias"": 0,
+        ""pattern_wape"": 0,
+        ""pattern_bias"": 0,
+        ""bias_factors"": 1
+      },
+      ""primary"": {
+        ""overall_wape"": false,
+        ""overall_bias"": false,
+        ""pattern_wape"": false,
+        ""pattern_bias"": false,
+        ""bias_factors"": true,
+        ""service"": true,
+        ""outcomes"": false
+      },
+      ""secondary"": {
+        ""target_drift"": false,
+        ""prediction_drift"": false,
+        ""feature_drift"": false
+      },
+      ""status"": ""INVESTIGATE""
+    },
+    {
+      ""period"": ""2026-06"",
+      ""n_forecasts"": 6680,
+      ""n_scored"": 544,
+      ""wape"": 0.5003275717870086,
+      ""base_wape"": 0.46384915614076466,
+      ""bias"": -0.21501198773348204,
+      ""target_drift"": 0.2950093826808971,
+      ""prediction_drift"": 0.054084328694280766,
+      ""pattern_wape"": {
+        ""smooth"": 0.45399199860845374
+      },
+      ""pattern_bias"": {
+        ""smooth"": -0.3376211515046096
+      },
+      ""worst_wape_gap"": 0.11175579980366168,
+      ""worst_bias"": 0.3376211515046096,
+      ""cell_bias"": {},
+      ""bias_factors"": {
+        ""erratic"": 1.440132558453353,
+        ""intermittent"": 1.73236845701346,
+        ""lumpy"": 1.2631331018436218,
+        ""smooth"": 1.2338154500605167
+      },
+      ""bias_factor_change"": {
+        ""erratic"": -0.0015650647014435748,
+        ""intermittent"": -0.029443753446868892,
+        ""lumpy"": -0.00501129747754514,
+        ""smooth"": 0.0043867030284530095
+      },
+      ""bias_factor_levels"": {
+        ""erratic"": 0,
+        ""intermittent"": 0,
+        ""lumpy"": 0,
+        ""smooth"": 2
+      },
+      ""n_features"": 24,
+      ""n_features_drifted"": 2,
+      ""lead_time_reviews_items"": [
+        ""CON-00234"",
+        ""CON-00339"",
+        ""CON-00360"",
+        ""CON-00381"",
+        ""CON-00401"",
+        ""CON-00602"",
+        ""CON-00713"",
+        ""CON-00973"",
+        ""CON-00994"",
+        ""CON-01006"",
+        ""CON-01073"",
+        ""ELE-00037"",
+        ""FAS-00847"",
+        ""FAS-01291"",
+        ""HDW-00006"",
+        ""HDW-00013"",
+        ""HDW-00237"",
+        ""HDW-00342"",
+        ""HDW-00431-A"",
+        ""HDW-00520"",
+        ""HDW-00629"",
+        ""HDW-00788"",
+        ""HDW-00836-A"",
+        ""HDW-00927"",
+        ""HDW-01087"",
+        ""HDW-01097"",
+        ""HDW-01256"",
+        ""HDW-01257-A"",
+        ""HDW-01336"",
+        ""MEC-00015-A"",
+        ""MEC-00038"",
+        ""MEC-00067"",
+        ""MEC-00070"",
+        ""MEC-00075"",
+        ""MEC-00146"",
+        ""MEC-00152"",
+        ""MEC-00183"",
+        ""MEC-00212"",
+        ""MEC-00271"",
+        ""MEC-00276"",
+        ""MEC-00281"",
+        ""MEC-00322"",
+        ""MEC-00371"",
+        ""MEC-00374"",
+        ""MEC-00513"",
+        ""MEC-00515"",
+        ""MEC-00516"",
+        ""MEC-00592"",
+        ""MEC-00693"",
+        ""MEC-00750"",
+        ""MEC-00751"",
+        ""MEC-00787"",
+        ""MEC-00792"",
+        ""MEC-00797"",
+        ""MEC-00827"",
+        ""MEC-00829"",
+        ""MEC-00897"",
+        ""MEC-00924-A"",
+        ""MEC-00930"",
+        ""MEC-00945"",
+        ""MEC-00999"",
+        ""MEC-01214"",
+        ""MEC-01221"",
+        ""MEC-01230"",
+        ""MEC-01275"",
+        ""MEC-01323"",
+        ""RM-00763"",
+        ""RM-00902"",
+        ""SVC-00201""
+      ],
+      ""lead_time_reviews_suppliers"": [
+        ""SUP-029""
+      ],
+      ""data_quality"": {
+        ""short_week_share"": 0.07184466019417475,
+        ""active_short_share"": 0.028230022404779686,
+        ""uom_gap"": {
+          ""items"": 47,
+          ""on_hand_value_as_booked"": 12106.451800000003,
+          ""on_hand_value_converted"": 290510.13200000004,
+          ""understatement_of_total"": 0.08275284869777018
+        },
+        ""null_feature_share"": 0.0375748502994012,
+        ""unseen_items"": 2
+      },
+      ""fill_by_tier"": {
+        ""line"": 0.9917428487171925,
+        ""service"": 0.9893446563050793,
+        ""standard"": 0.9880977911215956
+      },
+      ""fill_gap"": -0.0017428487171925466,
+      ""stockout_events"": 22,
+      ""jobs_held"": 5,
+      ""rush_spend"": 4569.089999999999,
+      ""end_inventory"": 3322514.105199996,
+      ""fill_rate"": 0.9897398901847622,
+      ""ref_events"": 63.333333333333336,
+      ""ref_held"": 15.583333333333334,
+      ""matured"": false,
+      ""model_levels"": {
+        ""overall_wape"": 0,
+        ""overall_bias"": 0,
+        ""pattern_wape"": 0,
+        ""pattern_bias"": 0,
+        ""bias_factors"": 1
+      },
+      ""primary"": {
+        ""overall_wape"": false,
+        ""overall_bias"": false,
+        ""pattern_wape"": false,
+        ""pattern_bias"": false,
+        ""bias_factors"": true,
+        ""service"": false,
+        ""outcomes"": false
+      },
+      ""secondary"": {
+        ""target_drift"": false,
+        ""prediction_drift"": false,
+        ""feature_drift"": false
+      },
+      ""status"": ""INVESTIGATE""
+    }
+  ],
+  ""reference_pattern"": {
+    ""erratic"": {
+      ""wape"": 0.5321746371322839,
+      ""bias"": 0.0313300669138772
+    },
+    ""intermittent"": {
+      ""wape"": 0.6829722707340916,
+      ""bias"": -0.1426852269174141
+    },
+    ""lumpy"": {
+      ""wape"": 0.4790345977192272,
+      ""bias"": 0.10281977055193091
+    },
+    ""smooth"": {
+      ""wape"": 0.34223619880479206,
+      ""bias"": 0.036700710506587055
+    }
+  },
+  ""reference_wape"": 0.464512167151067,
+  ""fill_target"": {
+    ""line"": 0.99,
+    ""service"": 0.985,
+    ""standard"": 0.985
+  },
+  ""uom_gap"": {
+    ""items"": 47,
+    ""on_hand_value_as_booked"": 12106.451800000003,
+    ""on_hand_value_converted"": 290510.13200000004,
+    ""understatement_of_total"": 0.08275284869777018
+  },
+  ""thresholds"": {
+    ""drift"": 0.1,
+    ""wape_overall_tol"": 0.03,
+    ""wape_tol"": 0.05,
+    ""bias_tol"": 0.1,
+    ""fill_tol"": 0.01,
+    ""max_feats"": 3,
+    ""min_rows"": 150,
+    ""matured"": 0.8,
+    ""lead_review_ratio"": 1.25,
+    ""lead_review_months"": 2
+  },
+  ""latest_status"": ""INVESTIGATE""
+}"

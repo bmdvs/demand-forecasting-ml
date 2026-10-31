@@ -7,6 +7,11 @@ bundle:
 include:
   - resources/*.yml
 
+# The gold snapshot is data for the deliverables, not code the jobs run.
+sync:
+  exclude:
+    - exports/**
+
 # The package wheel, built into an emptied dist/bundle/ so only the current wheel is attached.
 artifacts:
   dfm_wheel:
@@ -51,6 +56,10 @@ targets:
       experiment_root: /Shared/dfm_dev
   prod:
     mode: production
+    # Prod's standing state is the final extracts (pass 2); dev keeps pass1 so the parity sequence can be
+    # rerun there. Changing a target's pass is a full refresh of its pipeline.
+    variables:
+      extract_pass: pass2
     workspace:
       root_path: /Workspace/Shared/.bundle/${bundle.name}/${bundle.target}
     # The monthly job runs as the deploy service principal. The pipeline keeps running as its owner:
