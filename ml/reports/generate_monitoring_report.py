@@ -337,9 +337,11 @@ def reasons():
         r.append(f"{sg.capitalize()} items: corrected bias {' and '.join(f'{b * 100:+.0f}%' for _, b in hits)} against "
                  f"&plusmn;{TH['bias_tol'] * 100:.0f}% ({months([h[0] for h in hits])}); the bias-correction factor for "
                  f"the pattern is flagged with it")
-    for sg, ps in wape_inv.items():
-        r.append(f"{sg.capitalize()} items: forecast error above the 2025 level in {months(ps)} (Investigate), below "
-                 f"the Retrain threshold")
+    if wape_inv:
+        parts = [f"{sg}{' items' if i == 0 else ''} ({', '.join(mon(x) for x in ps)})"
+                 for i, (sg, ps) in enumerate(wape_inv.items())]
+        r.append(f"Forecast error above its 2025 level for {_series(parts)}: Investigate, below the Retrain threshold in "
+                 f"each case")
     if svc_months:
         r.append(f"Fill rate more than {TH['fill_tol'] * 100:.0f} point below target for a criticality group in "
                  f"{months(svc_months)}: recalibrate the safety buffers")
@@ -516,8 +518,8 @@ SVC_TXT = (f" Separately, the safety buffers should be recalibrated, because the
 body = f"""
 {B.section("status", "Section 1", "Status &amp; Retraining Decision")}
 <p>The demand forecasting model has been monitored monthly across its live window, January to June 2026. Forecast
-error and bias are the primary model triggers (i.e., when these exceed their Retrain thresholds, the model must be
-retrained), while target, prediction and feature drift are leading indicators. Business KPIs including fill rates,
+error and bias are the primary model triggers, while target, prediction and feature drift are leading
+indicators. Business KPIs including fill rates,
 stockout days and jobs held are also monitored against target levels.</p>
 <p>A forecast can only be scored once its lead-time window has closed, so each month is judged on accuracy once at
 least {TH['matured'] * 100:.0f}% of its forecasts have matured. By June 30th that covers {months([p['period'] for p in M][:1])}
@@ -583,11 +585,10 @@ no rows in the training data. <strong>The inputs arrive complete every month: ab
 {NUM.get(last['data_quality']['unseen_items'], last['data_quality']['unseen_items'])} scored items have no training
 rows.</strong></p>
 {dq_table()}
-<p>Two checks read the stock records themselves. A short week is an item-week in which the corrected ledger's balance
-reaches zero; an active short week is one in which the part also had usage, a held job or a service backorder, so
+<p>Two checks read the stock records themselves. A short week is an item-week in which the ledger balance reaches zero; an active short week is one in which the part also had usage, a held job or a service backorder, so
 recorded usage may understate demand. On the {_uom['items']} parts whose receipts were booked in a purchase unit, the
 ledger as booked carries ${uom_booked / 1000:,.1f}K of stock against ${uom_physical / 1000:,.1f}K on the physical
-count: receipts in purchase units inflate the book until the count corrects them.</p>
+count: receipts booked in purchase units inflate the book until the next count corrects them.</p>
 {dq2_table()}
 
 {B.section("outcomes", "Section 2.4", "Business KPIs")}
@@ -603,8 +604,8 @@ jobs stay {'above the 2025 average in ' + months(held_above) if held_above else 
 {B.section("leadtime", "Section 2.5", "Supplier Lead-Time Review")}
 <p>The review compares each part's pooled 26-week lead time with its corrected master lead time at each month-end,
 and flags a part when the pooled figure runs more than {(TH['lead_review_ratio'] - 1) * 100:.0f}% above the master for
-{TH['lead_review_months']} month-ends running; suppliers are checked the same way. A flag sends the master to
-purchasing for review; the reorder point keeps using the master until it is changed. Parts flagged rose from
+{TH['lead_review_months']} month-ends running; suppliers are checked the same way. A flagged master goes to
+purchasing for review; the reorder point keeps using it until it is changed. Parts flagged rose from
 {ltr_n.iloc[0]} in {mon(P[0]['period'])} to {ltr_n.iloc[-1]} in {mon(P[-1]['period'])}, with
 {int(ltr_s.sum())} supplier flags over the six months.</p>
 {B.chart("Parts Flagged for Lead-Time Review by Month", charts["reviews"])}
