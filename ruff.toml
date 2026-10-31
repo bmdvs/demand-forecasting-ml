@@ -3,7 +3,7 @@
 # one line, single-letter names) is accepted rather than rewritten.
 line-length = 160
 target-version = "py312"
-extend-exclude = ["ml", "data_source", "data_pipeline", "analytics", "docs", "reference", "runs", "dist"]
+extend-exclude = ["ml", "data_source", "analytics", "docs", "reference", "runs", "dist"]
 
 [lint]
 select = ["E", "F", "W", "I", "B006", "B008"]
