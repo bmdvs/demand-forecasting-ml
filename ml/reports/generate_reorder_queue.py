@@ -27,6 +27,7 @@ OUT = REPO / "docs" / "index.html"
 import sys
 sys.path.insert(0, str(REPO))
 from data_source.generate import config as C  # noqa: E402
+from ml.reports import sources as SR  # noqa: E402
 
 AS_OF = C.AS_OF_DATE
 ORDER_COVER_DAYS = C.ORDER_COVER_DAYS
@@ -39,12 +40,12 @@ BLUE = "#381FA1"; BG = "#F3F5F7"; LINE = "#D9DEE5"; MUTED = "#5F6B7A"; ROWRED = 
 
 
 def build_queue():
-    sched = json.loads((REPO / "ml" / "data" / "policy" / "rop_schedule.json").read_text())
-    attrs = pd.read_parquet(REPO / "ml" / "data" / "marts" / "item_attributes.parquet").set_index("canonical_item_number")
+    sched = SR.rop_schedule()
+    attrs = SR.item_attributes().set_index("canonical_item_number")
     im = pd.read_csv(RAW / "erp" / "item_master.csv", low_memory=False).set_index("item_number")
     sup = pd.read_csv(RAW / "erp" / "supplier_master.csv").set_index("supplier_id")
     po = pd.read_csv(RAW / "erp" / "purchase_orders.csv", low_memory=False)
-    xw = pd.read_csv(REPO / "ml" / "data" / "marts" / "item_crosswalk.csv").set_index("item_number")["canonical_item_number"].to_dict()
+    xw = SR.item_crosswalk().set_index("item_number")["canonical_item_number"].to_dict()
     lead = pd.read_csv(REM / "lead_time_computation.csv")
     bom = pd.read_csv(REM / "bom_change_log.csv")
     ft = pd.read_csv(REM / "free_text_attribution.csv")

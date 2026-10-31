@@ -250,6 +250,7 @@ runs/
 CLAUDE.md
 PORT_RECORD.md
 PORT_DEVIATIONS.md
+DELIVERABLE_RECORD.md
 
 # Databricks bundle state and local Spark state
 .databricks/

@@ -15,19 +15,19 @@ import numpy as np
 import pandas as pd
 
 from . import brand as B
+from . import sources as SR
 from .brand import DARK_BLUE, LIGHT_BLUE, MED_GREY, GREEN, DARK_GREY
 
 REPO = Path(__file__).resolve().parents[2]
 BACKTEST = REPO / "ml" / "data" / "backtest"
-POLICY = REPO / "ml" / "data" / "policy"
 TRUTH = REPO / "data_source" / "truth"
 OUT = REPO / "docs" / "reports" / "model_overview.html"
 
 # ── data ──────────────────────────────────────────────────────────────────────
 metrics = json.loads((BACKTEST / "weekly_metrics.json").read_text(encoding="utf-8"))
 tw = json.loads((BACKTEST / "threeway_overall.json").read_text(encoding="utf-8"))
-sched = json.loads((POLICY / "rop_schedule.json").read_text(encoding="utf-8"))
-fr = json.loads((TRUTH / "forward_results.json").read_text(encoding="utf-8"))
+sched = SR.rop_schedule()
+fr = SR.forward_results()
 cross = json.loads((TRUTH / "crosswalks.json").read_text(encoding="utf-8"))
 txd = json.loads((TRUTH / "txn_defects.json").read_text(encoding="utf-8"))
 
@@ -306,7 +306,7 @@ def _live_accuracy():
     """Score every weekly forecast the model made in 1H26 against the usage that followed, alongside the
     simple method chosen for each demand pattern before go-live. Forecasts whose horizon runs past June 30
     are left out."""
-    wk = pd.read_parquet(REPO / "ml" / "data" / "marts" / "consumption_weekly.parquet")
+    wk = SR.consumption_weekly()
     wide = wk.pivot(index="canonical", columns="week", values="consumption").fillna(0)
     widx = {pd.Timestamp(x): i for i, x in enumerate(wide.columns)}
     end = pd.Timestamp(C_END) - pd.Timedelta(days=1)
@@ -401,8 +401,8 @@ def fall(a_, b_):
     return f"{(a_ - b_) / a_ * 100:.0f}%"
 fb_max = max(abs(v) for v in (mod.get("forecast_bias_by_segment") or {"all": 0.0}).values())
 
-attrs = pd.read_parquet(REPO / "ml" / "data" / "marts" / "item_attributes.parquet")
-monthly = pd.read_parquet(REPO / "ml" / "data" / "marts" / "consumption_monthly.parquet")
+attrs = SR.item_attributes()
+monthly = SR.consumption_monthly()
 seg_n = attrs["segment"].value_counts().to_dict(); abc_n = attrs["abc"].value_counts().to_dict()
 n_items = len(attrs)
 cand = metrics["candidates"]

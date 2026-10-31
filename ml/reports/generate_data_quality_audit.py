@@ -16,6 +16,7 @@ import pandas as pd
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import brand as B
+import sources as SR
 
 REPO = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(REPO))
@@ -27,7 +28,6 @@ MARTS = REPO / "ml" / "data" / "marts"
 BACKTEST = REPO / "ml" / "data" / "backtest"
 FIN = REPO / "ml" / "data" / "financials"
 OUT = REPO / "docs" / "reports" / "data_quality_audit.html"
-WAREHOUSE = REPO / "data_source" / "demand_forecasting.duckdb"
 
 
 def _money(x):
@@ -46,12 +46,9 @@ def _k(x):
 
 
 def _error_register():
-    """The audit's error register from the dbt warehouse (mart_dq_error_summary): for each
+    """The audit's error register (gold.mart_dq_error_summary, from the gold snapshot): for each
     error and ERP table, the rows flagged and the rows in scope."""
-    import duckdb
-    con = duckdb.connect(str(WAREHOUSE), read_only=True)
-    reg = con.execute("select error_no, erp_table, rows_flagged, rows_in_scope from mart_dq_error_summary").fetchall()
-    con.close()
+    reg = SR.error_register()
     return {(int(n), t): (int(f), int(sc)) for n, t, f, sc in reg}
 
 

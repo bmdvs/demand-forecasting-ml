@@ -15,22 +15,20 @@ import numpy as np
 import pandas as pd
 
 from . import brand as B
+from . import sources as SR
 from .brand import DARK_BLUE, LIGHT_BLUE, ACCENT_RED, AMBER, GREEN, MED_GREY, LIGHT_GREY, BG_GREY, DARK_GREY
 
 REPO = Path(__file__).resolve().parents[2]
-MON = REPO / "ml" / "data" / "monitoring"
 BACKTEST = REPO / "ml" / "data" / "backtest"
-POLICY = REPO / "ml" / "data" / "policy"
-TRUTH = REPO / "data_source" / "truth"
 OUT = REPO / "docs" / "reports" / "monitoring_report.html"
 
-summ = json.loads((MON / "monitoring_summary.json").read_text(encoding="utf-8"))
-fdrift = pd.read_csv(MON / "feature_drift.csv")
-rlog = pd.read_csv(MON / "retrain_log.csv")
+summ = SR.monitoring_summary()
+fdrift = SR.feature_drift()
+rlog = SR.retrain_log()
 metrics = json.loads((BACKTEST / "weekly_metrics.json").read_text(encoding="utf-8"))
-sched = json.loads((POLICY / "rop_schedule.json").read_text(encoding="utf-8"))
-fr = json.loads((TRUTH / "forward_results.json").read_text(encoding="utf-8"))
-bt = pd.read_parquet(BACKTEST / "weekly_backtest.parquet")
+sched = SR.rop_schedule()
+fr = SR.forward_results()
+bt = SR.weekly_backtest()
 
 P = summ["periods"]
 TH = summ["thresholds"]

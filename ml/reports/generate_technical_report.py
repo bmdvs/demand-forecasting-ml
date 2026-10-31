@@ -17,28 +17,26 @@ import numpy as np
 import pandas as pd
 
 from . import brand as B
+from . import sources as SR
 from .brand import DARK_BLUE, LIGHT_BLUE, MED_GREY, LIGHT_GREY, GREEN, AMBER, ACCENT_RED, DARK_GREY
 
 REPO = Path(__file__).resolve().parents[2]
 BACKTEST = REPO / "ml" / "data" / "backtest"
 EXPLAIN = BACKTEST / "explain"
-MARTS = REPO / "ml" / "data" / "marts"
-POLICY = REPO / "ml" / "data" / "policy"
-TRUTH = REPO / "data_source" / "truth"
 OUT = REPO / "docs" / "reports" / "technical_report.html"
 
 metrics = json.loads((BACKTEST / "weekly_metrics.json").read_text(encoding="utf-8"))
 split = json.loads((EXPLAIN / "split_summary.json").read_text(encoding="utf-8"))
-sched = json.loads((POLICY / "rop_schedule.json").read_text(encoding="utf-8"))
-fr = json.loads((TRUTH / "forward_results.json").read_text(encoding="utf-8"))
-bt = pd.read_parquet(BACKTEST / "weekly_backtest.parquet")
+sched = SR.rop_schedule()
+fr = SR.forward_results()
+bt = SR.weekly_backtest()
 imp = pd.read_csv(EXPLAIN / "shap_importance.csv")
 lc = pd.read_csv(EXPLAIN / "learning_curve.csv")
 fcorr = pd.read_csv(EXPLAIN / "feature_corr.csv", index_col=0)["spearman"]
 cmat = pd.read_csv(EXPLAIN / "feature_corr_matrix.csv", index_col=0)
 tsample = pd.read_parquet(EXPLAIN / "target_sample.parquet")
-attrs = pd.read_parquet(MARTS / "item_attributes.parquet").set_index("canonical_item_number")
-weekly = pd.read_parquet(MARTS / "consumption_weekly.parquet")
+attrs = SR.item_attributes().set_index("canonical_item_number")
+weekly = SR.consumption_weekly()
 
 WIN = metrics["winner"]
 N_TRIALS = 12          # Optuna trials per candidate (demand_model.N_TRIALS)
@@ -121,7 +119,7 @@ for item, entries in sched["items"].items():
         _last.append((attrs.loc[item, "abc"], e[7] / d, e[2] / d))
 lots = pd.DataFrame(_last, columns=["abc", "lot_days", "ss_days"])
 
-_m25 = pd.read_parquet(MARTS / "consumption_monthly.parquet")
+_m25 = SR.consumption_monthly()
 _u25 = _m25[(_m25["month"] >= "2025-01-01") & (_m25["month"] < "2026-01-01")].groupby("canonical")["consumption"].sum()
 _v = attrs.join(_u25.rename("u25")).fillna({"u25": 0})
 _v["v25"] = _v["u25"] * _v["standard_cost"]
