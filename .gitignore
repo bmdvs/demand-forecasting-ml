@@ -218,12 +218,6 @@ data_source/raw/
 data_source/truth/
 ml/data/
 
-# dbt (profiles.yml is committed: it holds only a relative DuckDB path)
-data_pipeline/.user.yml
-data_pipeline/target/
-data_pipeline/dbt_packages/
-data_pipeline/logs/
-
 # DuckDB
 *.duckdb
 *.duckdb.wal
@@ -240,3 +234,20 @@ ml/models/*.joblib
 
 # Metadata
 *.egg-info/
+
+# Signal update: pre-update reference archive and build change record
+reference/
+CHANGES_signal_update.md
+runs/
+
+# Azure Databricks port: spec, record and deviations (account-identifying, kept local)
+CLAUDE.md
+PORT_RECORD.md
+PORT_DEVIATIONS.md
+DELIVERABLE_RECORD.md
+
+# Databricks bundle state and local Spark state
+.databricks/
+spark-warehouse/
+metastore_db/
+derby.log

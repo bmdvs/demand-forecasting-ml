@@ -240,17 +240,55 @@ def _chronic_adjustments(tx, txd, cross, rng):
     return pd.DataFrame(rows)
 
 
+def _omission_records():
+    """The bill rows engineering left off (parent, component, quantity per), rebuilt from
+    the generator's own seeded build of the product structure."""
+    from .run_generator import _channel_split
+    from .generators.demand import build_item_plan, build_monthly_demand
+    from .generators.bom import build_catalog, build_bom, apply_m3_omissions
+    g = np.random.default_rng(C.RANDOM_SEED)
+    plan = build_item_plan(g)
+    direct = build_monthly_demand(plan, g)
+    service_items = set(g.choice(plan["item_id"].to_numpy(),
+                                 size=int(round(len(plan) * C.SERVICE_ITEM_SHARE)), replace=False))
+    _channel_split(direct, service_items)
+    products, subs = build_catalog(g)
+    bom_true, _, _ = build_bom(products, subs, plan, g)
+    _, omissions, _ = apply_m3_omissions(bom_true, plan, g)
+    return omissions
+
+
 def _bom_change_log(cross, im, rng):
+    """Rows engineering restored to the bills. Each restored row is the omitted row itself
+    (its parent and quantity per), effective the day after the remediation closed, when the
+    corrected bills began to backflush them. The random stream is drawn as before so the
+    other remediation tables are unchanged."""
     iid_to_primary = _iid_to_primary(im, cross)
+    omitted = {int(r.component_item): r for r in _omission_records().itertuples(index=False)}
+    effective = (C.REMEDIATION_END + timedelta(days=1)).isoformat()
     rows = []
     for iid in cross["m3_omitted_items"]:
         comp = iid_to_primary.get(int(iid))
         if comp is None:
             continue
-        rows.append({"product_number": f"PRD-{rng.choice(['CO','MI','EN'])}-{int(rng.integers(0,80)):03d}",
-                     "component_item": comp, "qty_per": int(rng.integers(1, 8)),
-                     "source": rng.choice(["engineering review", "floor observation"]),
-                     "change_date": _week_date(int(rng.integers(3, 8)), rng)})
+        rng.choice(['CO', 'MI', 'EN']); rng.integers(0, 80); rng.integers(1, 8)   # keep the stream in step
+        source = rng.choice(["engineering review", "floor observation"])
+        _week_date(int(rng.integers(3, 8)), rng)
+        o = omitted[int(iid)]
+        rows.append({"product_number": o.parent, "component_item": comp, "qty_per": int(o.qty_per),
+                     "source": source, "change_date": effective})
+    # part supersessions on use-up: the successor replaces the old part on each
+    # bill the day the old part's stock ran out
+    sig_fp = TRUTH / "signals.json"
+    bom = pd.read_csv(RAW / "erp" / "bill_of_materials.csv", low_memory=False)
+    if sig_fp.exists() and "replaces_item" in bom.columns:
+        for s in json.loads(sig_fp.read_text())["supersessions"]:
+            if not s.get("switch_date"):
+                continue
+            for r in bom[(bom["component_item"] == s["succ_number"]) & (bom["replaces_item"] == s["pred_number"])].itertuples(index=False):
+                rows.append({"product_number": r.product_number, "component_item": s["succ_number"],
+                             "qty_per": int(r.qty_per), "source": f"supersession on use-up, replaces {s['pred_number']}",
+                             "change_date": s["switch_date"]})
     return pd.DataFrame(rows)
 
 

@@ -1,0 +1,18 @@
+error_no,error,erp_table,rows_flagged,rows_in_scope
+1,Dead records never deactivated,Item master,980,2484
+2,Stale lead times,Item master (live items),813,1504
+3,Stale reorder points,Item master (live items),1160,1504
+4,Duplicate item records,Item master (live items),249,1504
+5,UOM mismatch,Item master (live items),48,1504
+6,Missing and placeholder fields,Item master (live items),193,1504
+7,BOM omissions,Bill of materials,7,825
+8,Supplier fragmentation,Supplier master,7,44
+9,Unrecorded consumption,Inventory ledger,448,186971
+10,Wrong references,Inventory ledger,1435,186971
+11,Quantity and unit errors,Inventory ledger,428,186971
+12,Duplicate postings,Inventory ledger,498,186971
+13,Adjustments as a catch-all,Inventory ledger (adjustments),8840,15593
+14,Free-text purchases,Purchase orders,1627,15185
+15,Batched and backdated postings,Purchase orders,8485,15185
+16,Open documents never closed,Purchase orders,1302,15185
+16,Open documents never closed,Production orders,407,5841

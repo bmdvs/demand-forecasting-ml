@@ -4,14 +4,12 @@ version = "0.1.0"
 description = "Demand forecasting and ERP data quality for an industrial equipment manufacturer."
 requires-python = ">=3.11"
 dependencies = [
-    "pandas>=2.0",
+    "pandas>=2.0,<3",
     "numpy>=1.26",
     "pyarrow>=14.0",
     "scipy>=1.11",
     "faker>=20.0",
-    "duckdb>=0.10",
-    "dbt-core>=1.8",
-    "dbt-duckdb>=1.8",
+    "duckdb>=1.0,<2",
     "scikit-learn>=1.4",
     "xgboost>=2.0",
     "optuna>=3.0",

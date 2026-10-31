@@ -79,7 +79,7 @@ def apply(item_master, plan, item_meta, dup_map, po, tx, rng):
 
     new_rows = []
     diverted = 0
-    for num in affected:
+    for num in sorted(affected):
         idx = tx.index[(tx["item_number"] == num) & (tx["type"] == "issue")]
         k = int(round(len(idx) * C.T1_DIVERTED_SHARE))
         if k == 0:

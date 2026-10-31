@@ -19,14 +19,22 @@ import pandas as pd
 
 from .. import config as C
 from .bom import effective_component_map
+from .signals import next_working_day
 
 
 def build_consumption_events(production_orders, bom_true, bom_recorded, service_orders,
-                             manual_demand, item_meta, dup_map, omitted_item_ids, rng, fix_from=None):
+                             manual_demand, item_meta, dup_map, omitted_item_ids, rng, fix_from=None,
+                             supersede=None, calendar=True):
     """fix_from: the date from which the bills are complete, so backflush and manual
     pulls on the omitted components are recorded (the remediation's BOM corrections).
     A world that never fixes them passes END_DATE. The random stream is consumed
-    identically either way, so two builds differ only in the recorded flag."""
+    identically either way, so two builds differ only in the recorded flag.
+
+    supersede: {old part: (successor, effective date)}. A job whose material is
+    required on or after the effective date draws the successor; a floor pull on
+    or after it draws the successor. calendar: no floor pull posts in a plant
+    shutdown week (it posts the first working day after)."""
+    supersede = supersede or {}
     fix_from = C.REMEDIATION_END if fix_from is None else fix_from
     true_map = effective_component_map(bom_true)
     rec_map = effective_component_map(bom_recorded)
@@ -50,6 +58,11 @@ def build_consumption_events(production_orders, bom_true, bom_recorded, service_
         cd = pd.to_datetime(r.completed_date).date()
         tmap = true_map.get(r.product_number, {})
         rmap = tmap if cd > fix_from else rec_map.get(r.product_number, {})
+        if supersede:
+            req = pd.to_datetime(getattr(r, "required_date", r.due_date)).date()
+            ren = lambda m: {(supersede[c][0] if c in supersede and req >= supersede[c][1] else c): q
+                             for c, q in m.items()}
+            tmap, rmap = ren(tmap), ren(rmap)
         for c, qper in tmap.items():
             if c not in recorded:
                 continue
@@ -80,13 +93,16 @@ def build_consumption_events(production_orders, bom_true, bom_recorded, service_
             day = r.month + timedelta(days=int(rng.integers(0, 27)))
             if day.weekday() >= 5:
                 day += timedelta(days=7 - day.weekday())
+            if calendar:
+                day = next_working_day(day)
             if day > C.END_DATE:
                 continue
-            num = route(iid)
+            iid_ = supersede[iid][0] if iid in supersede and day >= supersede[iid][1] else iid
+            num = route(iid_)
             # the bills are completed in remediation, after which the pull is recorded
             u = rng.random()
-            unrecorded = (iid in omitted) and day <= fix_from and (u < C.T1_UNRECORDED_SHARE)
-            rows.append((num, iid, day, s, "MANUAL", f"WO-{int(rng.integers(100000, 999999))}", not unrecorded))
+            unrecorded = (iid_ in omitted) and day <= fix_from and (u < C.T1_UNRECORDED_SHARE)
+            rows.append((num, iid_, day, s, "MANUAL", f"WO-{int(rng.integers(100000, 999999))}", not unrecorded))
 
     ev = pd.DataFrame(rows, columns=["item_number", "item_id", "date", "qty", "channel", "job_id", "recorded"])
     return ev.sort_values(["date", "item_number"]).reset_index(drop=True)

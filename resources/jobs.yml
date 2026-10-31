@@ -1,0 +1,86 @@
+# dfm_monthly: pipeline update, then train (weekly reference model, the reference and S1 rungs, the
+# selection rule; the S1 winner is logged as the challenger), promote (register the challenger and move
+# the champion alias when its gates pass), score (the planning-window reorder schedule from the champion)
+# and monitor (the monthly statuses of the schedule in force, then a refresh of the data profiles), as
+# Python wheel tasks on one shared single-node job cluster. auto_promote false registers and tags only,
+# for a manual review cycle.
+resources:
+  jobs:
+    dfm_monthly:
+      name: dfm_monthly
+      max_concurrent_runs: 1
+      parameters:
+        - name: auto_promote
+          default: "true"
+      job_clusters:
+        - job_cluster_key: single_node
+          new_cluster:
+            spark_version: ${var.spark_version}
+            node_type_id: ${var.node_type}
+            num_workers: 0
+            data_security_mode: SINGLE_USER
+            spark_conf:
+              spark.master: "local[*, 4]"
+              spark.databricks.cluster.profile: singleNode
+              spark.sql.session.timeZone: UTC
+            custom_tags:
+              ResourceClass: SingleNode
+      tasks:
+        - task_key: pipeline_update
+          pipeline_task:
+            pipeline_id: ${resources.pipelines.dfm_pipeline.id}
+            full_refresh: false
+        - task_key: train
+          depends_on:
+            - task_key: pipeline_update
+          job_cluster_key: single_node
+          python_wheel_task:
+            package_name: dfm
+            entry_point: dfm-train
+            named_parameters:
+              catalog: ${var.catalog}
+              experiment_root: ${var.experiment_root}
+              job_run_id: "{{job.run_id}}"
+          libraries:
+            - whl: ../dist/bundle/*.whl
+        - task_key: promote
+          depends_on:
+            - task_key: train
+          job_cluster_key: single_node
+          python_wheel_task:
+            package_name: dfm
+            entry_point: dfm-promote
+            named_parameters:
+              catalog: ${var.catalog}
+              experiment_root: ${var.experiment_root}
+              job_run_id: "{{job.run_id}}"
+              auto_promote: "{{job.parameters.auto_promote}}"
+          libraries:
+            - whl: ../dist/bundle/*.whl
+        - task_key: score
+          depends_on:
+            - task_key: promote
+          job_cluster_key: single_node
+          python_wheel_task:
+            package_name: dfm
+            entry_point: dfm-score
+            named_parameters:
+              catalog: ${var.catalog}
+              experiment_root: ${var.experiment_root}
+              job_run_id: "{{job.run_id}}"
+          libraries:
+            - whl: ../dist/bundle/*.whl
+        - task_key: monitor
+          depends_on:
+            - task_key: score
+          job_cluster_key: single_node
+          python_wheel_task:
+            package_name: dfm
+            entry_point: dfm-monitor
+            named_parameters:
+              catalog: ${var.catalog}
+              experiment_root: ${var.experiment_root}
+              job_run_id: "{{job.run_id}}"
+              forward_results: ${var.landing_root}/truth/forward_results/${var.extract_pass}/forward_results.json
+          libraries:
+            - whl: ../dist/bundle/*.whl

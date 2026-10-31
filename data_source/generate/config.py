@@ -403,6 +403,64 @@ BUYER_RIGHT_SHARE         = 0.82   # disagreements where the spreadsheet is clos
 # Cycle counting: none before remediation; an annual physical inventory each year.
 CYCLE_COUNT_ANNUAL_COVERAGE = 0.85
 
+# ── Demand signals: order book, lifecycle, installed base, plant calendar ────
+# Each mechanism below draws its decisions from its own random stream, so the
+# rest of the build keeps its draws; only per-row details (posting times,
+# locations, users) of ledger and purchase-order rows that are added or moved
+# shift with it.
+SEED_SUPERSEDE      = RANDOM_SEED + 51
+SEED_INSTALLED_BASE = RANDOM_SEED + 52
+SEED_SHUTDOWN       = RANDOM_SEED + 53
+
+# Material requirement date on a job: the Monday of the week the job is due.
+# Planning carries it from the day the order is booked, so a job's component
+# requirements are dated before any material moves. Backflush still posts at the
+# actual completion.
+REQUIRED_DATE_RULE = "due_week_monday"
+
+# Engineering supersession: a share of the purchased parts on the bills is
+# replaced mid-history by a successor part number (a new motor revision, a
+# drive model change, a fitting re-sourced). Engineering sets a planned date and
+# the bills switch on use-up: from the planned date the old part is no longer
+# replenished, and jobs, floor pulls and service keep drawing it until its stock
+# cannot cover a requirement; from then on they draw the successor. The
+# successor is first ordered when the old part's projected run-out falls inside
+# its lead time. The bill rows carry effectivity USE_UP with the planned date,
+# the actual switch date is written to expiry_date and bom_change_log, and the
+# old item master row names its successor in superseded_by.
+SUPERSEDE_SHARE        = 0.03     # superseded parts as a share of live items (~39), drawn from bill components
+SUPERSEDE_CLASSES      = ["Mechanical", "Electrical", "Fittings", "Hardware"]
+SUPERSEDE_WINDOW       = (date(2024, 3, 1), date(2025, 9, 30))   # effective dates fall in this range
+SUPERSEDE_CREATE_LEAD_DAYS = (14, 60)   # successor record is created this many days before it takes effect
+SUPERSEDE_COST_RATIO   = (0.95, 1.15)   # successor standard cost relative to the predecessor's
+
+# Installed base: service demand on a part that sits on product bills follows
+# the units of those products in the field. Each month the service level is
+#   (1 - w) x the part's own service draw + w x failure rate x installed base,
+# where the installed base is the age-weighted count of fielded units carrying
+# the part times its quantity per unit. One failure rate holds for every part,
+# so a part on more, older units sells more. Parts on no product's bill keep
+# their own service draw.
+INSTALLED_BASE_WEIGHT  = 0.5
+# service units per age-weighted unit-month in the field; set so total 2023-25
+# service units on bill parts match the build before the installed base (16,270
+# against 16,341, -0.4%)
+INSTALLED_BASE_FAILURE_RATE = 0.00452
+# failure-rate weight by unit age in months: low while new, rising, then flat
+INSTALLED_BASE_AGE_PROFILE = [(0, 12, 0.25), (12, 24, 0.65), (24, None, 1.00)]
+# units already in the field when the history opens, as this many years of each
+# product's base build rate, all past the ramp
+INSTALLED_BASE_OPENING_YEARS = 8
+
+# Plant calendar: two shutdown weeks a year, the Monday-to-Sunday week that
+# contains July 4 and the one that contains December 28. No jobs complete and
+# no floor issues or service shipments post in them; work due in a shutdown
+# week finishes the working day before it or the first working day after.
+# Receiving keeps a skeleton crew, so supplier deliveries post as usual.
+SHUTDOWN_HOLIDAYS      = [(7, 4), (12, 28)]   # (month, day) whose week is a shutdown
+SHUTDOWN_PULL_IN_SHARE = 0.5      # share of shutdown-week completions pulled into the prior week
+SHUTDOWN_RECEIVING_OPEN = True
+
 
 def month_starts(start: date = START_DATE, end: date = END_DATE):
     """Return the first day of every month in the window, inclusive."""
@@ -423,6 +481,29 @@ def working_days(start: date = START_DATE, end: date = END_DATE):
             days.append(d)
         d += timedelta(days=1)
     return days
+
+
+def shutdown_weeks(start: date = START_DATE, end: date = END_DATE):
+    """Return the Monday of every plant shutdown week that overlaps the window."""
+    out = []
+    for y in range(start.year, end.year + 1):
+        for m, d in SHUTDOWN_HOLIDAYS:
+            anchor = date(y, m, d)
+            monday = anchor - timedelta(days=anchor.weekday())
+            if monday <= end and monday + timedelta(days=6) >= start:
+                out.append(monday)
+    return sorted(out)
+
+
+def plant_working_days(start: date = START_DATE, end: date = END_DATE):
+    """Return every Monday-Friday date in the window outside the shutdown weeks."""
+    shut = set(shutdown_weeks(start, end))
+    return [d for d in working_days(start, end) if d - timedelta(days=d.weekday()) not in shut]
+
+
+def required_date(due: date) -> date:
+    """Material requirement date of a job: the Monday of its due week."""
+    return due - timedelta(days=due.weekday())
 
 
 def remediation_weeks():

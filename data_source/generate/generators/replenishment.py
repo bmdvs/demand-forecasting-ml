@@ -34,12 +34,18 @@ from .. import config as C
 from .purchase_orders import _actual_lead
 
 PHANTOM_BOOK_TOL = 0.25     # book above physical by this share counts as "unrecorded" cause
+SUCC_ORDER_LEAD_MULT = 1.5  # a successor is first ordered when the old part's run-out is within this many lead times
 
 
 def draw_drift_rates(item_meta, rng):
     """Per-item upward drift of the actual lead time over the history (days)."""
-    return {num: rng.uniform(1, 8) + (rng.uniform(12, 26) if meta["is_drift"] else 0.0)
-            for num, meta in item_meta.items() if not meta["dead"]}
+    rates = {num: rng.uniform(1, 8) + (rng.uniform(12, 26) if meta["is_drift"] else 0.0)
+             for num, meta in item_meta.items() if not meta["dead"] and not meta.get("successor_of")}
+    # a successor part comes from its predecessor's supplier on the same terms
+    for num, meta in item_meta.items():
+        if meta.get("successor_of"):
+            rates[num] = rates[meta["successor_of"]]
+    return rates
 
 
 def simulate(events, item_master, item_meta, dup_map, plan, drift_supplier_id, sup_frag,
@@ -65,6 +71,8 @@ def simulate(events, item_master, item_meta, dup_map, plan, drift_supplier_id, s
     day_idx = {d.date(): i for i, d in enumerate(days)}
     cost_by_item = plan.set_index("item_id")["unit_cost"].to_dict()
     rop_by_num = item_master.set_index("item_number")["reorder_point"].to_dict()
+    created_by_num = {n: date.fromisoformat(d) for n, d in
+                      item_master.set_index("item_number")["created_date"].items()}
     lead_by_num = item_master.set_index("item_number")["master_lead_time_days"].to_dict()
     # the actual lead time drifts from the lead time the item was set up with;
     # a replay on corrected masters still has to draw it from that base
@@ -138,6 +146,16 @@ def simulate(events, item_master, item_meta, dup_map, plan, drift_supplier_id, s
     jobs_by_iid_day = {}
     for r in ev[ev["channel"] == "BACKFLUSH"].itertuples(index=False):
         jobs_by_iid_day.setdefault((int(r.item_id), int(r.t)), []).append(r.job_id)
+    # service lines shipping each day, so a line that finds the bin empty can wait
+    svc_by_iid_day = {}
+    for r in ev[ev["channel"] == "SERVICE"].itertuples(index=False):
+        svc_by_iid_day.setdefault((int(r.item_id), int(r.t)), []).append((r.job_id, r.item_number))
+    service_holds = {}
+    # service demand per part, for the lot of a part that is being used up
+    svc_cum_by_iid = {}
+    for iid_, g in ev[ev["channel"] == "SERVICE"].groupby("item_id"):
+        a = np.zeros(N); np.add.at(a, g["t"].to_numpy(), g["qty"].to_numpy())
+        svc_cum_by_iid[int(iid_)] = np.concatenate([[0.0], np.cumsum(a)])
 
     # annual physical: a January count day each year
     count_days = []
@@ -154,6 +172,11 @@ def simulate(events, item_master, item_meta, dup_map, plan, drift_supplier_id, s
 
     po_lines, adjustments, counts, shortages, rushes = [], [], [], [], []
     job_delays = {}
+    # use-up effectivity: a superseded part keeps its demand until its on-hand cannot
+    # cover a requirement; from then on the successor carries it. The old part is
+    # replayed before its successor, so it hands its demand over in these stores.
+    switches, handoff, succ_hist = [], {}, {}
+    idx_n = np.arange(N)
     status_weekly = {}    # model forward: ORDER NOW / SOON / OK counts on each Monday's queue
     physical_series, book_series, unmet_series, short_day_series = {}, {}, {}, {}
     line_seq = 0
@@ -166,8 +189,9 @@ def simulate(events, item_master, item_meta, dup_map, plan, drift_supplier_id, s
         nc = never_closed                      # this item's share of short receipts left open
         phys_d = phys_by_iid.get(iid, np.zeros(N))
         # usage the shop could know on the day: the trailing year of consumption
-        # (the first quarter of the history serves as a burn-in)
-        cum_u = np.concatenate([[0.0], np.cumsum(phys_d)])
+        # (the first quarter of the history serves as a burn-in); a successor
+        # carries its predecessor's history, as the ERP does through a supersession
+        cum_u = np.concatenate([[0.0], np.cumsum(succ_hist.get(iid, phys_d))])
 
         def usage(t_):
             if t_ < 90:
@@ -195,11 +219,66 @@ def simulate(events, item_master, item_meta, dup_map, plan, drift_supplier_id, s
 
         # opening stock at a normal working level: the point plus half a lot
         physical = sum(rop.values()) + q_each / 2.0
+        # a successor part number holds no stock and is not ordered before it is set up
+        active_t = 0
+        if meta0.get("successor_of"):
+            # first ordered when the old part's projected run-out falls inside its lead
+            # time; a successor whose predecessor never runs out is never ordered
+            hand = handoff.get(iid)
+            active_t = (N if hand is None else
+                        max(day_idx.get(created_by_num.get(nums[0]), 0), hand["first_order_t"]))
+            physical = 0.0
         book = {n: physical * w / (conv if conv > 1 else 1) for n, w in zip(nums, weights)}
+        # a superseded part is used up from its effective date: no reorder point, no
+        # safety stock, drawn down by its service demand and reordered only after a
+        # stockout, a service-only lot at a time
+        useup_t = day_idx.get(meta0.get("superseded_on")) if meta0.get("superseded_on") else None
+        svc_cum = svc_cum_by_iid.get(iid)
+        switched, first_order_t = False, None
+        if useup_t is not None:
+            phys_d = phys_d.copy()
+            full_d = phys_d.copy()
+            cum_full = np.concatenate([[0.0], np.cumsum(full_d)])
+            succ_num = meta0["successor_num"]
+            succ_iid = int(item_meta[succ_num]["item_id"])
+            succ_lead = int(lead_by_num.get(succ_num, 21))
+
+        def hand_over(t_):
+            """From day t_ on, every requirement on this part draws the successor."""
+            after = idx_n >= t_
+            phys_by_iid[succ_iid] = np.where(after, full_d, 0.0)
+            succ_hist[succ_iid] = full_d
+            for n_ in nums:
+                b_ = book_by_num.get(n_, ZERO)
+                book_by_num[succ_num] = book_by_num.get(succ_num, ZERO) + np.where(after, b_, 0.0)
+                book_by_num[n_] = np.where(after, 0.0, b_)
+            r_ = rec_by_iid.get(iid, ZERO)
+            rec_by_iid[succ_iid] = np.where(after, r_, 0.0); rec_by_iid[iid] = np.where(after, 0.0, r_)
+            for store, old, new in ((known_num, nums[0], succ_num), (known_iid, iid, succ_iid)):
+                arr = store.get(old)
+                if arr is not None:
+                    m_ = arr[0] >= t_
+                    store[new] = tuple(a_[m_] for a_ in arr); store[old] = tuple(a_[~m_] for a_ in arr)
+            for key in [k for k in jobs_by_iid_day if k[0] == iid and k[1] >= t_]:
+                jobs_by_iid_day[(succ_iid, key[1])] = jobs_by_iid_day.pop(key)
+            for key in [k for k in svc_by_iid_day if k[0] == iid and k[1] >= t_]:
+                svc_by_iid_day[(succ_iid, key[1])] = [(o_, succ_num) for o_, _ in svc_by_iid_day.pop(key)]
+            if svc_cum is not None:
+                sd_ = np.diff(svc_cum)
+                svc_cum_by_iid[succ_iid] = np.concatenate([[0.0], np.cumsum(np.where(after, sd_, 0.0))])
+            phys_d[t_:] = 0.0
+            handoff[succ_iid] = {"switch_t": t_, "first_order_t": first_order_t if first_order_t is not None else t_}
+
+        def svc_rate(t_):
+            if svc_cum is None:
+                return 0.02
+            lo_ = max(0, t_ - 182)
+            return max((svc_cum[t_] - svc_cum[lo_]) / max(1, t_ - lo_), 0.02)
         open_po = []          # dicts: num, arrival, qty_book, phantom, rush, promised
         last_order = {n: -10**6 for n in nums}
         backlog = 0.0         # physical demand deferred until material arrives
         waiting = []          # (job, day it ran short), resolved when the material lands
+        waiting_svc = []      # (service line, day it found the bin empty)
         in_episode = False    # currently short
         corrected_this_episode = False
         learned = False       # after a surprise shortage the floor watches the bin by sight
@@ -248,6 +327,23 @@ def simulate(events, item_master, item_meta, dup_map, plan, drift_supplier_id, s
                 rop[prim] = sched_by_t[t][0]
                 q_sched = sched_by_t[t][2]
                 d_sched = sched_by_t[t][3]
+            useup = useup_t is not None and t >= useup_t
+            if useup and not switched:
+                # the ERP projects the old part's run-out and releases the successor's first order
+                if first_order_t is None:
+                    # run-out on the books, at the faster of the last 30 and 90 days' draw,
+                    # against the successor lead time the ERP holds on the day (the go-live
+                    # master in the history, the corrected master from the forward start)
+                    rate = max((cum_full[t] - cum_full[t - min(w_, t)]) / max(1, min(w_, t)) for w_ in (30, 90)) if t > 0 else 0.0
+                    lead_now = (int(forward["lead"].get(succ_num, succ_lead))
+                                if fwd_t is not None and t >= fwd_t else succ_lead)
+                    if rate > 0 and sum(book.values()) / rate <= SUCC_ORDER_LEAD_MULT * lead_now:
+                        first_order_t = t
+            if useup:
+                for n_ in nums:
+                    rop[n_] = 0.0
+                q_sched = None; d_sched = 0.0
+                tracked = False; expedite = False
             # the ERP refreshes each supplier lead time monthly from the last six months of receipts
             if update_lead and fwd_t is not None and t >= fwd_t and days[t].day == 1:
                 if l_base is None:
@@ -258,6 +354,10 @@ def simulate(events, item_master, item_meta, dup_map, plan, drift_supplier_id, s
             if t % 7 == 0 or t == fwd_t or t in sched_by_t:
                 avg_daily = usage(t)
                 q_each = max(1, int(round(q_sched if q_sched else avg_daily * C.ORDER_COVER_DAYS)))
+                q_order = max(1, int(round(q_each / conv))) if conv > 1 else q_each
+            if useup:
+                avg_daily = svc_rate(t)
+                q_each = max(1, int(round(avg_daily * C.ORDER_COVER_DAYS)))
                 q_order = max(1, int(round(q_each / conv))) if conv > 1 else q_each
             if fwd_t is not None and t > fwd_t and days[t].day == 1:
                 k = (days[t].year - C.FORWARD_START.year) * 12 + days[t].month - C.FORWARD_START.month
@@ -291,6 +391,10 @@ def simulate(events, item_master, item_meta, dup_map, plan, drift_supplier_id, s
                         for job, t0 in waiting:
                             job_delays[job] = max(job_delays.get(job, 0), t - t0)
                         waiting = []
+                    if waiting_svc and po["qty_recv"] > 0:
+                        for line, t0 in waiting_svc:
+                            service_holds[line] = max(service_holds.get(line, 0), t - t0)
+                        waiting_svc = []
                 elif po.get("balance_arrival") == t:
                     bal = po["qty_book"] - po["qty_recv"]
                     physical += bal * (conv if conv > 1 else 1)
@@ -303,6 +407,15 @@ def simulate(events, item_master, item_meta, dup_map, plan, drift_supplier_id, s
                         for job, t0 in waiting:
                             job_delays[job] = max(job_delays.get(job, 0), t - t0)
                         waiting = []
+                    if waiting_svc and bal > 0:
+                        for line, t0 in waiting_svc:
+                            service_holds[line] = max(service_holds.get(line, 0), t - t0)
+                        waiting_svc = []
+            # ── use-up: the first requirement the old part cannot cover goes to the successor
+            if useup and not switched and phys_d[t] > 0 and max(physical, 0.0) < phys_d[t]:
+                hand_over(t); switched = True
+                switches.append({"pred_number": nums[0], "succ_number": succ_num, "planned_t": useup_t,
+                                 "switch_t": t, "first_order_t": handoff[succ_iid]["first_order_t"]})
             # ── consumption ──────────────────────────────────────────────
             d = phys_d[t]
             if d > 0:
@@ -318,6 +431,8 @@ def simulate(events, item_master, item_meta, dup_map, plan, drift_supplier_id, s
                     useries[t] = short
                     for job in jobs_by_iid_day.get((iid, t), []):
                         waiting.append((job, t))
+                    for line in svc_by_iid_day.get((iid, t), []):
+                        waiting_svc.append((line, t))
                     if not in_episode:
                         in_episode = True
                         if not tracked:
@@ -369,7 +484,7 @@ def simulate(events, item_master, item_meta, dup_map, plan, drift_supplier_id, s
                                    "counted_qty": counted, "program": "ANNUAL"})
                     book[n] = float(counted)
             # ── reorder decisions, per recorded number ───────────────────
-            for n in nums:
+            for n in (nums if t >= active_t else []):
                 on_order = sum(po["qty_book"] - po.get("qty_recv", 0) if po["received"] else po["qty_book"]
                                for po in open_po if po["num"] == n and (not po["received"] or po.get("phantom", 0) > 0
                                                                         or po.get("balance_arrival")))
@@ -416,6 +531,9 @@ def simulate(events, item_master, item_meta, dup_map, plan, drift_supplier_id, s
                     # after a surprise shortage the floor reorders by sight, whatever the books say
                     by_sight = (learned and n == nums[0] and nothing_inbound
                                 and max(physical, 0.0) <= avg_daily * (mlead[n] + C.FLOOR_VISUAL_MIN_DAYS))
+                if useup:
+                    triggered = physical <= 0 and nothing_inbound
+                    by_sight = False
                 if (triggered or by_sight) and not shelf_full and t - last_order[n] >= C.REORDER_GAP_DAYS:
                     line_seq += 1
                     meta = item_meta[n]
@@ -492,6 +610,11 @@ def simulate(events, item_master, item_meta, dup_map, plan, drift_supplier_id, s
         # material that never came: the job waits to the end of the history
         for job, t0 in waiting:
             job_delays[job] = max(job_delays.get(job, 0), N - 1 - t0)
+        for line, t0 in waiting_svc:
+            service_holds[line] = max(service_holds.get(line, 0), N - 1 - t0)
+        if useup_t is not None and not switched:
+            switches.append({"pred_number": nums[0], "succ_number": succ_num, "planned_t": useup_t,
+                             "switch_t": None, "first_order_t": first_order_t})
         physical_series[iid] = pseries
         unmet_series[iid] = useries
         short_day_series[iid] = sdays
@@ -518,6 +641,11 @@ def simulate(events, item_master, item_meta, dup_map, plan, drift_supplier_id, s
         "shortages": pd.DataFrame(shortages),
         "rushes": pd.DataFrame(rushes),
         "job_delays": job_delays,
+        "service_holds": service_holds,
+        "switches": [{**s_, "planned": days[s_["planned_t"]].date(),
+                      "switch": days[s_["switch_t"]].date() if s_["switch_t"] is not None else None,
+                      "first_order": days[s_["first_order_t"]].date() if s_["first_order_t"] is not None else None}
+                     for s_ in switches],
         "status_weekly": status_weekly,
         "physical": physical_series,
         "book": book_series,

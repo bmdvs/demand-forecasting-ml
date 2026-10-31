@@ -1,0 +1,7 @@
+period,trained_on,training_rows,error_rows,model
+2026-01,2026-01-01,130668,59860,S1 RandomForest
+2026-02,2026-02-02,137348,55477,S1 RandomForest
+2026-03,2026-03-02,142692,53270,S1 RandomForest
+2026-04,2026-04-06,149372,52932,S1 RandomForest
+2026-05,2026-05-04,154716,52922,S1 RandomForest
+2026-06,2026-06-01,160060,52920,S1 RandomForest

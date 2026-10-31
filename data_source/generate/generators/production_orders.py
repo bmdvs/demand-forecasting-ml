@@ -89,7 +89,8 @@ def apply_delays(df, job_delays):
         i = idx[oid]
         if df.at[i, "qty_completed"] <= 0 or df.at[i, "completed_date"] is None:
             continue
-        cd = pd.to_datetime(df.at[i, "completed_date"]).date() + timedelta(days=int(dly))
+        from .signals import next_working_day
+        cd = next_working_day(pd.to_datetime(df.at[i, "completed_date"]).date() + timedelta(days=int(dly)))
         if cd > C.END_DATE:
             cd = C.END_DATE
         df.at[i, "completed_date"] = cd.isoformat()

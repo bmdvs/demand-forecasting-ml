@@ -71,7 +71,7 @@ def run():
     # the selected model, refit as in the backtest
     model = _make(winner, params)
     model.fit(tv[FEATS], np.log1p(tv["target"]))
-    pred = np.clip(np.expm1(model.predict(test[FEATS])), 0, tr._CAP)
+    pred = np.clip(np.expm1(tr.predict(model, test[FEATS])), 0, tr._CAP)
     print(f"  refit {winner}: held-out 2025 WAPE {_wape(test['target'], pred) * 100:.1f}%")
 
     # SHAP on a sample of the held-out year (log-usage units)
@@ -92,8 +92,8 @@ def run():
         sub = tv.iloc[idx]
         m_ = _make(winner, params)
         m_.fit(sub[FEATS], np.log1p(sub["target"]))
-        fit_in = np.clip(np.expm1(m_.predict(sub[FEATS])), 0, tr._CAP)
-        fit_out = np.clip(np.expm1(m_.predict(test[FEATS])), 0, tr._CAP)
+        fit_in = np.clip(np.expm1(tr.predict(m_, sub[FEATS])), 0, tr._CAP)
+        fit_out = np.clip(np.expm1(tr.predict(m_, test[FEATS])), 0, tr._CAP)
         rows.append({"train_rows": len(sub), "train_wape": _wape(sub["target"], fit_in),
                      "test_wape": _wape(test["target"], fit_out)})
         print(f"  learning curve {frac:.0%}: train {rows[-1]['train_wape']*100:.1f}%  held-out {rows[-1]['test_wape']*100:.1f}%")

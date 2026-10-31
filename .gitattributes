@@ -1,0 +1,2 @@
+# The gold snapshot is stored byte for byte: its manifest carries a sha256 per file.
+exports/gold_snapshot/** -text

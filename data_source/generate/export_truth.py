@@ -29,10 +29,15 @@ TRUTH = C.REPO_ROOT / "data_source" / "truth"
 
 
 def run():
-    rng = np.random.default_rng(C.RANDOM_SEED)
-    direct = build_monthly_demand(build_item_plan(rng), rng)
-    direct.rename(columns={"demand_units": "qty"})[["item_id", "month", "qty"]].to_csv(
-        TRUTH / "true_direct_demand.csv", index=False)
+    # the generator writes the direct demand as the shop drew it (after part
+    # supersession and the installed base); rebuild it only when it is missing
+    fp = TRUTH / "true_direct_demand.csv"
+    if fp.exists():
+        direct = pd.read_csv(fp)
+    else:
+        rng = np.random.default_rng(C.RANDOM_SEED)
+        direct = build_monthly_demand(build_item_plan(rng), rng)
+        direct.rename(columns={"demand_units": "qty"})[["item_id", "month", "qty"]].to_csv(fp, index=False)
 
     cross = json.loads((TRUTH / "crosswalks.json").read_text())
     pd.DataFrame([{"item_number": r, "primary": cl["primary"]}

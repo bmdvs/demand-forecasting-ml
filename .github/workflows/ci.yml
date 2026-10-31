@@ -1,0 +1,71 @@
+name: ci
+
+# Lint and tests on every push and pull request. The bundle is validated against the prod target on
+# pull requests from this repository and on pushes to main, and deployed to prod on pushes to main.
+# Authentication is the deploy service principal's OAuth secret (machine to machine) from the
+# repository secrets; nothing secret or workspace-specific is in the repository.
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  lint-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e src pytest ruff==0.17.2
+      - name: Lint
+        run: ruff check src tests infra pipelines
+      - name: Test
+        env:
+          MLFLOW_DISABLE_AGENT_HINT: "1"
+        run: pytest -q tests
+
+  bundle-validate:
+    needs: lint-test
+    if: >-
+      (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository)
+      || (github.event_name == 'push' && github.ref == 'refs/heads/main')
+    runs-on: ubuntu-latest
+    env:
+      DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
+      DATABRICKS_CLIENT_ID: ${{ secrets.DATABRICKS_CLIENT_ID }}
+      DATABRICKS_CLIENT_SECRET: ${{ secrets.DATABRICKS_CLIENT_SECRET }}
+      BUNDLE_VAR_deploy_sp: ${{ secrets.BUNDLE_VAR_deploy_sp }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: databricks/setup-cli@v1.22.1
+      - name: Validate (prod)
+        run: databricks bundle validate -t prod
+
+  deploy:
+    needs: bundle-validate
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    concurrency: deploy-prod
+    env:
+      DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
+      DATABRICKS_CLIENT_ID: ${{ secrets.DATABRICKS_CLIENT_ID }}
+      DATABRICKS_CLIENT_SECRET: ${{ secrets.DATABRICKS_CLIENT_SECRET }}
+      BUNDLE_VAR_deploy_sp: ${{ secrets.BUNDLE_VAR_deploy_sp }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: databricks/setup-cli@v1.22.1
+      - name: Deploy (prod)
+        run: databricks bundle deploy -t prod

@@ -1,0 +1,2096 @@
+{
+ "created": "2026-10-31T17:08:50Z",
+ "catalog": "dfm",
+ "issued_run": "989811679653429",
+ "monitor_run": "886695731562327",
+ "pass": "pass2",
+ "entries": [
+  {
+   "name": "mart_consumption_weekly",
+   "what": "weekly consumption by item",
+   "read_by_generators_as": "ml/data/marts/consumption_weekly.parquet",
+   "source": {
+    "table": "dfm.gold.mart_consumption_weekly",
+    "delta_version": "current",
+    "job_run": null,
+    "pass": "pass2"
+   },
+   "files": [
+    {
+     "file": "tables/mart_consumption_weekly.parquet",
+     "bytes": 217665,
+     "sha256": "37ed9946b6c0d6ac6d0cdfe1c8dc3feff8cbb56835dea438a703134d41d7252d",
+     "rows": 100470,
+     "columns": [
+      {
+       "name": "canonical_item_number",
+       "type": "string"
+      },
+      {
+       "name": "week",
+       "type": "timestamp[us, tz=Etc/UTC]"
+      },
+      {
+       "name": "consumption",
+       "type": "double"
+      }
+     ]
+    },
+    {
+     "file": "tables/mart_consumption_weekly.csv",
+     "bytes": 4089046,
+     "sha256": "06c9bd24c2a6d0648387d22c7ce78fc395639a41baff3f5e4e7e27aa0c549f03",
+     "rows": 100470,
+     "columns": [
+      {
+       "name": "canonical_item_number",
+       "type": "string"
+      },
+      {
+       "name": "week",
+       "type": "timestamp[us, tz=Etc/UTC]"
+      },
+      {
+       "name": "consumption",
+       "type": "double"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "name": "mart_consumption_fully",
+   "what": "monthly consumption, fully cleaned",
+   "read_by_generators_as": "ml/data/marts/consumption_monthly.parquet",
+   "source": {
+    "table": "dfm.gold.mart_consumption_fully",
+    "delta_version": "current",
+    "job_run": null,
+    "pass": "pass2"
+   },
+   "files": [
+    {
+     "file": "tables/mart_consumption_fully.parquet",
+     "bytes": 87272,
+     "sha256": "a62442ab41f74e4bdb2b883db68ced057ffb155c378cf511ff763d51d66e51d9",
+     "rows": 44991,
+     "columns": [
+      {
+       "name": "canonical_item_number",
+       "type": "string"
+      },
+      {
+       "name": "month",
+       "type": "timestamp[us, tz=Etc/UTC]"
+      },
+      {
+       "name": "consumption",
+       "type": "double"
+      }
+     ]
+    },
+    {
+     "file": "tables/mart_consumption_fully.csv",
+     "bytes": 1840089,
+     "sha256": "c0b24705a84519e6a22756fa977d4600d8683dbe723f86d8745be81f6861909a",
+     "rows": 44991,
+     "columns": [
+      {
+       "name": "canonical_item_number",
+       "type": "string"
+      },
+      {
+       "name": "month",
+       "type": "timestamp[us, tz=Etc/UTC]"
+      },
+      {
+       "name": "consumption",
+       "type": "double"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "name": "mart_item_attributes",
+   "what": "item attributes",
+   "read_by_generators_as": "ml/data/marts/item_attributes.parquet",
+   "source": {
+    "table": "dfm.gold.mart_item_attributes",
+    "delta_version": "current",
+    "job_run": null,
+    "pass": "pass2"
+   },
+   "files": [
+    {
+     "file": "tables/mart_item_attributes.parquet",
+     "bytes": 37920,
+     "sha256": "d2c141a6e38f23c47f11b71c5250b2271e38ea236d03751001e17d3a8d20be08",
+     "rows": 1339,
+     "columns": [
+      {
+       "name": "canonical_item_number",
+       "type": "string"
+      },
+      {
+       "name": "standard_cost",
+       "type": "double"
+      },
+      {
+       "name": "item_class",
+       "type": "string"
+      },
+      {
+       "name": "segment",
+       "type": "string"
+      },
+      {
+       "name": "abc",
+       "type": "string"
+      },
+      {
+       "name": "corrected_lead_days",
+       "type": "double"
+      },
+      {
+       "name": "annual_consumption",
+       "type": "double"
+      },
+      {
+       "name": "first_use_date",
+       "type": "date32[day]"
+      },
+      {
+       "name": "created_date",
+       "type": "date32[day]"
+      },
+      {
+       "name": "superseded_by",
+       "type": "string"
+      },
+      {
+       "name": "supersede_planned_date",
+       "type": "date32[day]"
+      },
+      {
+       "name": "supersede_switch_date",
+       "type": "date32[day]"
+      },
+      {
+       "name": "successor_created_date",
+       "type": "date32[day]"
+      },
+      {
+       "name": "supersedes",
+       "type": "string"
+      }
+     ]
+    },
+    {
+     "file": "tables/mart_item_attributes.csv",
+     "bytes": 100758,
+     "sha256": "4de17e509cb23a26f9bff59f9acec18ea0322833e9e2c921e45c584f81144775",
+     "rows": 1339,
+     "columns": [
+      {
+       "name": "canonical_item_number",
+       "type": "string"
+      },
+      {
+       "name": "standard_cost",
+       "type": "double"
+      },
+      {
+       "name": "item_class",
+       "type": "string"
+      },
+      {
+       "name": "segment",
+       "type": "string"
+      },
+      {
+       "name": "abc",
+       "type": "string"
+      },
+      {
+       "name": "corrected_lead_days",
+       "type": "double"
+      },
+      {
+       "name": "annual_consumption",
+       "type": "double"
+      },
+      {
+       "name": "first_use_date",
+       "type": "date32[day]"
+      },
+      {
+       "name": "created_date",
+       "type": "date32[day]"
+      },
+      {
+       "name": "superseded_by",
+       "type": "string"
+      },
+      {
+       "name": "supersede_planned_date",
+       "type": "date32[day]"
+      },
+      {
+       "name": "supersede_switch_date",
+       "type": "date32[day]"
+      },
+      {
+       "name": "successor_created_date",
+       "type": "date32[day]"
+      },
+      {
+       "name": "supersedes",
+       "type": "string"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "name": "int_item_crosswalk",
+   "what": "item number to canonical item (silver)",
+   "read_by_generators_as": "ml/data/marts/item_crosswalk.csv",
+   "source": {
+    "table": "dfm.silver.int_item_crosswalk",
+    "delta_version": "current",
+    "job_run": null,
+    "pass": "pass2"
+   },
+   "files": [
+    {
+     "file": "tables/int_item_crosswalk.parquet",
+     "bytes": 29604,
+     "sha256": "fcf6451087d799ca26543388bc9fdb09bea8962434b8d39738729c281b2d1127",
+     "rows": 1504,
+     "columns": [
+      {
+       "name": "item_number",
+       "type": "string"
+      },
+      {
+       "name": "item_id",
+       "type": "int32"
+      },
+      {
+       "name": "canonical_item_number",
+       "type": "string"
+      }
+     ]
+    },
+    {
+     "file": "tables/int_item_crosswalk.csv",
+     "bytes": 37017,
+     "sha256": "6e7feb256efef16322c99197a1d86900602b7ec95fde500dff8c00af5875e711",
+     "rows": 1504,
+     "columns": [
+      {
+       "name": "item_number",
+       "type": "string"
+      },
+      {
+       "name": "item_id",
+       "type": "int32"
+      },
+      {
+       "name": "canonical_item_number",
+       "type": "string"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "name": "mart_dq_error_summary",
+   "what": "data quality error register",
+   "read_by_generators_as": "warehouse mart_dq_error_summary",
+   "source": {
+    "table": "dfm.gold.mart_dq_error_summary",
+    "delta_version": "current",
+    "job_run": null,
+    "pass": "pass2"
+   },
+   "files": [
+    {
+     "file": "tables/mart_dq_error_summary.parquet",
+     "bytes": 2460,
+     "sha256": "05ba513b2a7587c2169d728c9c23693cc62d882af2600414362206ccd8f25919",
+     "rows": 17,
+     "columns": [
+      {
+       "name": "error_no",
+       "type": "int32"
+      },
+      {
+       "name": "error",
+       "type": "string"
+      },
+      {
+       "name": "erp_table",
+       "type": "string"
+      },
+      {
+       "name": "rows_flagged",
+       "type": "int64"
+      },
+      {
+       "name": "rows_in_scope",
+       "type": "int64"
+      }
+     ]
+    },
+    {
+     "file": "tables/mart_dq_error_summary.csv",
+     "bytes": 984,
+     "sha256": "9fc3b138849ee091684135df5d062659568fbab3869fd3c4c654ef578bcd79a6",
+     "rows": 17,
+     "columns": [
+      {
+       "name": "error_no",
+       "type": "int32"
+      },
+      {
+       "name": "error",
+       "type": "string"
+      },
+      {
+       "name": "erp_table",
+       "type": "string"
+      },
+      {
+       "name": "rows_flagged",
+       "type": "int64"
+      },
+      {
+       "name": "rows_in_scope",
+       "type": "int64"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "name": "weekly_backtest",
+   "what": "weekly model backtest",
+   "read_by_generators_as": "ml/data/backtest/weekly_backtest.parquet",
+   "source": {
+    "table": "dfm.gold.weekly_backtest",
+    "delta_version": 1,
+    "job_run": "989811679653429",
+    "pass": "pass1 model, issued schedule"
+   },
+   "files": [
+    {
+     "file": "tables/weekly_backtest.parquet",
+     "bytes": 2825399,
+     "sha256": "8ee8e1247dec9e4987f84450746d1efc3341c563f156815a166c7f110805f90e",
+     "rows": 59926,
+     "columns": [
+      {
+       "name": "item",
+       "type": "string"
+      },
+      {
+       "name": "t",
+       "type": "int64"
+      },
+      {
+       "name": "week",
+       "type": "date32[day]"
+      },
+      {
+       "name": "h",
+       "type": "int64"
+      },
+      {
+       "name": "actual",
+       "type": "double"
+      },
+      {
+       "name": "s4",
+       "type": "double"
+      },
+      {
+       "name": "s13",
+       "type": "double"
+      },
+      {
+       "name": "s26",
+       "type": "double"
+      },
+      {
+       "name": "s52",
+       "type": "double"
+      },
+      {
+       "name": "nz13",
+       "type": "int64"
+      },
+      {
+       "name": "nz52",
+       "type": "int64"
+      },
+      {
+       "name": "since_nz",
+       "type": "double"
+      },
+      {
+       "name": "cv13",
+       "type": "double"
+      },
+      {
+       "name": "trend",
+       "type": "double"
+      },
+      {
+       "name": "ly",
+       "type": "double"
+      },
+      {
+       "name": "mean_all",
+       "type": "double"
+      },
+      {
+       "name": "woy",
+       "type": "int64"
+      },
+      {
+       "name": "month",
+       "type": "int64"
+      },
+      {
+       "name": "std_cost",
+       "type": "double"
+      },
+      {
+       "name": "lead",
+       "type": "double"
+      },
+      {
+       "name": "annual",
+       "type": "double"
+      },
+      {
+       "name": "seg_code",
+       "type": "int64"
+      },
+      {
+       "name": "abc_code",
+       "type": "int64"
+      },
+      {
+       "name": "cls_code",
+       "type": "int64"
+      },
+      {
+       "name": "segment",
+       "type": "string"
+      },
+      {
+       "name": "abc",
+       "type": "string"
+      },
+      {
+       "name": "pred",
+       "type": "double"
+      },
+      {
+       "name": "base",
+       "type": "double"
+      },
+      {
+       "name": "pred_c",
+       "type": "double"
+      }
+     ]
+    },
+    {
+     "file": "tables/weekly_backtest.csv",
+     "bytes": 12571801,
+     "sha256": "cd7a4d98d4d985320ba687d02aa4c9cb46c4427f1de37a6e8b78f6df3be865bf",
+     "rows": 59926,
+     "columns": [
+      {
+       "name": "item",
+       "type": "string"
+      },
+      {
+       "name": "t",
+       "type": "int64"
+      },
+      {
+       "name": "week",
+       "type": "date32[day]"
+      },
+      {
+       "name": "h",
+       "type": "int64"
+      },
+      {
+       "name": "actual",
+       "type": "double"
+      },
+      {
+       "name": "s4",
+       "type": "double"
+      },
+      {
+       "name": "s13",
+       "type": "double"
+      },
+      {
+       "name": "s26",
+       "type": "double"
+      },
+      {
+       "name": "s52",
+       "type": "double"
+      },
+      {
+       "name": "nz13",
+       "type": "int64"
+      },
+      {
+       "name": "nz52",
+       "type": "int64"
+      },
+      {
+       "name": "since_nz",
+       "type": "double"
+      },
+      {
+       "name": "cv13",
+       "type": "double"
+      },
+      {
+       "name": "trend",
+       "type": "double"
+      },
+      {
+       "name": "ly",
+       "type": "double"
+      },
+      {
+       "name": "mean_all",
+       "type": "double"
+      },
+      {
+       "name": "woy",
+       "type": "int64"
+      },
+      {
+       "name": "month",
+       "type": "int64"
+      },
+      {
+       "name": "std_cost",
+       "type": "double"
+      },
+      {
+       "name": "lead",
+       "type": "double"
+      },
+      {
+       "name": "annual",
+       "type": "double"
+      },
+      {
+       "name": "seg_code",
+       "type": "int64"
+      },
+      {
+       "name": "abc_code",
+       "type": "int64"
+      },
+      {
+       "name": "cls_code",
+       "type": "int64"
+      },
+      {
+       "name": "segment",
+       "type": "string"
+      },
+      {
+       "name": "abc",
+       "type": "string"
+      },
+      {
+       "name": "pred",
+       "type": "double"
+      },
+      {
+       "name": "base",
+       "type": "double"
+      },
+      {
+       "name": "pred_c",
+       "type": "double"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "name": "reorder_schedule",
+   "what": "reorder schedule, one row per item per Monday",
+   "read_by_generators_as": "ml/data/policy/rop_schedule.json",
+   "source": {
+    "table": "dfm.gold.reorder_schedule",
+    "delta_version": 1,
+    "job_run": "989811679653429",
+    "pass": "pass1 model, issued schedule"
+   },
+   "files": [
+    {
+     "file": "tables/reorder_schedule.parquet",
+     "bytes": 424109,
+     "sha256": "1a978f43642d28f43704b11ccc1d2f0f6bb02859b86ebdc68c409924675859cb",
+     "rows": 36072,
+     "columns": [
+      {
+       "name": "canonical_item_number",
+       "type": "string"
+      },
+      {
+       "name": "date",
+       "type": "date32[day]"
+      },
+      {
+       "name": "level",
+       "type": "double"
+      },
+      {
+       "name": "safety_stock",
+       "type": "double"
+      },
+      {
+       "name": "forecast_over_horizon",
+       "type": "double"
+      },
+      {
+       "name": "horizon_days",
+       "type": "int64"
+      },
+      {
+       "name": "reorder_point",
+       "type": "double"
+      },
+      {
+       "name": "unscheduled_share",
+       "type": "double"
+      },
+      {
+       "name": "order_qty",
+       "type": "double"
+      },
+      {
+       "name": "criticality",
+       "type": "string"
+      },
+      {
+       "name": "model",
+       "type": "string"
+      },
+      {
+       "name": "model_version",
+       "type": "string"
+      }
+     ]
+    },
+    {
+     "file": "tables/reorder_schedule.csv",
+     "bytes": 3522523,
+     "sha256": "617afd2ef421831d0013284d31eb197b52d818f45ad2df7e8064799c44f11eb6",
+     "rows": 36072,
+     "columns": [
+      {
+       "name": "canonical_item_number",
+       "type": "string"
+      },
+      {
+       "name": "date",
+       "type": "date32[day]"
+      },
+      {
+       "name": "level",
+       "type": "double"
+      },
+      {
+       "name": "safety_stock",
+       "type": "double"
+      },
+      {
+       "name": "forecast_over_horizon",
+       "type": "double"
+      },
+      {
+       "name": "horizon_days",
+       "type": "int64"
+      },
+      {
+       "name": "reorder_point",
+       "type": "double"
+      },
+      {
+       "name": "unscheduled_share",
+       "type": "double"
+      },
+      {
+       "name": "order_qty",
+       "type": "double"
+      },
+      {
+       "name": "criticality",
+       "type": "string"
+      },
+      {
+       "name": "model",
+       "type": "string"
+      },
+      {
+       "name": "model_version",
+       "type": "string"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "name": "reorder_queue",
+   "what": "as-of reorder queue",
+   "read_by_generators_as": "the ERP reorder queue page",
+   "source": {
+    "table": "dfm.gold.reorder_queue",
+    "delta_version": 1,
+    "job_run": "989811679653429",
+    "pass": "pass1 model, issued schedule"
+   },
+   "files": [
+    {
+     "file": "tables/reorder_queue.parquet",
+     "bytes": 53077,
+     "sha256": "8e7b1a23c886afd697f84d8f64c5b3bd29206606c2b3dbd29de112030fc7e317",
+     "rows": 1336,
+     "columns": [
+      {
+       "name": "canonical_item_number",
+       "type": "string"
+      },
+      {
+       "name": "as_of",
+       "type": "date32[day]"
+      },
+      {
+       "name": "effective_date",
+       "type": "date32[day]"
+      },
+      {
+       "name": "level",
+       "type": "double"
+      },
+      {
+       "name": "safety_stock",
+       "type": "double"
+      },
+      {
+       "name": "forecast_over_horizon",
+       "type": "double"
+      },
+      {
+       "name": "horizon_days",
+       "type": "int64"
+      },
+      {
+       "name": "reorder_point",
+       "type": "double"
+      },
+      {
+       "name": "unscheduled_share",
+       "type": "double"
+      },
+      {
+       "name": "order_qty",
+       "type": "double"
+      },
+      {
+       "name": "criticality",
+       "type": "string"
+      },
+      {
+       "name": "model",
+       "type": "string"
+      },
+      {
+       "name": "model_version",
+       "type": "string"
+      }
+     ]
+    },
+    {
+     "file": "tables/reorder_queue.csv",
+     "bytes": 145345,
+     "sha256": "b9a5f756e24e365b6474cba321852e468defecdf6ab286a7c936bdfdaa9a7065",
+     "rows": 1336,
+     "columns": [
+      {
+       "name": "canonical_item_number",
+       "type": "string"
+      },
+      {
+       "name": "as_of",
+       "type": "date32[day]"
+      },
+      {
+       "name": "effective_date",
+       "type": "date32[day]"
+      },
+      {
+       "name": "level",
+       "type": "double"
+      },
+      {
+       "name": "safety_stock",
+       "type": "double"
+      },
+      {
+       "name": "forecast_over_horizon",
+       "type": "double"
+      },
+      {
+       "name": "horizon_days",
+       "type": "int64"
+      },
+      {
+       "name": "reorder_point",
+       "type": "double"
+      },
+      {
+       "name": "unscheduled_share",
+       "type": "double"
+      },
+      {
+       "name": "order_qty",
+       "type": "double"
+      },
+      {
+       "name": "criticality",
+       "type": "string"
+      },
+      {
+       "name": "model",
+       "type": "string"
+      },
+      {
+       "name": "model_version",
+       "type": "string"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "name": "monthly_status",
+   "what": "monitoring table",
+   "read_by_generators_as": "ml/data/monitoring/signals",
+   "source": {
+    "table": "dfm.monitoring.monthly_status",
+    "delta_version": "current",
+    "job_run": "886695731562327",
+    "pass": "pass2"
+   },
+   "files": [
+    {
+     "file": "monitoring/monthly_status.parquet",
+     "bytes": 13745,
+     "sha256": "2a7a867568a46f9317dbbc6dad6968e57a9df0556144a3dbb100f23bf2fbc8de",
+     "rows": 6,
+     "columns": [
+      {
+       "name": "model_version",
+       "type": "string"
+      },
+      {
+       "name": "period",
+       "type": "string"
+      },
+      {
+       "name": "n_forecasts",
+       "type": "int64"
+      },
+      {
+       "name": "n_scored",
+       "type": "int64"
+      },
+      {
+       "name": "matured",
+       "type": "bool"
+      },
+      {
+       "name": "wape",
+       "type": "double"
+      },
+      {
+       "name": "base_wape",
+       "type": "double"
+      },
+      {
+       "name": "bias",
+       "type": "double"
+      },
+      {
+       "name": "target_drift",
+       "type": "double"
+      },
+      {
+       "name": "prediction_drift",
+       "type": "double"
+      },
+      {
+       "name": "worst_wape_gap",
+       "type": "double"
+      },
+      {
+       "name": "worst_bias",
+       "type": "double"
+      },
+      {
+       "name": "n_features",
+       "type": "int64"
+      },
+      {
+       "name": "n_features_drifted",
+       "type": "int64"
+      },
+      {
+       "name": "level_overall_wape",
+       "type": "int64"
+      },
+      {
+       "name": "level_overall_bias",
+       "type": "int64"
+      },
+      {
+       "name": "level_pattern_wape",
+       "type": "int64"
+      },
+      {
+       "name": "level_pattern_bias",
+       "type": "int64"
+      },
+      {
+       "name": "level_bias_factors",
+       "type": "int64"
+      },
+      {
+       "name": "primary_overall_wape",
+       "type": "bool"
+      },
+      {
+       "name": "primary_overall_bias",
+       "type": "bool"
+      },
+      {
+       "name": "primary_pattern_wape",
+       "type": "bool"
+      },
+      {
+       "name": "primary_pattern_bias",
+       "type": "bool"
+      },
+      {
+       "name": "primary_bias_factors",
+       "type": "bool"
+      },
+      {
+       "name": "primary_service",
+       "type": "bool"
+      },
+      {
+       "name": "primary_outcomes",
+       "type": "bool"
+      },
+      {
+       "name": "secondary_target_drift",
+       "type": "bool"
+      },
+      {
+       "name": "secondary_prediction_drift",
+       "type": "bool"
+      },
+      {
+       "name": "secondary_feature_drift",
+       "type": "bool"
+      },
+      {
+       "name": "fill_rate",
+       "type": "double"
+      },
+      {
+       "name": "fill_gap",
+       "type": "double"
+      },
+      {
+       "name": "stockout_events",
+       "type": "double"
+      },
+      {
+       "name": "jobs_held",
+       "type": "double"
+      },
+      {
+       "name": "rush_spend",
+       "type": "double"
+      },
+      {
+       "name": "end_inventory",
+       "type": "double"
+      },
+      {
+       "name": "ref_events",
+       "type": "double"
+      },
+      {
+       "name": "ref_held",
+       "type": "double"
+      },
+      {
+       "name": "short_week_share",
+       "type": "double"
+      },
+      {
+       "name": "active_short_share",
+       "type": "double"
+      },
+      {
+       "name": "null_feature_share",
+       "type": "double"
+      },
+      {
+       "name": "unseen_items",
+       "type": "int64"
+      },
+      {
+       "name": "lead_time_review_items",
+       "type": "int64"
+      },
+      {
+       "name": "lead_time_review_suppliers",
+       "type": "int64"
+      },
+      {
+       "name": "status",
+       "type": "string"
+      }
+     ]
+    },
+    {
+     "file": "monitoring/monthly_status.csv",
+     "bytes": 3349,
+     "sha256": "c3971650522575c93ad1dfd0dce592102b7e2e2c3ddb8a6d4b84dee0d6f46aea",
+     "rows": 6,
+     "columns": [
+      {
+       "name": "model_version",
+       "type": "string"
+      },
+      {
+       "name": "period",
+       "type": "string"
+      },
+      {
+       "name": "n_forecasts",
+       "type": "int64"
+      },
+      {
+       "name": "n_scored",
+       "type": "int64"
+      },
+      {
+       "name": "matured",
+       "type": "bool"
+      },
+      {
+       "name": "wape",
+       "type": "double"
+      },
+      {
+       "name": "base_wape",
+       "type": "double"
+      },
+      {
+       "name": "bias",
+       "type": "double"
+      },
+      {
+       "name": "target_drift",
+       "type": "double"
+      },
+      {
+       "name": "prediction_drift",
+       "type": "double"
+      },
+      {
+       "name": "worst_wape_gap",
+       "type": "double"
+      },
+      {
+       "name": "worst_bias",
+       "type": "double"
+      },
+      {
+       "name": "n_features",
+       "type": "int64"
+      },
+      {
+       "name": "n_features_drifted",
+       "type": "int64"
+      },
+      {
+       "name": "level_overall_wape",
+       "type": "int64"
+      },
+      {
+       "name": "level_overall_bias",
+       "type": "int64"
+      },
+      {
+       "name": "level_pattern_wape",
+       "type": "int64"
+      },
+      {
+       "name": "level_pattern_bias",
+       "type": "int64"
+      },
+      {
+       "name": "level_bias_factors",
+       "type": "int64"
+      },
+      {
+       "name": "primary_overall_wape",
+       "type": "bool"
+      },
+      {
+       "name": "primary_overall_bias",
+       "type": "bool"
+      },
+      {
+       "name": "primary_pattern_wape",
+       "type": "bool"
+      },
+      {
+       "name": "primary_pattern_bias",
+       "type": "bool"
+      },
+      {
+       "name": "primary_bias_factors",
+       "type": "bool"
+      },
+      {
+       "name": "primary_service",
+       "type": "bool"
+      },
+      {
+       "name": "primary_outcomes",
+       "type": "bool"
+      },
+      {
+       "name": "secondary_target_drift",
+       "type": "bool"
+      },
+      {
+       "name": "secondary_prediction_drift",
+       "type": "bool"
+      },
+      {
+       "name": "secondary_feature_drift",
+       "type": "bool"
+      },
+      {
+       "name": "fill_rate",
+       "type": "double"
+      },
+      {
+       "name": "fill_gap",
+       "type": "double"
+      },
+      {
+       "name": "stockout_events",
+       "type": "double"
+      },
+      {
+       "name": "jobs_held",
+       "type": "double"
+      },
+      {
+       "name": "rush_spend",
+       "type": "double"
+      },
+      {
+       "name": "end_inventory",
+       "type": "double"
+      },
+      {
+       "name": "ref_events",
+       "type": "double"
+      },
+      {
+       "name": "ref_held",
+       "type": "double"
+      },
+      {
+       "name": "short_week_share",
+       "type": "double"
+      },
+      {
+       "name": "active_short_share",
+       "type": "double"
+      },
+      {
+       "name": "null_feature_share",
+       "type": "double"
+      },
+      {
+       "name": "unseen_items",
+       "type": "int64"
+      },
+      {
+       "name": "lead_time_review_items",
+       "type": "int64"
+      },
+      {
+       "name": "lead_time_review_suppliers",
+       "type": "int64"
+      },
+      {
+       "name": "status",
+       "type": "string"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "name": "pattern_metrics",
+   "what": "monitoring table",
+   "read_by_generators_as": "ml/data/monitoring/signals",
+   "source": {
+    "table": "dfm.monitoring.pattern_metrics",
+    "delta_version": "current",
+    "job_run": "886695731562327",
+    "pass": "pass2"
+   },
+   "files": [
+    {
+     "file": "monitoring/pattern_metrics.parquet",
+     "bytes": 2902,
+     "sha256": "d24fa1ff5d8763658f42efb08f064fc0f7306f1e83e68c81255c99ba3f559ffb",
+     "rows": 21,
+     "columns": [
+      {
+       "name": "model_version",
+       "type": "string"
+      },
+      {
+       "name": "period",
+       "type": "string"
+      },
+      {
+       "name": "segment",
+       "type": "string"
+      },
+      {
+       "name": "wape",
+       "type": "double"
+      },
+      {
+       "name": "bias",
+       "type": "double"
+      },
+      {
+       "name": "reference_wape",
+       "type": "double"
+      },
+      {
+       "name": "reference_bias",
+       "type": "double"
+      },
+      {
+       "name": "matured",
+       "type": "bool"
+      }
+     ]
+    },
+    {
+     "file": "monitoring/pattern_metrics.csv",
+     "bytes": 2530,
+     "sha256": "4350ef237ab5cab09ba59e68d0557cebb70c3be0716aa33f2a26b7df327f5aa2",
+     "rows": 21,
+     "columns": [
+      {
+       "name": "model_version",
+       "type": "string"
+      },
+      {
+       "name": "period",
+       "type": "string"
+      },
+      {
+       "name": "segment",
+       "type": "string"
+      },
+      {
+       "name": "wape",
+       "type": "double"
+      },
+      {
+       "name": "bias",
+       "type": "double"
+      },
+      {
+       "name": "reference_wape",
+       "type": "double"
+      },
+      {
+       "name": "reference_bias",
+       "type": "double"
+      },
+      {
+       "name": "matured",
+       "type": "bool"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "name": "cell_bias",
+   "what": "monitoring table",
+   "read_by_generators_as": "ml/data/monitoring/signals",
+   "source": {
+    "table": "dfm.monitoring.cell_bias",
+    "delta_version": "current",
+    "job_run": "886695731562327",
+    "pass": "pass2"
+   },
+   "files": [
+    {
+     "file": "monitoring/cell_bias.parquet",
+     "bytes": 2112,
+     "sha256": "242c1a4a9d1a4011860a06bb5561f43eae0ee1e8b4e8a9a248faeeed50825a19",
+     "rows": 48,
+     "columns": [
+      {
+       "name": "model_version",
+       "type": "string"
+      },
+      {
+       "name": "period",
+       "type": "string"
+      },
+      {
+       "name": "segment",
+       "type": "string"
+      },
+      {
+       "name": "tier",
+       "type": "string"
+      },
+      {
+       "name": "corrected_bias",
+       "type": "double"
+      }
+     ]
+    },
+    {
+     "file": "monitoring/cell_bias.csv",
+     "bytes": 2938,
+     "sha256": "c0ecad2338c3263e5ee2e393cf384927d9809b69dd6e745c38cd34cce937b85d",
+     "rows": 48,
+     "columns": [
+      {
+       "name": "model_version",
+       "type": "string"
+      },
+      {
+       "name": "period",
+       "type": "string"
+      },
+      {
+       "name": "segment",
+       "type": "string"
+      },
+      {
+       "name": "tier",
+       "type": "string"
+      },
+      {
+       "name": "corrected_bias",
+       "type": "double"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "name": "feature_drift",
+   "what": "monitoring table",
+   "read_by_generators_as": "ml/data/monitoring/signals",
+   "source": {
+    "table": "dfm.monitoring.feature_drift",
+    "delta_version": "current",
+    "job_run": "886695731562327",
+    "pass": "pass2"
+   },
+   "files": [
+    {
+     "file": "monitoring/feature_drift.parquet",
+     "bytes": 3091,
+     "sha256": "49bed0bb0b99d0705e8985acc4aa5972884d5a5f4aab60386fab5d1f26c7c386",
+     "rows": 144,
+     "columns": [
+      {
+       "name": "model_version",
+       "type": "string"
+      },
+      {
+       "name": "period",
+       "type": "string"
+      },
+      {
+       "name": "feature",
+       "type": "string"
+      },
+      {
+       "name": "group",
+       "type": "string"
+      },
+      {
+       "name": "drift_score",
+       "type": "double"
+      },
+      {
+       "name": "drift_detected",
+       "type": "bool"
+      }
+     ]
+    },
+    {
+     "file": "monitoring/feature_drift.csv",
+     "bytes": 9540,
+     "sha256": "d1b165e333c7ce4d519bfb6c3d63c15f37af8affe553a58f86adeb82a669bfb3",
+     "rows": 144,
+     "columns": [
+      {
+       "name": "model_version",
+       "type": "string"
+      },
+      {
+       "name": "period",
+       "type": "string"
+      },
+      {
+       "name": "feature",
+       "type": "string"
+      },
+      {
+       "name": "group",
+       "type": "string"
+      },
+      {
+       "name": "drift_score",
+       "type": "double"
+      },
+      {
+       "name": "drift_detected",
+       "type": "bool"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "name": "bias_factors",
+   "what": "monitoring table",
+   "read_by_generators_as": "ml/data/monitoring/signals",
+   "source": {
+    "table": "dfm.monitoring.bias_factors",
+    "delta_version": "current",
+    "job_run": "886695731562327",
+    "pass": "pass2"
+   },
+   "files": [
+    {
+     "file": "monitoring/bias_factors.parquet",
+     "bytes": 2877,
+     "sha256": "6c216af260eb88f0229d278b0d5a7a86a98d03d158b19b1051d0082fa23fd906",
+     "rows": 24,
+     "columns": [
+      {
+       "name": "model_version",
+       "type": "string"
+      },
+      {
+       "name": "period",
+       "type": "string"
+      },
+      {
+       "name": "factor_cell",
+       "type": "string"
+      },
+      {
+       "name": "factor",
+       "type": "double"
+      },
+      {
+       "name": "change",
+       "type": "double"
+      },
+      {
+       "name": "corrected_bias",
+       "type": "double"
+      },
+      {
+       "name": "level",
+       "type": "int64"
+      }
+     ]
+    },
+    {
+     "file": "monitoring/bias_factors.csv",
+     "bytes": 2215,
+     "sha256": "975fdf80f99b3f27dadcf9575b06568b0fcdf145764c4e2a609518a3bc563f5c",
+     "rows": 24,
+     "columns": [
+      {
+       "name": "model_version",
+       "type": "string"
+      },
+      {
+       "name": "period",
+       "type": "string"
+      },
+      {
+       "name": "factor_cell",
+       "type": "string"
+      },
+      {
+       "name": "factor",
+       "type": "double"
+      },
+      {
+       "name": "change",
+       "type": "double"
+      },
+      {
+       "name": "corrected_bias",
+       "type": "double"
+      },
+      {
+       "name": "level",
+       "type": "int64"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "name": "lead_time_reviews",
+   "what": "monitoring table",
+   "read_by_generators_as": "ml/data/monitoring/signals",
+   "source": {
+    "table": "dfm.monitoring.lead_time_reviews",
+    "delta_version": "current",
+    "job_run": "886695731562327",
+    "pass": "pass2"
+   },
+   "files": [
+    {
+     "file": "monitoring/lead_time_reviews.parquet",
+     "bytes": 2195,
+     "sha256": "5eb5c0a7436f6a463ed7afd4e2eec4399ecf683c4c7ea6d3799482f678dd6c0f",
+     "rows": 260,
+     "columns": [
+      {
+       "name": "model_version",
+       "type": "string"
+      },
+      {
+       "name": "period",
+       "type": "string"
+      },
+      {
+       "name": "level",
+       "type": "string"
+      },
+      {
+       "name": "id",
+       "type": "string"
+      }
+     ]
+    },
+    {
+     "file": "monitoring/lead_time_reviews.csv",
+     "bytes": 10180,
+     "sha256": "680789abce5dc618b267947b2d6d6b06106ab252518627c5136f02bb73077935",
+     "rows": 260,
+     "columns": [
+      {
+       "name": "model_version",
+       "type": "string"
+      },
+      {
+       "name": "period",
+       "type": "string"
+      },
+      {
+       "name": "level",
+       "type": "string"
+      },
+      {
+       "name": "id",
+       "type": "string"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "name": "retrain_log",
+   "what": "monitoring table",
+   "read_by_generators_as": "ml/data/monitoring/signals",
+   "source": {
+    "table": "dfm.monitoring.retrain_log",
+    "delta_version": "current",
+    "job_run": "886695731562327",
+    "pass": "pass2"
+   },
+   "files": [
+    {
+     "file": "monitoring/retrain_log.parquet",
+     "bytes": 2109,
+     "sha256": "e2dd7910635211a6bc4d9684c75c0352d4ef0f9f0b0bbc57661752e99f2a9df6",
+     "rows": 6,
+     "columns": [
+      {
+       "name": "model_version",
+       "type": "string"
+      },
+      {
+       "name": "period",
+       "type": "string"
+      },
+      {
+       "name": "trained_on",
+       "type": "string"
+      },
+      {
+       "name": "training_rows",
+       "type": "int64"
+      },
+      {
+       "name": "error_rows",
+       "type": "int64"
+      },
+      {
+       "name": "model",
+       "type": "string"
+      }
+     ]
+    },
+    {
+     "file": "monitoring/retrain_log.csv",
+     "bytes": 447,
+     "sha256": "ce17dc7c08151721eb9c6b4e6745815454f89f6f1bbb1c4a99614297280ac1dd",
+     "rows": 6,
+     "columns": [
+      {
+       "name": "model_version",
+       "type": "string"
+      },
+      {
+       "name": "period",
+       "type": "string"
+      },
+      {
+       "name": "trained_on",
+       "type": "string"
+      },
+      {
+       "name": "training_rows",
+       "type": "int64"
+      },
+      {
+       "name": "error_rows",
+       "type": "int64"
+      },
+      {
+       "name": "model",
+       "type": "string"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "name": "forecast_errors",
+   "what": "monitoring table",
+   "read_by_generators_as": "ml/data/monitoring/signals",
+   "source": {
+    "table": "dfm.monitoring.forecast_errors",
+    "delta_version": "current",
+    "job_run": "886695731562327",
+    "pass": "pass2"
+   },
+   "files": [
+    {
+     "file": "monitoring/forecast_errors.parquet",
+     "bytes": 468710,
+     "sha256": "18baf83bf983c890471819c736ea072d2579dda7dbb8283b30a949ecf036c3a2",
+     "rows": 36072,
+     "columns": [
+      {
+       "name": "canonical_item_number",
+       "type": "string"
+      },
+      {
+       "name": "origin_week",
+       "type": "date32[day]"
+      },
+      {
+       "name": "origin_ts",
+       "type": "timestamp[us, tz=Etc/UTC]"
+      },
+      {
+       "name": "period",
+       "type": "string"
+      },
+      {
+       "name": "segment",
+       "type": "string"
+      },
+      {
+       "name": "tier",
+       "type": "string"
+      },
+      {
+       "name": "horizon_weeks",
+       "type": "double"
+      },
+      {
+       "name": "forecast",
+       "type": "double"
+      },
+      {
+       "name": "actual",
+       "type": "double"
+      },
+      {
+       "name": "scored",
+       "type": "bool"
+      },
+      {
+       "name": "model_version",
+       "type": "string"
+      },
+      {
+       "name": "error",
+       "type": "double"
+      }
+     ]
+    },
+    {
+     "file": "monitoring/forecast_errors.csv",
+     "bytes": 4196106,
+     "sha256": "81780f943a7e4f622674897b024e5809b3c3b0addf03741c5ef5914c384f23f9",
+     "rows": 36072,
+     "columns": [
+      {
+       "name": "canonical_item_number",
+       "type": "string"
+      },
+      {
+       "name": "origin_week",
+       "type": "date32[day]"
+      },
+      {
+       "name": "origin_ts",
+       "type": "timestamp[us, tz=Etc/UTC]"
+      },
+      {
+       "name": "period",
+       "type": "string"
+      },
+      {
+       "name": "segment",
+       "type": "string"
+      },
+      {
+       "name": "tier",
+       "type": "string"
+      },
+      {
+       "name": "horizon_weeks",
+       "type": "double"
+      },
+      {
+       "name": "forecast",
+       "type": "double"
+      },
+      {
+       "name": "actual",
+       "type": "double"
+      },
+      {
+       "name": "scored",
+       "type": "bool"
+      },
+      {
+       "name": "model_version",
+       "type": "string"
+      },
+      {
+       "name": "error",
+       "type": "double"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "name": "monitoring_summary",
+   "what": "monitoring table",
+   "read_by_generators_as": "ml/data/monitoring/signals",
+   "source": {
+    "table": "dfm.monitoring.monitoring_summary",
+    "delta_version": "current",
+    "job_run": "886695731562327",
+    "pass": "pass2"
+   },
+   "files": [
+    {
+     "file": "monitoring/monitoring_summary.parquet",
+     "bytes": 9418,
+     "sha256": "8e6203780b58510ffac2b1fe9274c83d238d63a041f0b462614cbec0e884e572",
+     "rows": 1,
+     "columns": [
+      {
+       "name": "issued_job_run_id",
+       "type": "string"
+      },
+      {
+       "name": "model_version",
+       "type": "string"
+      },
+      {
+       "name": "latest_status",
+       "type": "string"
+      },
+      {
+       "name": "summary_json",
+       "type": "string"
+      }
+     ]
+    },
+    {
+     "file": "monitoring/monitoring_summary.csv",
+     "bytes": 27613,
+     "sha256": "30735d4f9991483c649531cea5a0a6e9d44590906c93c60d2f78d67f70a6cf09",
+     "rows": 1,
+     "columns": [
+      {
+       "name": "issued_job_run_id",
+       "type": "string"
+      },
+      {
+       "name": "model_version",
+       "type": "string"
+      },
+      {
+       "name": "latest_status",
+       "type": "string"
+      },
+      {
+       "name": "summary_json",
+       "type": "string"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "name": "version_tags",
+   "what": "dfm.ml.demand_models version tags",
+   "read_by_generators_as": null,
+   "source": {
+    "api": "Unity Catalog model registry",
+    "model": "dfm.ml.demand_models"
+   },
+   "files": [
+    {
+     "file": "registry/version_tags.parquet",
+     "bytes": 4050,
+     "sha256": "d0d120c97666b35f208338f8ed5f738f0594e191dc9aead74cfdc4d4605219cb",
+     "rows": 83,
+     "columns": [
+      {
+       "name": "version",
+       "type": "int64"
+      },
+      {
+       "name": "key",
+       "type": "string"
+      },
+      {
+       "name": "value",
+       "type": "string"
+      }
+     ]
+    },
+    {
+     "file": "registry/version_tags.csv",
+     "bytes": 3712,
+     "sha256": "6245e894af708df04ed9b370645d9894f29ac6c842b33297c9e57bc15d713847",
+     "rows": 83,
+     "columns": [
+      {
+       "name": "version",
+       "type": "int64"
+      },
+      {
+       "name": "key",
+       "type": "string"
+      },
+      {
+       "name": "value",
+       "type": "string"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "name": "aliases",
+   "what": "dfm.ml.demand_models aliases",
+   "read_by_generators_as": null,
+   "source": {
+    "api": "Unity Catalog model registry",
+    "model": "dfm.ml.demand_models"
+   },
+   "files": [
+    {
+     "file": "registry/aliases.parquet",
+     "bytes": 1729,
+     "sha256": "664357395726cf086e59bd7ea1109130a887f03c648ff12a4f290bcffa3d7eae",
+     "rows": 1,
+     "columns": [
+      {
+       "name": "alias",
+       "type": "string"
+      },
+      {
+       "name": "version",
+       "type": "int64"
+      }
+     ]
+    },
+    {
+     "file": "registry/aliases.csv",
+     "bytes": 25,
+     "sha256": "c576b23e7845691620029a676252f09d2c09230d61dcca31ed651d040596e985",
+     "rows": 1,
+     "columns": [
+      {
+       "name": "alias",
+       "type": "string"
+      },
+      {
+       "name": "version",
+       "type": "int64"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "name": "forward_replay",
+   "what": "forward replay by window and month: dirty (status quo), clean_rule (cleaned records, recomputed rule), model",
+   "read_by_generators_as": "data_source/truth/forward_results.json (forward, monthly)",
+   "source": {
+    "landed_file": "/Volumes/dfm/landing/exports/truth/forward_results/pass2/forward_results.json",
+    "sha256": "077215dc692d076ba6412ef6e0170ef0ce69436ee26a7848dc1d03ffd4744567",
+    "pass": "pass2"
+   },
+   "files": [
+    {
+     "file": "replay/forward_replay.parquet",
+     "bytes": 11948,
+     "sha256": "d4342ea73aa8a6951a2e438f5bb2659450da77e7f3d28583fd366078408822fa",
+     "rows": 1179,
+     "columns": [
+      {
+       "name": "scope",
+       "type": "string"
+      },
+      {
+       "name": "period",
+       "type": "string"
+      },
+      {
+       "name": "variant",
+       "type": "string"
+      },
+      {
+       "name": "metric",
+       "type": "string"
+      },
+      {
+       "name": "value",
+       "type": "double"
+      },
+      {
+       "name": "text",
+       "type": "string"
+      }
+     ]
+    },
+    {
+     "file": "replay/forward_replay.csv",
+     "bytes": 64559,
+     "sha256": "52ba869019dbc6cb5bb70653c5c5118fcb7ad074d75166a7b71235c2ecb993c7",
+     "rows": 1179,
+     "columns": [
+      {
+       "name": "scope",
+       "type": "string"
+      },
+      {
+       "name": "period",
+       "type": "string"
+      },
+      {
+       "name": "variant",
+       "type": "string"
+      },
+      {
+       "name": "metric",
+       "type": "string"
+      },
+      {
+       "name": "value",
+       "type": "double"
+      },
+      {
+       "name": "text",
+       "type": "string"
+      }
+     ]
+    }
+   ]
+  }
+ ]
+}
