@@ -41,7 +41,7 @@ BLUE = "#381FA1"; BG = "#F3F5F7"; LINE = "#D9DEE5"; MUTED = "#5F6B7A"; ROWRED = 
 
 def build_queue():
     queue = SR.reorder_queue().set_index("canonical_item_number")
-    # parts superseded under a use-up change and past their switch date: the ERP shows them as use-up
+    # parts superseded under a use-up change and past their switch date: the ERP shows them as phase-out
     # with their successor and suggests no order; the policy's reorder point stays visible
     sup_by = SR.supersessions()
     use_up = sup_by[sup_by["supersede_switch_date"] <= pd.Timestamp(AS_OF)]["superseded_by"].to_dict()
@@ -110,7 +110,7 @@ def build_queue():
         need = float(known_jobs.get(item, 0.0))
         position = oh + oo - need
         if item in use_up:
-            status = "USE UP"
+            status = "PHASE OUT"
         elif position <= level:
             status = "ORDER NOW"
         elif position <= level + daily * SOON_DAYS:
@@ -133,7 +133,7 @@ def build_queue():
                      "suggested": suggested, "status": status, "cover": cover, "cost": float(a["standard_cost"]),
                      "flags": flags, "successor": use_up.get(item, "")})
     q = pd.DataFrame(rows)
-    q["rank"] = q["status"].map({"ORDER NOW": 0, "ORDER SOON": 1, "USE UP": 2, "OK": 3})
+    q["rank"] = q["status"].map({"ORDER NOW": 0, "ORDER SOON": 1, "PHASE OUT": 2, "OK": 3})
     q["gap"] = (q["avail"] - q["rop"]) / q["rop"].clip(lower=1)
     return q.sort_values(["rank", "gap"]).reset_index(drop=True)
 
@@ -145,11 +145,11 @@ def _fmt(x):
 def render(q):
     counts = q["status"].value_counts().to_dict()
     now, soon, ok = counts.get("ORDER NOW", 0), counts.get("ORDER SOON", 0), counts.get("OK", 0)
-    used = counts.get("USE UP", 0)
+    used = counts.get("PHASE OUT", 0)
     show = pd.concat([q[q["status"] == "ORDER NOW"].head(NROWS - 6), q[q["status"] == "ORDER SOON"].head(4),
-                      q[q["status"] == "USE UP"].head(2)])
-    badge = {"ORDER NOW": RED, "ORDER SOON": AMBER, "USE UP": MUTED, "OK": GREEN}
-    rowbg = {"ORDER NOW": ROWRED, "ORDER SOON": ROWAMB, "USE UP": BG, "OK": "#FFFFFF"}
+                      q[q["status"] == "PHASE OUT"].head(2)])
+    badge = {"ORDER NOW": RED, "ORDER SOON": AMBER, "PHASE OUT": MUTED, "OK": GREEN}
+    rowbg = {"ORDER NOW": ROWRED, "ORDER SOON": ROWAMB, "PHASE OUT": BG, "OK": "#FFFFFF"}
     trs = []
     for r in show.itertuples(index=False):
         tags = "".join(f'<span class="tag">{f}</span>' for f in r.flags)
@@ -210,7 +210,7 @@ def render(q):
   <div class="sub">All stocked items against this week's reorder points &middot; {pd.Timestamp(AS_OF).strftime('%m/%d/%Y')}</div></div>
   <div class="summary">REORDER SUMMARY <span class="dot" style="background:{RED}"></span><b>{now}</b>Order now
   <span class="dot" style="background:{AMBER}"></span><b>{soon}</b>Order soon
-  <span class="dot" style="background:{MUTED}"></span><b>{used}</b>Use up
+  <span class="dot" style="background:{MUTED}"></span><b>{used}</b>Phase out
   <span class="dot" style="background:{GREEN}"></span><b>{ok:,}</b>OK</div></div>
 <div class="bar"><span class="btn">+ Create PO</span><span class="btn dim">Edit</span><span class="btn">Release to PO</span>
   <span class="btn">Hold</span><span class="sep"></span><span class="btn">Export</span></div>
@@ -228,7 +228,7 @@ def render(q):
 def run():
     q = build_queue()
     now, soon, used, ok = render(q)
-    print(f"Reorder queue written to {OUT}: {now} order now, {soon} order soon, {used} use up, {ok:,} OK")
+    print(f"Reorder queue written to {OUT}: {now} order now, {soon} order soon, {used} phase out, {ok:,} OK")
 
 
 if __name__ == "__main__":
