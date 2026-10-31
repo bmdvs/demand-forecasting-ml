@@ -208,9 +208,8 @@ __marimo__/
 
 # Additional Settings
 
-# Internal build briefs, not published
-ml/reports/BUILD_NOTES.md
-ml/reports/BUILD_NOTES_ADDENDUM.md
+# Local working data and the former ml/ layout (the report code is in reports/); kept on disk, not tracked
+ml/
 
 # Generated data, ground-truth crosswalks and ML artifacts — regenerated from
 # scripts (committed samples show the shape)
@@ -245,6 +244,7 @@ CLAUDE.md
 PORT_RECORD.md
 PORT_DEVIATIONS.md
 DELIVERABLE_RECORD.md
+DEVIATIONS.md
 
 # Databricks bundle state and local Spark state
 .databricks/

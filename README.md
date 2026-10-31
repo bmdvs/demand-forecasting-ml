@@ -65,9 +65,9 @@ Historically, the shop's inventory reordering was done manually and ran on data 
 | [`resources/`](resources/) and [`databricks.yml`](databricks.yml) | The Databricks Asset Bundle: the pipeline and the monthly job `dfm_monthly`, with dev and prod targets. |
 | [`infra/`](infra/) | Platform setup and maintenance: Unity Catalog objects and grants, extract landing, data profiles and the gold snapshot export ([setup notes](infra/README.md)). |
 | [`tests/`](tests/) | Unit tests for the package, and the local parity runner in [`tests/parity/`](tests/parity/) that checks the platform's tables and model outputs against the archived reference run. |
-| [`ml/reports/`](ml/reports/) | The report generators, reading the gold snapshot. |
-| [`ml/src/`](ml/src/) | The local analyses the reports still compute: the reliability of on-hand balances and the financial measures in the audit, and the reference run's local modeling scripts. |
+| [`reports/`](reports/) | The report generators, reading the gold snapshot, and the two local analyses the audit reads: the reliability of on-hand balances and the financial measures. |
 | [`exports/gold_snapshot/`](exports/gold_snapshot/) | The gold tables, monitoring tables, registry version tags and replay results the reports read, as Parquet and CSV with a manifest. |
+| [`exports/feature_study/`](exports/feature_study/) | The feature study's metrics by rung, read by the technical report. |
 
 ---
 
@@ -134,12 +134,14 @@ python infra/land_extracts.py --profile <profile> --pass pass2
 python tests/parity/run_package.py --archive reference/2026-10_post_signal_update --out runs/parity/package/archive_pass2
 python tests/parity/parity_b.py --reference reference/2026-10_post_signal_update --run runs/parity/package/archive_pass2
 
-# 5. Report generators, from the gold snapshot
-python -m ml.reports.generate_data_quality_audit
-python -m ml.reports.generate_reorder_queue
-python -m ml.reports.generate_model_overview
-python -m ml.reports.generate_technical_report
-python -m ml.reports.generate_monitoring_report
+# 5. Report generators, from the gold snapshot (the audit also reads the two local analyses)
+python -m reports.reliability
+python -m reports.financials
+python -m reports.generate_data_quality_audit
+python -m reports.generate_reorder_queue
+python -m reports.generate_model_overview
+python -m reports.generate_technical_report
+python -m reports.generate_monitoring_report
 ```
 
 ```bash
