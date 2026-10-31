@@ -41,6 +41,10 @@ BLUE = "#381FA1"; BG = "#F3F5F7"; LINE = "#D9DEE5"; MUTED = "#5F6B7A"; ROWRED = 
 
 def build_queue():
     queue = SR.reorder_queue().set_index("canonical_item_number")
+    # parts superseded under a use-up change and past their switch date: the ERP shows them as use-up
+    # with their successor and suggests no order; the policy's reorder point stays visible
+    sup_by = SR.supersessions()
+    use_up = sup_by[sup_by["supersede_switch_date"] <= pd.Timestamp(AS_OF)]["superseded_by"].to_dict()
     booked = SR.booked_over_lead()
     attrs = SR.item_attributes().set_index("canonical_item_number")
     im = pd.read_csv(RAW / "erp" / "item_master.csv", low_memory=False).set_index("item_number")
@@ -70,6 +74,11 @@ def build_queue():
                      & ((prod["completed_date"].isna()) | (pd.to_datetime(prod["completed_date"]) > pd.Timestamp(AS_OF)))]
     bom = pd.read_csv(RAW / "erp" / "bill_of_materials.csv")
     req = open_jobs.merge(bom, on="product_number")
+    # a job draws the bill lines in effect on its release date: a superseded component's line expires at
+    # the switch, its successor's takes effect, so a job allocates one of the two, not both
+    rel = pd.to_datetime(req["release_date"])
+    req = req[(pd.to_datetime(req["effective_date"]) <= rel)
+              & (req["expiry_date"].isna() | (rel < pd.to_datetime(req["expiry_date"])))]
     req["qty"] = req["qty_ordered"] * req["qty_per"]
     known_jobs = req.groupby(req["component_item"].map(canon))["qty"].sum()
     # a record left with no primary supplier falls back to the one it is bought from most
@@ -100,7 +109,9 @@ def build_queue():
         # time, falls to the level set for the demand it cannot see
         need = float(known_jobs.get(item, 0.0))
         position = oh + oo - need
-        if position <= level:
+        if item in use_up:
+            status = "USE UP"
+        elif position <= level:
             status = "ORDER NOW"
         elif position <= level + daily * SOON_DAYS:
             status = "ORDER SOON"
@@ -108,7 +119,8 @@ def build_queue():
             status = "OK"
         # the model's lot, in as many lots as the shortfall below the point needs
         q_lot = float(e["order_qty"]) if e["order_qty"] else max(1.0, daily * ORDER_COVER_DAYS)
-        suggested = q_lot * max(1, int(np.ceil((level - position) / q_lot))) if status != "OK" else 0.0
+        suggested = (q_lot * max(1, int(np.ceil((level - position) / q_lot)))
+                     if status in ("ORDER NOW", "ORDER SOON") else 0.0)
         sid = sup_canon.get(im["primary_supplier_id"].get(item), im["primary_supplier_id"].get(item))
         if not isinstance(sid, str):
             sid = po_sup.get(item)
@@ -119,9 +131,9 @@ def build_queue():
                      "on_hand": oh, "on_order": oo, "alloc": need, "booked": float(booked.get(item, 0.0)), "avail": position, "lead": lt, "fc_lead": fc_lead,
                      "ss": float(ss), "rop": float(level),
                      "suggested": suggested, "status": status, "cover": cover, "cost": float(a["standard_cost"]),
-                     "flags": flags})
+                     "flags": flags, "successor": use_up.get(item, "")})
     q = pd.DataFrame(rows)
-    q["rank"] = q["status"].map({"ORDER NOW": 0, "ORDER SOON": 1, "OK": 2})
+    q["rank"] = q["status"].map({"ORDER NOW": 0, "ORDER SOON": 1, "USE UP": 2, "OK": 3})
     q["gap"] = (q["avail"] - q["rop"]) / q["rop"].clip(lower=1)
     return q.sort_values(["rank", "gap"]).reset_index(drop=True)
 
@@ -133,10 +145,11 @@ def _fmt(x):
 def render(q):
     counts = q["status"].value_counts().to_dict()
     now, soon, ok = counts.get("ORDER NOW", 0), counts.get("ORDER SOON", 0), counts.get("OK", 0)
+    used = counts.get("USE UP", 0)
     show = pd.concat([q[q["status"] == "ORDER NOW"].head(NROWS - 6), q[q["status"] == "ORDER SOON"].head(4),
-                      q[q["status"] == "OK"].head(2)])
-    badge = {"ORDER NOW": RED, "ORDER SOON": AMBER, "OK": GREEN}
-    rowbg = {"ORDER NOW": ROWRED, "ORDER SOON": ROWAMB, "OK": "#FFFFFF"}
+                      q[q["status"] == "USE UP"].head(2)])
+    badge = {"ORDER NOW": RED, "ORDER SOON": AMBER, "USE UP": MUTED, "OK": GREEN}
+    rowbg = {"ORDER NOW": ROWRED, "ORDER SOON": ROWAMB, "USE UP": BG, "OK": "#FFFFFF"}
     trs = []
     for r in show.itertuples(index=False):
         tags = "".join(f'<span class="tag">{f}</span>' for f in r.flags)
@@ -147,7 +160,8 @@ def render(q):
             f'<td class="r">{_fmt(r.avail)}</td><td class="r">{r.lead:.0f}</td>'
             f'<td class="r">{_fmt(r.fc_lead)}</td><td class="r">{_fmt(r.ss)}</td><td class="r"><b>{_fmt(r.rop)}</b></td>'
             f'<td class="r"><b>{_fmt(r.suggested) if r.suggested else "&ndash;"}</b></td>'
-            f'<td><span class="badge" style="background:{badge[r.status]};">&bull; {r.status}</span></td></tr>')
+            f'<td><span class="badge" style="background:{badge[r.status]};">&bull; {r.status}</span>'
+            + (f' <span class="succ">&rarr; {r.successor}</span>' if r.successor else "") + '</td></tr>')
     nav = "".join(f'<a class="{"on" if n == "Purchasing" else ""}">{n}</a>'
                   for n in ["Dashboard", "Work Orders", "Scheduling", "Inventory", "Purchasing", "Receiving", "Reports", "Admin"])
     day = pd.Timestamp(AS_OF).strftime("%A, %B %d, %Y")
@@ -185,6 +199,7 @@ def render(q):
   .badge {{ color:#fff; font-weight:700; font-size:11px; padding:2px 7px; border-radius:3px; }}
   .tag {{ display:inline-block; border:1px solid #9FB3CC; color:#2458A6; background:#EEF4FB; border-radius:10px;
           padding:0 7px; margin-right:4px; font-size:11px; }}
+  .succ {{ color:{MUTED}; font-size:11.5px; }}
   .ml {{ background:{BLUE}; color:#fff; font-size:10px; font-weight:700; padding:1px 4px; border-radius:2px; margin-left:4px; }}
 </style></head><body>
 <div class="top"><div class="app">Enterprise Resource Planning</div>
@@ -195,6 +210,7 @@ def render(q):
   <div class="sub">All stocked items against this week's reorder points &middot; {pd.Timestamp(AS_OF).strftime('%m/%d/%Y')}</div></div>
   <div class="summary">REORDER SUMMARY <span class="dot" style="background:{RED}"></span><b>{now}</b>Order now
   <span class="dot" style="background:{AMBER}"></span><b>{soon}</b>Order soon
+  <span class="dot" style="background:{MUTED}"></span><b>{used}</b>Use up
   <span class="dot" style="background:{GREEN}"></span><b>{ok:,}</b>OK</div></div>
 <div class="bar"><span class="btn">+ Create PO</span><span class="btn dim">Edit</span><span class="btn">Release to PO</span>
   <span class="btn">Hold</span><span class="sep"></span><span class="btn">Export</span></div>
@@ -206,13 +222,13 @@ def render(q):
 <tbody>{''.join(trs)}</tbody></table>
 </body></html>"""
     OUT.write_text(html, encoding="utf-8")
-    return now, soon, ok
+    return now, soon, used, ok
 
 
 def run():
     q = build_queue()
-    now, soon, ok = render(q)
-    print(f"Reorder queue written to {OUT}: {now} order now, {soon} order soon, {ok:,} OK")
+    now, soon, used, ok = render(q)
+    print(f"Reorder queue written to {OUT}: {now} order now, {soon} order soon, {used} use up, {ok:,} OK")
 
 
 if __name__ == "__main__":

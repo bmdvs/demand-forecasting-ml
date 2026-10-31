@@ -67,6 +67,14 @@ def item_attributes() -> pd.DataFrame:
     return _read("tables", "mart_item_attributes")[cols].sort_values("canonical_item_number").reset_index(drop=True)
 
 
+def supersessions() -> pd.DataFrame:
+    """By item superseded under a use-up change: its successor and the switch date (gold.mart_item_attributes)."""
+    a = _read("tables", "mart_item_attributes")
+    a = a[a["superseded_by"].notna()][["canonical_item_number", "superseded_by", "supersede_switch_date"]]
+    a["supersede_switch_date"] = pd.to_datetime(a["supersede_switch_date"])
+    return a.set_index("canonical_item_number")
+
+
 def item_crosswalk() -> pd.DataFrame:
     """ml/data/marts/item_crosswalk.csv: item_number, canonical_item_number."""
     df = _read("tables", "int_item_crosswalk")[["item_number", "canonical_item_number"]]
