@@ -1,36 +1,38 @@
-# Machine Learning Model: Demand Forecasting 
+# Demand Forecasting ML Model & ERP Data Quality Audit
 
-This project was built on Azure Databricks: a Lakeflow pipeline cleans and transforms raw extracts, and a monthly job trains, gates, scores and monitors the model through MLflow and the Unity Catalog model registry. The work began with a full [data quality audit](https://brimsystems.github.io/demand-forecasting-ml/docs/reports/data_quality_audit.html) of the shop's ERP system, which found sixteen recurring error types across eight tables and remediated them so the records could be trusted. 
+This project was built on Azure Databricks: source extracts land in Unity Catalog, a Lakeflow pipeline cleans and transforms them, and a monthly job trains, gates, scores and monitors the model through MLflow and the Unity Catalog model registry.
 
-A **demand forecasting ML model** was then built on the cleaned records. Every week it forecasts demand and sets the reorder decision for each of the shop's 1,300 stocked items. The model's code is found [HERE]. The model is detailed in the [model overview report](https://bmdvs.github.io/demand-forecasting-ml/docs/reports/model_overview.html) and summarized below.
+The work began with a full [data quality audit](https://brimsystems.github.io/demand-forecasting-ml/docs/reports/data_quality_audit.html) of the shop's ERP, which found sixteen recurring error types across eight tables and remediated them so the records could be trusted.
 
-- **Results.** The model has set every reorder decision the shop made from January to June 2026. The table compares that period with 2025, when buyers reordered by hand on the uncleaned records, and shows the same manual process run on the cleaned records over the same six months. The model significantly improved every production and purchasing KPI. Both methods carried less inventory than 2025 and freed cash tied in working capital, driven by recomputed reorder points and safety stock as a result of the data quality audit.
+A **demand forecasting ML model** was then built on the cleaned records. Every week it forecasts demand and sets the reorder decision for each of the shop's 1,339 stocked items. The model is detailed in the [model overview](https://brimsystems.github.io/demand-forecasting-ml/docs/reports/model_overview.html) and summarized below.
+
+- **Results.** The model has set every reorder decision the shop made from January to June 2026. The table compares that period with 2025, when buyers reordered by hand on the uncleaned records, and shows the same manual process run on the cleaned records over the same six months. The model improved every production and purchasing KPI. Both methods carried less inventory than 2025 and freed cash tied in working capital, mainly through the audit's recomputed reorder points and safety stock, with merged duplicate items removing a second buffer on the same part.
 
 <div align="center">
 
-<b>ML-driven vs. Manual Reordering Performance on Cleaned ERP Records (1H 2026 against 2025)</b>
+<b>Reordering on the cleaned ERP records, January to June 2026, against 2025</b>
 
 | | Stockout days | Jobs held for material | Rush-freight spend | Avg. inventory balance |
 |:---|:---:|:---:|:---:|:---:|
-| Manual Reordering | −7% | −11% | −19% | −11% (139 days of usage, from 160) |
-| **ML-driven Reordering** | **−36%** | **−43%** | **−46%** | **−5% (148 days of usage, from 160)** |
+| **Manual reordering** | −7% | −10% | −19% | −11% (139 days of usage, from 161) |
+| **ML-driven reordering** | −36% | −43% | −46% | −5% (148 days of usage, from 161) |
 
 </div>
 
-- **Purpose and use.** Every Monday the model forecasts each item's usage over its supplier lead time and turns it into a reorder point (the stock level at which to order) and an order quantity, written to the ERP's purchasing screen. A buffer is added from the item's forecast error, its supplier's lead-time variability and a fill-rate target set by criticality. The model is intended to be used by buyers as the default for every weekly reorder: they review the queue in the purchasing screen and can override any line.
-- **Model training.** The model was trained on three years of remediated ERP history: inventory transactions, production orders and bills of materials, service orders, purchase-order receipts, and the item and supplier masters. It takes the items that booked jobs will draw as known, and forecasts the rest of each item's usage: floor pulls, service issues and jobs not yet booked. 
-  - Forecasts are driven by the item's own usage history, expressed as lagged and rolling features computed up to the forecast date. Demand forecasts for service items also consider the installed base of fielded products built from completed production orders.
-  - A random forest is trained across all 1,300 items on these features together with each item's demand pattern, class, lead time and annual volume.
-- **Model evaluation.** Candidates (ridge, random forest, XGBoost) were tuned with Optuna on a validation window, selected by rule, and scored on a held-out 2025 backtest against five simple baseline methods.
-  - The strongest baseline was the moving average by demand pattern (47.3% WAPE).
-  - The production model reaches 42.8% overall and 36.8% on line-critical items, a 9.5% reduction in error against baseline.
-  - Most of the remaining error sits in the lumpy and intermittent items, about two-fifths of the catalog, whose demand arrives in a few weeks a year in quantities that vary by 35 to 60%; no method forecasts those at low error.
-  - Full evaluation and technical detail, including additional signal groups that were built and tested, are in the [technical report](https://brimsystems.github.io/demand-forecasting-ml/docs/reports/technical_report.html).
-- **Production Monitoring.** Retrained monthly and refreshed weekly, with a monitor that tracks forecast error and bias by demand pattern, feature drift, supplier lead-time drift and data quality against investigate-and-retrain thresholds. Additional detail is found in the [monitoring report](https://bmdvs.github.io/demand-forecasting-ml/docs/reports/monitoring_report.html).
-  
-The model's reorder suggestions are embedded in the shop's existing [ERP purchasing screen](https://bmdvs.github.io/demand-forecasting-ml/docs/index.html) and ranked by urgency, as shown below:
+- **Purpose and use.** Every Monday the model forecasts each item's usage over its supplier lead time and turns it into a reorder point (the stock level at which to order) and an order quantity, written to the ERP's purchasing screen. A buffer is added from the item's forecast error, its supplier's lead-time variability and a fill-rate target set by criticality. The model is intended to be used by buyers as their weekly reorder queue, with every line open to review and override.
+- **Model training.** The model was trained on three years of remediated ERP history: inventory transactions, production orders and bills of materials, service orders, purchase-order receipts, and the item and supplier masters. It takes the parts that booked jobs will draw as known, and forecasts the rest of each item's usage: mainly floor pulls, service issues and jobs not yet booked. That forecast is driven by the item's own usage history, expressed as lagged and rolling features computed up to the forecast date. A single random forest is trained across all items on these features together with each item's demand pattern, class, lead time and annual volume, so the model pools what it learns across items with similar histories rather than fitting each series alone. Nothing outside the ERP enters the model.
+- **Model evaluation.** Candidates (ridge, random forest, XGBoost) were tuned with Optuna on a validation window, selected by rule, and scored on a held-out 2025 backtest against five simple methods a buyer could run by hand, the strongest being the order book plus the best moving average by demand pattern (47.2% WAPE). The production model reaches 43.0% overall and 37.1% on line-critical parts, an 8.9% reduction in error against the best manual method with the same information. Most of the remaining error sits in the lumpy and intermittent items, about two-fifths of the catalog, whose demand arrives in a few weeks a year in quantities that vary by 35 to 60%; no method forecasts those at low error. A feature study tested five further signal groups; none improved held-out accuracy, and the smaller set was kept. Full evaluation and technical detail are in the [technical report](https://brimsystems.github.io/demand-forecasting-ml/docs/reports/technical_report.html).
+- **Production monitoring.** Retrained monthly and refreshed weekly, with a monitor that tracks forecast error and bias by demand pattern, feature drift, supplier lead-time drift and data quality against investigate-and-retrain thresholds. Detail is in the [monitoring report](https://brimsystems.github.io/demand-forecasting-ml/docs/reports/monitoring_report.html).
 
-[![ERP reorder queue with embedded demand forecasts](docs/screenshots/erp_queue.png)](https://bmdvs.github.io/demand-forecasting-ml/docs/index.html)
+The model's reorder suggestions are embedded in the shop's existing ERP purchasing screen:
+
+[![ERP reorder queue with embedded demand forecasts](docs/screenshots/erp_queue.png)](https://brimsystems.github.io/demand-forecasting-ml/docs/index.html)
+
+Its results over the six months it has run the shop's reorders, against the two ways the shop could have reordered without it:
+
+[![Model outcomes, January to June 2026](docs/screenshots/model_outcomes.png)](https://brimsystems.github.io/demand-forecasting-ml/docs/reports/model_overview.html)
+
+> [**Open the live reorder queue →**](https://brimsystems.github.io/demand-forecasting-ml/docs/index.html)
 
 ---
 
@@ -40,51 +42,34 @@ An industrial equipment manufacturer (~$30mm revenue) produces conveyors and mat
 
 Historically, the shop's inventory reordering was done manually and ran on data that was messy and couldn't be trusted. Much of the reordering process was labor-intensive and imprecise: stock levels and lead times were stale, stock on hand was unverified, safety stock was inflated, and rush orders were relied upon to compensate for shortfalls. The result was the shop carrying excess inventory, roughly 160 days of usage, yet still logging elevated stockout events, held jobs for missing material, and rush freight spend.
 
+Over the past six months, the demand forecasting model has been used to set every reorder decision for the shop. The ML model overview and performance report below details the findings across this period. Relying on the model's forecasts, the shop was able to achieve significant improvements across production and purchasing KPIs, while also reducing its inventory balance and freeing up cash tied in working capital.
+
 ---
 
 ## Deliverables
 
 | # | Deliverable | What it is | Links |
 |---|---|---|---|
-| 1 | ERP reorder queue | The demand forecasting model embedded in the ERP's purchasing screen: each item's on-hand, allocated, on-order and available stock, forecast usage over its lead time, safety stock, reorder point, and suggested order quantity. | [View](https://bmdvs.github.io/demand-forecasting-ml/docs/index.html) |
-| 2 | Data quality audit | Details the data quality audit, including every type of error found across the ERP's eight tables, the error remediation completed, the before-and-after results, and the process changes that will keep the ERP system clean. | [View](https://bmdvs.github.io/demand-forecasting-ml/docs/reports/data_quality_audit.html) |
-| 3 | ML model overview & performance report | A high-level summary of the demand forecasting model: what it does, the data it learns from, how it sets each reorder, and the results it achieves. | [View](https://bmdvs.github.io/demand-forecasting-ml/docs/reports/model_overview.html) |
-| 4 | ML technical report | The model card, training data and time-based split, model selection and performance, SHAP feature importance, how forecasts turn into reorder decisions, known limitations, and deployment. | [View](https://bmdvs.github.io/demand-forecasting-ml/docs/reports/technical_report.html) |
-| 5 | MLOps monitoring report | Monthly monitoring of the live model's outcomes against retraining thresholds: forecast error and bias overall and by demand pattern, drift, data quality, and business KPIs. | [View](https://bmdvs.github.io/demand-forecasting-ml/docs/reports/monitoring_report.html) |
+| 1 | ERP reorder queue | The demand forecasting model embedded in the ERP's purchasing screen: each item's on-hand, allocated, on-order and available stock, forecast usage over its lead time, safety stock, reorder point, and suggested order quantity. | [View](https://brimsystems.github.io/demand-forecasting-ml/docs/index.html) |
+| 2 | Data quality audit | Details the data quality audit, including every type of error found across the ERP's eight tables, the error remediation completed, the before-and-after results, and the process changes that will keep the ERP system clean. | [View](https://brimsystems.github.io/demand-forecasting-ml/docs/reports/data_quality_audit.html) |
+| 3 | ML model overview & performance report | A high-level summary of the demand forecasting model: what it does, the data it learns from, how it sets each reorder, and the results it achieves. | [View](https://brimsystems.github.io/demand-forecasting-ml/docs/reports/model_overview.html) |
+| 4 | ML technical report | The model card, training data and time-based split, model selection and performance, the feature study, SHAP feature importance, how forecasts turn into reorder decisions, known limitations, and deployment. | [View](https://brimsystems.github.io/demand-forecasting-ml/docs/reports/technical_report.html) |
+| 5 | MLOps monitoring report | Monthly monitoring of the live model's outcomes against retraining thresholds: forecast error and bias overall and by demand pattern, drift, data quality, business KPIs, and the supplier lead-time review. | [View](https://brimsystems.github.io/demand-forecasting-ml/docs/reports/monitoring_report.html) |
 
 ---
 
 ## Code
 
-### Data pipeline: [`data_pipeline/models/`](data_pipeline/models/)
-
-| Layer | What it is, does and contains |
+| Folder | What it is |
 |---|---|
-| Staging | One model per source table (ERP, WMS and the buyers' spreadsheet). Each inputs and cleans the raw data into a consistent shape and format. |
-| Data quality | One model for each of the 16 error types identified in the audit. Flags the records affected across the staging tables. |
-| Intermediate | Applies the cleanup to the staged data without altering the source. Builds the shared pieces the marts are assembled from, including the item crosswalk and cleaned item master and inventory ledger. |
-| Marts | The analysis-ready tables the audit and model read: cleaned demand, weekly usage, item attributes, inventory position, supplier performance, and the audit's error register. |
-
-### Data cleaning: [`data_pipeline/models/data_quality/`](data_pipeline/models/data_quality/) and [`data_source/generate/remediation.py`](data_source/generate/remediation.py)
-
-| File | What it does |
-|---|---|
-| `data_quality/dq_01` to `dq_16` | Flags the records affected by each of the sixteen errors in the audit. |
-| `marts/mart_dq_error_summary.sql` | Rolls the flagged records into the audit's error register: rows affected and rows in scope for each error and ERP table. |
-| `remediation.py` | Records every change made during the cleanup: dead-item dispositions, duplicate and supplier crosswalks, UOM conversions, recomputed lead times and reorder points, ledger corrections, document closures and the free-text attributions. |
-| `ml/src/reliability.py` | Classes every item's on-hand balance as reliable, uncertain or unreliable, before and after remediation. |
-| `ml/src/financials.py` | Measures what the errors cost and what the cleanup achieved, from the records: rush spend and shortages traced to each error, inventory write-offs and phantom on-order, and the before-and-after measures in the audit's results. |
-
-### Demand forecasting ML model: [`ml/src/`](ml/src/)
-
-| File | What it does |
-|---|---|
-| `export_marts.py` | Exports the dbt marts the model reads to parquet. |
-| `baselines.py` | Simple forecasting methods (naive, seasonal naive, moving averages, exponential smoothing, Croston) to serve as baselines. |
-| `features.py`, `training.py` | Feature building and evaluation of the three model candidates. |
-| `demand_model.py` | The production model: builds the weekly features, tunes and selects best model, retrains it monthly,  converts forecasts into reorder points, safety buffers, and order quantities for the ERP. |
-| `explain_weekly.py` | SHAP feature importance, the learning curve, feature correlations and the train, validation and test summary for the technical report. |
-| `monitor_weekly.py` | Monthly monitoring against Investigate and Retrain thresholds: forecast error and bias overall and by demand pattern, target, prediction and feature drift, data quality and business KPIs. |
+| [`src/dfm/`](src/dfm/) | The model package: features, training and selection, the reorder policy, the promotion gates and the monitor, with the monthly job's entry points (train, promote, score, monitor) in `entrypoints/`. |
+| [`pipelines/`](pipelines/) | The Lakeflow pipeline in SQL: bronze (the landed extracts), silver (staging, the sixteen data-quality flags and the intermediate models), gold (the marts the model reads and the audit's error register), and integrity checks. |
+| [`resources/`](resources/) and [`databricks.yml`](databricks.yml) | The Databricks Asset Bundle: the pipeline and the monthly job `dfm_monthly`, with dev and prod targets. |
+| [`infra/`](infra/) | Platform setup and maintenance: Unity Catalog objects and grants, extract landing, data profiles and the gold snapshot export ([setup notes](infra/README.md)). |
+| [`tests/`](tests/) | Unit tests for the package, and the local parity runner in [`tests/parity/`](tests/parity/) that checks the platform's tables and model outputs against the archived reference run. |
+| [`ml/reports/`](ml/reports/) | The report generators, reading the gold snapshot. |
+| [`ml/src/`](ml/src/) | The local analyses the reports still compute: the reliability of on-hand balances and the financial measures in the audit, and the reference run's local modeling scripts. |
+| [`exports/gold_snapshot/`](exports/gold_snapshot/) | The gold tables, monitoring tables, registry version tags and replay results the reports read, as Parquet and CSV with a manifest. |
 
 ---
 
@@ -97,77 +82,78 @@ flowchart LR
     WMS["WMS<br/>cycle counts"]
     SS["Buyer spreadsheet"]
   end
-  ERP --> STG
-  WMS --> STG
-  SS --> STG
-  STG["dbt staging"] --> DQ["16 data-quality models<br/>one per error type"]
-  DQ --> REM["Remediation records<br/>merges, corrections, deactivations"]
-  REM --> INT["dbt intermediate<br/>resolved items, corrected ledger"]
-  STG --> INT
-  INT --> MARTS[("Cleaned marts<br/>weekly usage, item attributes,<br/>inventory, suppliers, error register")]
-  MARTS --> ML["Demand model<br/>weekly forecast &rarr; reorder policy"]
-  DQ --> AUD["Data quality audit"]
-  ML --> QUEUE["ERP reorder queue"]
-  ML --> MON["MLOps monitoring"]
+  ERP --> LAND
+  WMS --> LAND
+  SS --> LAND
+  LAND[("Landing volume<br/>Unity Catalog")] --> BRZ["Lakeflow pipeline: bronze"]
+  BRZ --> SLV["silver<br/>staging, sixteen data-quality flags,<br/>intermediate"]
+  SLV --> GLD[("gold<br/>marts, error register")]
+  GLD --> JOB["dfm_monthly<br/>train &rarr; promote &rarr; score &rarr; monitor"]
+  JOB --> REG["Model registry<br/>champion alias"]
+  JOB --> OUT[("gold tables<br/>reorder schedule and queue,<br/>monitoring")]
+  OUT --> QUEUE["ERP reorder queue"]
+  SLV --> AUD["Data quality audit"]
 ```
 
-Raw extracts from the ERP, its warehouse system, and the buyers' spreadsheet, and are then combined by a tested dbt pipeline into conformed marts. Along the way, one data-quality model per error type flags the affected records and feeds the audit's error register, and the remediation is applied through auditable merges. The cleaned marts then feed the demand forecasting model, whose weekly reorder points and order quantities are loaded into the ERP's reorder queue.
+The extracts from the ERP, its warehouse system and the buyers' spreadsheet are landed in a Unity Catalog volume and built by a Lakeflow pipeline into bronze, silver and gold tables. In silver, one data-quality flag per error type marks the affected records, which the audit reads through the gold error register. The monthly job trains the model on the gold tables, promotes a new version only when its gates pass, scores the weekly reorder points and order quantities into the gold tables the ERP's reorder queue reads, and monitors the schedule in force.
 
 ---
 
 ## Data
 
-The datasets were generated to represent typical records from a manufacturing ERP, its warehouse system and a buyer's spreadsheet, with error types and rates constructed to reflect patterns commonly documented in these systems, so the full workflow can be demonstrated on data that is safe to share publicly. The [generators are in `data_source/generate/`](data_source/generate/).
+The datasets were generated to represent typical records from a manufacturing ERP, its warehouse system and a buyer's spreadsheet, with error types and rates constructed to reflect patterns commonly documented in these systems, so the full workflow can be demonstrated on data that is safe to share publicly; the extracts are landed as Parquet in a Unity Catalog volume. The [generators are in `data_source/generate/`](data_source/generate/).
 
 ---
 
-## Running it locally
+## Running it
+
+The source data is generated locally in two passes: the first builds three years of history, and the second replays January to June 2026 on the reorder schedule the model issued. The pass-1 outputs are saved before the second pass regenerates the files.
 
 ```bash
-# 1. Environment
-python3 -m venv .venv
+# Local
+python -m venv .venv
 source .venv/bin/activate          # Windows: .venv\Scripts\activate
-pip install -e .
+pip install -e . -e src
 
-# 2. Generate the source data and remediate it
-python3 -m data_source.generate.run_generator
-python3 -m data_source.generate.validate
-python3 -m data_source.generate.remediation
-python3 -m data_source.generate.export_truth
+# 1. Generate the source data and remediate it (pass 1)
+python -m data_source.generate.run_generator
+python -m data_source.generate.validate
+python -m data_source.generate.remediation
+python -m data_source.generate.export_truth
+mkdir -p runs/seq/pass1/data_source && cp -r data_source/raw data_source/truth runs/seq/pass1/data_source/
 
-# 3. Warehouse: staging, data-quality models, intermediate models and marts
-cd data_pipeline && dbt build --profiles-dir . && cd ..
-python3 -m ml.src.export_marts
+# 2. Land the extracts in the Unity Catalog volume (pass 1 now, pass 2 after the replay)
+python infra/land_extracts.py --profile <profile> --pass pass1
 
-# 4. Baselines, model selection, the weekly forecast and reorder policy, and explainability
-python3 -m ml.src.baselines
-python3 -m ml.src.training
-python3 -m ml.src.training_3way
-python3 -m ml.src.demand_model
-python3 -m ml.src.explain_weekly
+# 3. Local parity runner: the package on the archived reference, against the platform's outputs
+python tests/parity/run_package.py --archive reference/2026-10_post_signal_update --out runs/parity/package/archive_pass2
+python tests/parity/parity_b.py --reference reference/2026-10_post_signal_update --run runs/parity/package/archive_pass2
 
-# 5. Replay January to June 2026 on the model's reorder schedule
-python3 -m data_source.generate.run_generator
-python3 -m data_source.generate.validate
-python3 -m data_source.generate.remediation
-python3 -m data_source.generate.export_truth
-cd data_pipeline && dbt build --profiles-dir . && cd ..
-python3 -m ml.src.export_marts
-python3 -m ml.src.reliability
-python3 -m ml.src.financials
-
-# 6. Monitoring
-python3 -m ml.src.monitor_weekly
-
-# 7. Client-facing deliverables
-python3 ml/reports/generate_data_quality_audit.py
-python3 -m ml.reports.generate_reorder_queue
-python3 -m ml.reports.generate_model_overview
-python3 -m ml.reports.generate_technical_report
-python3 -m ml.reports.generate_monitoring_report
+# 4. Report generators, from the gold snapshot
+python -m ml.reports.generate_data_quality_audit
+python -m ml.reports.generate_reorder_queue
+python -m ml.reports.generate_model_overview
+python -m ml.reports.generate_technical_report
+python -m ml.reports.generate_monitoring_report
 ```
 
-The report generators write standalone HTML to [`docs/`](docs/), which GitHub Pages serves.
+```bash
+# Databricks
+# 1. Unity Catalog objects and the deploy service principal's grants
+DFM_STORAGE_ACCOUNT=<account> infra/unity_catalog.sh <profile>
+DFM_DEPLOY_SP=<application id> infra/grant_deploy_sp.sh --apply
+
+# 2. Deploy the pipeline and the monthly job, then run it (pipeline update, train, promote, score, monitor)
+databricks bundle deploy -t prod
+databricks bundle run dfm_monthly -t prod
+
+# 3. Data profiles, once the first run has written the tables; then the gold snapshot for the reports
+infra/data_profiles.sh
+python infra/export_gold_snapshot.py --profile <profile> --issued-run <job run id> --monitor-run <job run id> \
+    --version gold.weekly_backtest=<n> --version gold.reorder_schedule=<n> --version gold.reorder_queue=<n>
+```
+
+The report generators write standalone HTML to [`docs/`](docs/), which GitHub Pages serves. Setup details, deployment and the first-run steps are in [`infra/README.md`](infra/README.md).
 
 ---
 
@@ -175,10 +161,15 @@ The report generators write standalone HTML to [`docs/`](docs/), which GitHub Pa
 
 | Layer | Tools |
 |---|---|
-| Integration & transformation | dbt, DuckDB |
-| Data quality & remediation | dbt data-quality models, Python, pandas |
-| Data generation | Python, pandas, NumPy |
-| Modeling | scikit-learn (random forest, ridge regression), XGBoost, Optuna, SHAP |
-| Monitoring | SciPy (Jensen-Shannon distance), pandas |
-| Reporting | matplotlib, HTML/CSS |
-| Delivery | Static HTML, GitHub Pages |
+| Storage & governance | Unity Catalog, Delta Lake |
+| Transformation & data quality | Lakeflow Declarative Pipelines |
+| Model lifecycle | MLflow, Unity Catalog model registry |
+| Monitoring | Databricks data profiling |
+| Deployment | Databricks Asset Bundles, GitHub Actions |
+| Modeling | scikit-learn, XGBoost, Optuna, SHAP |
+| Reporting | matplotlib, static HTML |
+| Delivery | GitHub Pages |
+
+---
+
+[Brian Davis](https://github.com/brimsystems). Data engineering and applied analytics/ML for manufacturers.
