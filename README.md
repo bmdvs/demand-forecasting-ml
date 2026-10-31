@@ -2,9 +2,9 @@
 
 This project was built on Azure Databricks: source extracts land in Unity Catalog, a Lakeflow pipeline cleans and transforms them, and a monthly job trains, gates, scores and monitors the model through MLflow and the Unity Catalog model registry.
 
-The work began with a full [data quality audit](https://brimsystems.github.io/demand-forecasting-ml/docs/reports/data_quality_audit.html) of the shop's ERP, which found sixteen recurring error types across eight tables and remediated them so the records could be trusted.
+The work began with a full [data quality audit](https://bmdvs.github.io/demand-forecasting-ml/docs/reports/data_quality_audit.html) of the shop's ERP, which found sixteen recurring error types across eight tables and remediated them so the records could be trusted.
 
-A **demand forecasting ML model** was then built on the cleaned records. Every week it forecasts demand and sets the reorder decision for each of the shop's 1,339 stocked items. The model is detailed in the [model overview](https://brimsystems.github.io/demand-forecasting-ml/docs/reports/model_overview.html) and summarized below.
+A **demand forecasting ML model** was then built on the cleaned records. Every week it forecasts demand and sets the reorder decision for each of the shop's 1,339 stocked items. The model is detailed in the [model overview](https://bmdvs.github.io/demand-forecasting-ml/docs/reports/model_overview.html) and summarized below.
 
 - **Results.** The model has set every reorder decision the shop made from January to June 2026. The table compares that period with 2025, when buyers reordered by hand on the uncleaned records, and shows the same manual process run on the cleaned records over the same six months. The model improved every production and purchasing KPI. Both methods carried less inventory than 2025 and freed cash tied in working capital, mainly through the audit's recomputed reorder points and safety stock, with merged duplicate items removing a second buffer on the same part.
 
@@ -21,18 +21,18 @@ A **demand forecasting ML model** was then built on the cleaned records. Every w
 
 - **Purpose and use.** Every Monday the model forecasts each item's usage over its supplier lead time and turns it into a reorder point (the stock level at which to order) and an order quantity, written to the ERP's purchasing screen. A buffer is added from the item's forecast error, its supplier's lead-time variability and a fill-rate target set by criticality. The model is intended to be used by buyers as their weekly reorder queue, with every line open to review and override.
 - **Model training.** The model was trained on three years of remediated ERP history: inventory transactions, production orders and bills of materials, service orders, purchase-order receipts, and the item and supplier masters. It takes the parts that booked jobs will draw as known, and forecasts the rest of each item's usage: mainly floor pulls, service issues and jobs not yet booked. That forecast is driven by the item's own usage history, expressed as lagged and rolling features computed up to the forecast date. A single random forest is trained across all items on these features together with each item's demand pattern, class, lead time and annual volume, so the model pools what it learns across items with similar histories rather than fitting each series alone. Nothing outside the ERP enters the model.
-- **Model evaluation.** Candidates (ridge, random forest, XGBoost) were tuned with Optuna on a validation window, selected by rule, and scored on a held-out 2025 backtest against five simple methods a buyer could run by hand, the strongest being the order book plus the best moving average by demand pattern (47.2% WAPE). The production model reaches 43.0% overall and 37.1% on line-critical parts, an 8.9% reduction in error against the best manual method with the same information. Most of the remaining error sits in the lumpy and intermittent items, about two-fifths of the catalog, whose demand arrives in a few weeks a year in quantities that vary by 35 to 60%; no method forecasts those at low error. A feature study tested five further signal groups; none improved held-out accuracy, and the smaller set was kept. Full evaluation and technical detail are in the [technical report](https://brimsystems.github.io/demand-forecasting-ml/docs/reports/technical_report.html).
-- **Production monitoring.** Retrained monthly and refreshed weekly, with a monitor that tracks forecast error and bias by demand pattern, feature drift, supplier lead-time drift and data quality against investigate-and-retrain thresholds. Detail is in the [monitoring report](https://brimsystems.github.io/demand-forecasting-ml/docs/reports/monitoring_report.html).
+- **Model evaluation.** Candidates (ridge, random forest, XGBoost) were tuned with Optuna on a validation window, selected by rule, and scored on a held-out 2025 backtest against seven simple methods a buyer could run by hand, the strongest being the order book plus the best moving average by demand pattern (47.2% WAPE). The production model reaches 43.0% overall and 37.1% on line-critical parts, an 8.9% reduction in error against the best manual method with the same information. Most of the remaining error sits in the lumpy and intermittent items, about two-fifths of the catalog, whose demand arrives in a few weeks a year; no method forecasts those at low error. A feature study tested five further signal groups; none improved held-out accuracy, and the smaller set was kept. Full evaluation and technical detail are in the [technical report](https://bmdvs.github.io/demand-forecasting-ml/docs/reports/technical_report.html).
+- **Production monitoring.** Retrained monthly and refreshed weekly, with a monitor that tracks forecast error and bias by demand pattern, feature drift, supplier lead-time drift and data quality against investigate-and-retrain thresholds. Detail is in the [monitoring report](https://bmdvs.github.io/demand-forecasting-ml/docs/reports/monitoring_report.html).
 
 The model's reorder suggestions are embedded in the shop's existing ERP purchasing screen:
 
-[![ERP reorder queue with embedded demand forecasts](docs/screenshots/erp_queue.png)](https://brimsystems.github.io/demand-forecasting-ml/docs/index.html)
+[![ERP reorder queue with embedded demand forecasts](docs/screenshots/erp_queue.png)](https://bmdvs.github.io/demand-forecasting-ml/docs/index.html)
 
 Its results over the six months it has run the shop's reorders, against the two ways the shop could have reordered without it:
 
-[![Model outcomes, January to June 2026](docs/screenshots/model_outcomes.png)](https://brimsystems.github.io/demand-forecasting-ml/docs/reports/model_overview.html)
+[![Model outcomes, January to June 2026](docs/screenshots/model_outcomes.png)](https://bmdvs.github.io/demand-forecasting-ml/docs/reports/model_overview.html)
 
-> [**Open the live reorder queue →**](https://brimsystems.github.io/demand-forecasting-ml/docs/index.html)
+> [**Open the live reorder queue →**](https://bmdvs.github.io/demand-forecasting-ml/docs/index.html)
 
 ---
 
@@ -40,9 +40,7 @@ Its results over the six months it has run the shop's reorders, against the two 
 
 An industrial equipment manufacturer (~$30mm revenue) produces conveyors and material-handling modules, industrial mixers and agitators, and custom enclosures and frames. It stocks about 1,300 items purchased from 40 suppliers. 
 
-Historically, the shop's inventory reordering was done manually and ran on data that was messy and couldn't be trusted. Much of the reordering process was labor-intensive and imprecise: stock levels and lead times were stale, stock on hand was unverified, safety stock was inflated, and rush orders were relied upon to compensate for shortfalls. The result was the shop carrying excess inventory, roughly 160 days of usage, yet still logging elevated stockout events, held jobs for missing material, and rush freight spend.
-
-Over the past six months, the demand forecasting model has been used to set every reorder decision for the shop. The ML model overview and performance report below details the findings across this period. Relying on the model's forecasts, the shop was able to achieve significant improvements across production and purchasing KPIs, while also reducing its inventory balance and freeing up cash tied in working capital.
+Historically, the shop's inventory reordering was done manually and ran on data that was messy and couldn't be trusted. Much of the reordering process was labor-intensive and imprecise: stock levels and lead times were stale, stock on hand was unverified, safety stock was inflated, and rush orders were relied upon to compensate for shortfalls. The result was the shop carrying excess inventory, 161 days of usage, yet still logging elevated stockout days, held jobs for missing material, and rush freight spend.
 
 ---
 
@@ -50,11 +48,11 @@ Over the past six months, the demand forecasting model has been used to set ever
 
 | # | Deliverable | What it is | Links |
 |---|---|---|---|
-| 1 | ERP reorder queue | The demand forecasting model embedded in the ERP's purchasing screen: each item's on-hand, allocated, on-order and available stock, forecast usage over its lead time, safety stock, reorder point, and suggested order quantity. | [View](https://brimsystems.github.io/demand-forecasting-ml/docs/index.html) |
-| 2 | Data quality audit | Details the data quality audit, including every type of error found across the ERP's eight tables, the error remediation completed, the before-and-after results, and the process changes that will keep the ERP system clean. | [View](https://brimsystems.github.io/demand-forecasting-ml/docs/reports/data_quality_audit.html) |
-| 3 | ML model overview & performance report | A high-level summary of the demand forecasting model: what it does, the data it learns from, how it sets each reorder, and the results it achieves. | [View](https://brimsystems.github.io/demand-forecasting-ml/docs/reports/model_overview.html) |
-| 4 | ML technical report | The model card, training data and time-based split, model selection and performance, the feature study, SHAP feature importance, how forecasts turn into reorder decisions, known limitations, and deployment. | [View](https://brimsystems.github.io/demand-forecasting-ml/docs/reports/technical_report.html) |
-| 5 | MLOps monitoring report | Monthly monitoring of the live model's outcomes against retraining thresholds: forecast error and bias overall and by demand pattern, drift, data quality, business KPIs, and the supplier lead-time review. | [View](https://brimsystems.github.io/demand-forecasting-ml/docs/reports/monitoring_report.html) |
+| 1 | ERP reorder queue | The demand forecasting model embedded in the ERP's purchasing screen: each item's on-hand, allocated, on-order and available stock, booked requirements over its lead time, forecast usage over its lead time, safety stock, reorder point, and suggested order quantity. | [View](https://bmdvs.github.io/demand-forecasting-ml/docs/index.html) |
+| 2 | Data quality audit | Details the data quality audit, including every type of error found across the ERP's eight tables, the error remediation completed, the before-and-after results, and the process changes that will keep the ERP system clean. | [View](https://bmdvs.github.io/demand-forecasting-ml/docs/reports/data_quality_audit.html) |
+| 3 | ML model overview & performance report | A high-level summary of the demand forecasting model: what it does, the data it learns from, how it sets each reorder, and the results it achieves. | [View](https://bmdvs.github.io/demand-forecasting-ml/docs/reports/model_overview.html) |
+| 4 | ML technical report | The model card, training data and time-based split, model selection and performance, the feature study, SHAP feature importance, how forecasts turn into reorder decisions, known limitations, and deployment. | [View](https://bmdvs.github.io/demand-forecasting-ml/docs/reports/technical_report.html) |
+| 5 | MLOps monitoring report | Monthly monitoring of the live model's outcomes against retraining thresholds: forecast error and bias overall and by demand pattern, drift, data quality, business KPIs, and the supplier lead-time review. | [View](https://bmdvs.github.io/demand-forecasting-ml/docs/reports/monitoring_report.html) |
 
 ---
 
@@ -125,11 +123,18 @@ mkdir -p runs/seq/pass1/data_source && cp -r data_source/raw data_source/truth r
 # 2. Land the extracts in the Unity Catalog volume (pass 1 now, pass 2 after the replay)
 python infra/land_extracts.py --profile <profile> --pass pass1
 
-# 3. Local parity runner: the package on the archived reference, against the platform's outputs
+# 3. Pass 2: replay January to June 2026 on the schedule the model issued, then land the replayed extracts
+python -m data_source.generate.run_generator
+python -m data_source.generate.validate
+python -m data_source.generate.remediation
+python -m data_source.generate.export_truth
+python infra/land_extracts.py --profile <profile> --pass pass2
+
+# 4. Local parity runner: the package on the archived reference, against the platform's outputs
 python tests/parity/run_package.py --archive reference/2026-10_post_signal_update --out runs/parity/package/archive_pass2
 python tests/parity/parity_b.py --reference reference/2026-10_post_signal_update --run runs/parity/package/archive_pass2
 
-# 4. Report generators, from the gold snapshot
+# 5. Report generators, from the gold snapshot
 python -m ml.reports.generate_data_quality_audit
 python -m ml.reports.generate_reorder_queue
 python -m ml.reports.generate_model_overview
@@ -172,4 +177,4 @@ The report generators write standalone HTML to [`docs/`](docs/), which GitHub Pa
 
 ---
 
-[Brian Davis](https://github.com/brimsystems). Data engineering and applied analytics/ML for manufacturers.
+[Brian Davis](https://github.com/bmdvs). Data engineering and applied analytics/ML for manufacturers.
