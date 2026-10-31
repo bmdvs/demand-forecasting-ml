@@ -40,14 +40,15 @@ BLUE = "#381FA1"; BG = "#F3F5F7"; LINE = "#D9DEE5"; MUTED = "#5F6B7A"; ROWRED = 
 
 
 def build_queue():
-    sched = SR.rop_schedule()
+    queue = SR.reorder_queue().set_index("canonical_item_number")
+    booked = SR.booked_over_lead()
     attrs = SR.item_attributes().set_index("canonical_item_number")
     im = pd.read_csv(RAW / "erp" / "item_master.csv", low_memory=False).set_index("item_number")
     sup = pd.read_csv(RAW / "erp" / "supplier_master.csv").set_index("supplier_id")
     po = pd.read_csv(RAW / "erp" / "purchase_orders.csv", low_memory=False)
     xw = SR.item_crosswalk().set_index("item_number")["canonical_item_number"].to_dict()
     lead = pd.read_csv(REM / "lead_time_computation.csv")
-    bom = pd.read_csv(REM / "bom_change_log.csv")
+    bomlog = pd.read_csv(REM / "bom_change_log.csv")
     ft = pd.read_csv(REM / "free_text_attribution.csv")
     sup_xw = pd.read_csv(REM / "supplier_crosswalk.csv") if (REM / "supplier_crosswalk.csv").exists() else None
 
@@ -76,15 +77,15 @@ def build_queue():
     merged = {canon(n) for n, c in xw.items() if n != c}
     stale = lead[(lead["median_actual"] - lead["master_lead_time"]).abs() > 3]["item_number"].map(canon)
     lead_fixed = set(stale)
-    bom_fixed = set(bom["component_item"].map(canon))
+    # scoped to the BOM-omission fixes, not the supersession updates the change log also holds
+    bom_fixed = set(bomlog.loc[bomlog["source"].isin(["engineering review", "floor observation"]), "component_item"].map(canon))
     restored = set(ft.loc[ft["confirmation"] == "confirmed", "probable_item_number"].dropna().map(canon))
 
     rows = []
-    for item, entries in sched["items"].items():
+    for item, e in queue.iterrows():
         if item not in attrs.index:
             continue
-        e = entries[-1]
-        d_, level, ss, pred, h_days, rop = e[0], e[1], e[2], e[3], e[4], e[5]
+        level, ss, pred, h_days = e["level"], e["safety_stock"], e["forecast_over_horizon"], e["horizon_days"]
         a = attrs.loc[item]
         lt = float(a["corrected_lead_days"])
         daily = float(pred) / max(1.0, float(h_days))
@@ -106,7 +107,7 @@ def build_queue():
         else:
             status = "OK"
         # the model's lot, in as many lots as the shortfall below the point needs
-        q_lot = float(e[7]) if len(e) > 7 and e[7] else max(1.0, daily * ORDER_COVER_DAYS)
+        q_lot = float(e["order_qty"]) if e["order_qty"] else max(1.0, daily * ORDER_COVER_DAYS)
         suggested = q_lot * max(1, int(np.ceil((level - position) / q_lot))) if status != "OK" else 0.0
         sid = sup_canon.get(im["primary_supplier_id"].get(item), im["primary_supplier_id"].get(item))
         if not isinstance(sid, str):
@@ -115,7 +116,7 @@ def build_queue():
         flags = [f for f, on in (("Merged record", item in merged), ("Lead time corrected", item in lead_fixed),
                                  ("BOM corrected", item in bom_fixed), ("History restored", item in restored)) if on]
         rows.append({"item": item, "desc": im["description"].get(item, ""), "abc": a["abc"], "supplier": sname,
-                     "on_hand": oh, "on_order": oo, "alloc": need, "avail": position, "lead": lt, "fc_lead": fc_lead,
+                     "on_hand": oh, "on_order": oo, "alloc": need, "booked": float(booked.get(item, 0.0)), "avail": position, "lead": lt, "fc_lead": fc_lead,
                      "ss": float(ss), "rop": float(level),
                      "suggested": suggested, "status": status, "cover": cover, "cost": float(a["standard_cost"]),
                      "flags": flags})
@@ -142,7 +143,7 @@ def render(q):
         trs.append(
             f'<tr style="background:{rowbg[r.status]};">'
             f'<td class="mono">{r.item}</td><td>{r.desc}</td><td class="c">{r.abc}</td><td>{r.supplier}</td>'
-            f'<td class="r">{_fmt(r.on_hand)}</td><td class="r">{_fmt(r.alloc)}</td><td class="r">{_fmt(r.on_order)}</td>'
+            f'<td class="r">{_fmt(r.on_hand)}</td><td class="r">{_fmt(r.alloc)}</td><td class="r">{_fmt(r.booked)}</td><td class="r">{_fmt(r.on_order)}</td>'
             f'<td class="r">{_fmt(r.avail)}</td><td class="r">{r.lead:.0f}</td>'
             f'<td class="r">{_fmt(r.fc_lead)}</td><td class="r">{_fmt(r.ss)}</td><td class="r"><b>{_fmt(r.rop)}</b></td>'
             f'<td class="r"><b>{_fmt(r.suggested) if r.suggested else "&ndash;"}</b></td>'
@@ -200,7 +201,7 @@ def render(q):
 <div class="filters">Supplier: <span class="sel">All &#9662;</span> Class: <span class="sel">All &#9662;</span>
   Action: <span class="sel">Order now + soon &#9662;</span> <span class="sel" style="width:220px;">&#128269; Search items...</span></div>
 <table><thead><tr><th>Item #</th><th>Description</th><th>ABC</th><th>Supplier</th><th class="r">On hand</th>
-<th class="r">Allocated</th><th class="r">On order</th><th class="r">Available</th><th class="r">Lead (days)</th><th class="r">Forecast over lead</th><th class="r">Safety stock</th>
+<th class="r">Allocated</th><th class="r">Booked over lead</th><th class="r">On order</th><th class="r">Available</th><th class="r">Lead (days)</th><th class="r">Forecast over lead</th><th class="r">Safety stock</th>
 <th class="r">Reorder point</th><th class="r">Suggested qty</th><th>Action <span class="ml">ML</span></th></tr></thead>
 <tbody>{''.join(trs)}</tbody></table>
 </body></html>"""

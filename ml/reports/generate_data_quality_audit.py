@@ -191,9 +191,17 @@ def gather():
     changed = (delta >= 5) & (delta >= 0.30 * old.clip(lower=1))
     d["params_changed"] = flagged(3)
     d["uom_added"] = len(uomc)
-    d["bom_changes"] = len(bomlog)
+    # Remediation counts are scoped to the error the row describes, not the whole record. The BOM change
+    # log also holds supersession updates (bill maintenance); the omission fixes are the entries confirmed
+    # by engineering review or floor observation.
+    d["bom_changes"] = int(bomlog["source"].isin(["engineering review", "floor observation"]).sum())
     d["closed_po"] = int((closures["document_type"] == "PO").sum())
-    d["closed_jobs"] = int((closures["document_type"] == "JOB").sum())
+    # Job closures counted on the jobs error 16 flags (open, due before the end of the history), not on
+    # every closed job: closures of jobs due later are not part of the error's scale.
+    _po = pd.read_csv(RAW / "erp" / "production_orders.csv", low_memory=False)
+    _stale = _po.loc[(_po["status"] == "OPEN") & (pd.to_datetime(_po["due_date"]).dt.date < C.MODEL_SPAN_END),
+                     "order_id"]
+    d["closed_jobs"] = int(closures.loc[closures["document_type"] == "JOB", "document_id"].isin(set(_stale)).sum())
     d["recon_disagree"] = int((recon["closer_to_truth"] != "agree").sum())
     d["recon_buyer_right"] = int((recon["closer_to_truth"] == "spreadsheet").sum())
     fa = ftattr["confirmation"].value_counts()

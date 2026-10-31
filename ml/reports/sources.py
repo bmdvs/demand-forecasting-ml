@@ -108,6 +108,22 @@ def reorder_queue() -> pd.DataFrame:
     return _read("tables", "reorder_queue")
 
 
+def booked_over_lead() -> pd.Series:
+    """By item: the component requirements of booked jobs over the item's planning horizon at the as-of
+    origin (firm_h), the quantity the model takes as known. The schedule entry carries the forecast with
+    these requirements included but not the requirements alone, so they are read from the parity
+    reference's feature frame (the frame the schedule in force was scored on), at the queue's effective
+    origin and each item's horizon."""
+    q = reorder_queue()
+    origin = pd.Timestamp(q["effective_date"].iloc[0])
+    fr = pd.read_parquet(REFERENCE / "runs" / "seq" / "ladder" / "frame.parquet",
+                         columns=["item", "week", "h", "is_reference_row", "firm_h"])
+    fr = fr[(pd.to_datetime(fr["week"]) == origin) & fr["is_reference_row"]].set_index("item")
+    h = (q.set_index("canonical_item_number")["horizon_days"] // 7)
+    assert (fr["h"].reindex(h.index) == h).all(), "frame horizon differs from the schedule's"
+    return fr["firm_h"].reindex(h.index).astype(float)
+
+
 # ── monitoring (the run that judged the schedule in force) ───────────────────
 def monitoring_summary() -> dict:
     """ml/data/monitoring/signals/monitoring_summary.json."""
