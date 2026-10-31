@@ -18,7 +18,7 @@
 
 ### Expectations (a miss is a finding; nothing is retuned)
 
-| Replay | Model inventory vs Run 01 (within ±5%) | Forward service backorders (at most 1.5%) | Active-short item-weeks (at most 1.5%) |
+| Replay | Model inventory vs Run 01 (within Â±5%) | Forward service backorders (at most 1.5%) | Active-short item-weeks (at most 1.5%) |
 |---|---|---|---|
 | Reference (current features and policy) | +7.5% (MISS) | 1.88% (MISS) | 3.71% (MISS) |
 | S1, static horizon | +10.8% (MISS) | 2.08% (MISS) | 3.69% (MISS) |
