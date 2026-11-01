@@ -27,7 +27,7 @@ A **demand forecasting ML model** was then built on the cleaned records. Every w
 - **Model evaluation.** Candidates (ridge, random forest, XGBoost) were tuned with Optuna on a validation window, selected by rule, and scored on a held-out 2025 backtest.
   - Seven baseline methods were computed, the strongest being the moving average by demand pattern (47.2% WAPE).
   - The production model reaches 43.0% overall and 37.1% on line-critical parts, an 8.9% reduction in error against baseline.
-  - Most of the remaining error sits in the lumpy and intermittent items, about two-fifths of the catalog, whose demand arrives in a few weeks a year; no method forecasts those at low error.
+  - Most of the remaining error sits in the lumpy and intermittent items, about two-fifths of the catalog, with demand that arrives in a few weeks a year; no tested method could forecast those at low error.
   - Full evaluation and technical detail are in the [technical report](https://bmdvs.github.io/demand-forecasting-ml/docs/reports/technical_report.html).
 - **Production monitoring.** Retrained monthly and refreshed weekly, with a monitor that tracks forecast error and bias by demand pattern, feature drift, supplier lead-time drift and data quality against investigate-and-retrain thresholds.
   - Full monitoring detail is in the [monitoring report](https://bmdvs.github.io/demand-forecasting-ml/docs/reports/monitoring_report.html).
