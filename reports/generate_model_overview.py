@@ -8,7 +8,8 @@ the parity reference archive, or the truth files.
 
     PYTHONIOENCODING=utf-8 .venv/Scripts/python -m reports.generate_model_overview
 
-Also writes docs/screenshots/model_outcomes.png, the three-variant results chart, for the README.
+Also writes docs/screenshots/model_outcomes.png, the summary results chart (2025 against the baseline and the
+model), for the README.
 """
 import base64
 import json
@@ -32,8 +33,12 @@ fr = SR.forward_results()
 REC = fr["as_recorded"]
 H1, H2 = REC["1H25"], REC["2H25"]
 F = fr["forward"]["1H26"]
-VARIANTS = [("dirty", "Status quo"), ("clean_rule", "Manual reordering on the cleaned records"), ("model", "The model")]
+VARIANTS = [("dirty", "Status quo"), ("clean_rule", "Baseline"), ("model", "The model")]
 VAR_COL = {"dirty": MED_GREY, "clean_rule": LIGHT_BLUE, "model": DARK_BLUE}
+# the summary chart: 2025 as recorded (halves averaged), the baseline (manual reordering on the cleaned
+# records) and the model, January to June 2026
+SUMMARY = [("rec25", "1H/2H '25 avg."), ("clean_rule", "Baseline"), ("model", "Demand forecasting model")]
+SUMMARY_COL = {"rec25": MED_GREY, "clean_rule": LIGHT_BLUE, "model": DARK_BLUE}
 SEG_ORDER = ["smooth", "erratic", "lumpy", "intermittent"]
 
 # the champion's training run (version 1): its S1 rung result, as the parity reference archived it
@@ -85,13 +90,14 @@ def chg(a_, b_):
 
 
 # ── charts ────────────────────────────────────────────────────────────────────
-def _variant_panels(panels, h=3.4):
-    """One panel per measure, one bar per variant, the change against the status quo above the other two."""
+def _variant_panels(panels, h=3.4, series=None, colors=None, legend_bottom=False):
+    """One panel per measure, one bar per series, the change against the first series above the others."""
     import matplotlib.pyplot as plt
+    series, colors = series or VARIANTS, colors or VAR_COL
     fig, axes = plt.subplots(1, len(panels), figsize=(B.CHART_W, h))
-    keys = [v for v, _ in VARIANTS]
+    keys = [v for v, _ in series]
     for ax, (title, vals, fmt) in zip(axes, panels):
-        bars = ax.bar(range(len(keys)), vals, color=[VAR_COL[v] for v in keys], width=0.7)
+        bars = ax.bar(range(len(keys)), vals, color=[colors[v] for v in keys], width=0.7)
         for i, (b_, v) in enumerate(zip(bars, vals)):
             c_ = (v - vals[0]) / vals[0] * 100
             lab = fmt.format(v) + ("" if i == 0 else "\n(0%)" if round(c_) == 0 else f"\n({c_:+.0f}%)")
@@ -100,36 +106,33 @@ def _variant_panels(panels, h=3.4):
         ax.set_ylim(0, max(vals) * 1.32); ax.set_yticks([]); ax.set_xticks([])
         B.chart_style(ax)
         ax.spines["left"].set_visible(False)
-    handles = [plt.Rectangle((0, 0), 1, 1, color=VAR_COL[v]) for v in keys]
-    fig.legend(handles, [n for _, n in VARIANTS], loc="upper center", ncol=3, frameon=False, fontsize=9,
-               bbox_to_anchor=(0.5, 1.0))
-    fig.tight_layout(w_pad=1.4, rect=(0, 0, 1, 0.9))
+    handles = [plt.Rectangle((0, 0), 1, 1, color=colors[v]) for v in keys]
+    if legend_bottom:
+        fig.legend(handles, [n for _, n in series], loc="lower center", ncol=len(keys), frameon=False, fontsize=9,
+                   bbox_to_anchor=(0.5, 0.0))
+        fig.tight_layout(w_pad=1.4, rect=(0, 0.1, 1, 1))
+    else:
+        fig.legend(handles, [n for _, n in series], loc="upper center", ncol=len(keys), frameon=False, fontsize=9,
+                   bbox_to_anchor=(0.5, 1.0))
+        fig.tight_layout(w_pad=1.4, rect=(0, 0, 1, 0.9))
     return fig
 
 
 def chart_outcomes():
-    """The three variants over the same six months: stockout days, held jobs, rush spend, average inventory.
-    Also saved as docs/screenshots/model_outcomes.png."""
-    keys = [v for v, _ in VARIANTS]
+    """2025 as recorded (the two halves averaged) against the baseline and the model, January to June 2026:
+    stockout days, held jobs, rush spend, average inventory. Also saved as docs/screenshots/model_outcomes.png."""
+    def vals(key, scale=1):
+        return [(half(key) if v == "rec25" else F[v][key]) / scale for v, _ in SUMMARY]
     fig = _variant_panels([
-        ("Stockout days", [F[v]["stockout_days"] for v in keys], "{:,.0f}"),
-        ("Jobs held for material", [F[v]["jobs_delayed"] for v in keys], "{:,.0f}"),
-        ("Rush spend ($000)", [F[v]["rush_spend"] / 1000 for v in keys], "${:,.0f}K"),
-        ("Average inventory ($M)", [F[v]["avg_inventory_value"] / 1e6 for v in keys], "${:,.2f}M")])
+        ("Stockout days", vals("stockout_days"), "{:,.0f}"),
+        ("Jobs held for material", vals("jobs_delayed"), "{:,.0f}"),
+        ("Rush spend ($000)", vals("rush_spend", 1000), "${:,.0f}K"),
+        ("Average inventory ($M)", vals("avg_inventory_value", 1e6), "${:,.2f}M")],
+        series=SUMMARY, colors=SUMMARY_COL, legend_bottom=True)
     b64 = B.b64(fig)
     OUTCOMES_PNG.parent.mkdir(parents=True, exist_ok=True)
     OUTCOMES_PNG.write_bytes(base64.b64decode(b64))
     return b64
-
-
-def chart_variants():
-    """The three variants: stockout days, held jobs, rush spend and inventory at the end of June."""
-    keys = [v for v, _ in VARIANTS]
-    return B.b64(_variant_panels([
-        ("Stockout days", [F[v]["stockout_days"] for v in keys], "{:,.0f}"),
-        ("Jobs held for material", [F[v]["jobs_delayed"] for v in keys], "{:,.0f}"),
-        ("Rush spend ($000)", [F[v]["rush_spend"] / 1000 for v in keys], "${:,.0f}K"),
-        ("Inventory, end of June ($M)", [F[v]["end_inventory_value"] / 1e6 for v in keys], "${:,.2f}M")]))
 
 
 def chart_inventory_months():
@@ -247,8 +250,8 @@ def compare_table():
         ("Purchases", lambda x: money(x["purchases"]), lambda x: change("purchases", x)),
     ]
     rows = [[label, fn(d_), fn(r_), ch(r_), fn(m_), ch(m_)] for label, fn, ch in spec]
-    return widths(B.data_table(["Measure", "Status quo", "Manual reordering on the cleaned records", "Change",
-                                "The model", "Change"], rows, right=[1, 2, 3, 4, 5]), [26, 14, 18, 11, 14, 11])
+    return widths(B.data_table(["Measure", "Status quo", "Baseline", "Change",
+                                "Demand Forecasting Model", "Change"], rows, right=[1, 2, 3, 4, 5]), [24, 18, 18, 11, 18, 11])
 
 
 # ── figures quoted in the text ────────────────────────────────────────────────
@@ -453,7 +456,7 @@ FLOW_HTML = (
 _png = REPO / "docs" / "screenshots" / "erp_queue.png"
 erp_b64 = base64.b64encode(_png.read_bytes()).decode()
 
-charts = {"outcomes": chart_outcomes(), "variants": chart_variants(), "actions": chart_actions(),
+charts = {"outcomes": chart_outcomes(), "actions": chart_actions(),
           "actions_m": chart_actions_by_month(), "invm": chart_inventory_months(), "valcat": chart_value_by_category(),
           "catseg": chart_category_patterns(), "unitcat": chart_units_by_category(), "examples": chart_examples()}
 
@@ -464,32 +467,37 @@ toc = ('<a href="#summary">Executive Summary</a><hr>'
        '<a href="#performance">Model Performance</a>'
        '<a href="#scoring" class="sub">Scoring Summary</a>'
        '<a href="#accuracy" class="sub">Accuracy and Validation</a>'
-       '<a href="#limits" class="sub">Assumptions &amp; Limitations</a>')
+       '<a href="#limits" class="sub">Limitations</a>')
 
+
+# the limitations quote two fractions: lumpy and intermittent items about two-fifths of the catalog, booked jobs
+# about a third of usage over the lead time on bill parts
+_li_share = (seg_n.get('lumpy', 0) + seg_n.get('intermittent', 0)) / sum(seg_n.values())
+assert 0.35 <= _li_share <= 0.45, f"lumpy and intermittent share {_li_share:.3f} is not about two-fifths"
+assert 0.28 <= firm_share_bill <= 0.38, f"booked share on bill parts {firm_share_bill:.3f} is not about a third"
 
 body = f"""
 {B.section("summary", "Section 1", "Executive Summary")}
 <p>The demand forecasting model sets the reorder decisions for each of the shop's {n_items:,} stocked items. The
 model takes the parts that booked jobs will draw as known and forecasts the rest of
 each item's usage before a new order could arrive, then turns the total into a reorder point and order quantity. It
-has been live for the past six months, from January through June 2026. Its reorder points and order quantities are
-loaded straight into the ERP's purchasing screen, where the buyers release the suggested orders.</p>
+is trained using a random forest machine learning algorithm. The model has been live for the past six months, from
+January through June 2026.</p>
 <p>Before the model, reordering was done manually and ran on data that was messy and couldn't be trusted. Much of
 the reordering process was labor-intensive and imprecise: stock levels and lead times were stale, stock on hand was
 unverified, safety stock was inflated, and rush orders were relied upon to compensate for shortfalls. The result
 was the shop carrying excess inventory, {dos25:.0f} days of usage, yet still logging elevated stockout days,
 held jobs for missing material and rush freight spend.</p>
-<p>The results below compare January to June 2026 with 2025 as the shop recorded it, with 2025's two halves
-averaged to a six-month basis. Stockout days fell
-<strong>{fall(half('stockout_days'), mod['stockout_days'])}</strong>, jobs held for material fell
-<strong>{fall(half('jobs_delayed'), mod['jobs_delayed'])}</strong> and rush spend fell
-<strong>{fall(half('rush_spend'), mod['rush_spend'])}</strong>, while average inventory fell
+<p>The results below compare the performance of the demand forecasting model and baseline method in January to June
+2026 against 2025 as the shop recorded it, with 2025's two halves averaged to a six-month basis. Baseline assumes the
+shop continued their manual reordering process as they did in 2025, but on the newly cleaned data records. The model
+achieved
+significant improvements in stockout days (<strong>{chg(half('stockout_days'), mod['stockout_days'])}</strong>),
+jobs held for material (<strong>{chg(half('jobs_delayed'), mod['jobs_delayed'])}</strong>), and rush spend
+(<strong>{chg(half('rush_spend'), mod['rush_spend'])}</strong>), while average inventory fell
 <strong>{fall(half('avg_inventory_value'), mod['avg_inventory_value'])}</strong>, to
-{mod['days_of_supply']:.0f} days of usage from {dos25:.0f}.</p>
-<p>Over the same six months of demand, the model also beat the two ways the shop could have reordered without it:
-the status quo, as the shop ran in 2025, and manual reordering on the cleaned records. It cut stockout days, held
-jobs and rush spend the furthest of the three, and carried slightly more inventory than either.</p>
-{B.chart("Status quo, manual reordering on the cleaned records and the model, January to June 2026", charts["outcomes"])}
+${mod['avg_inventory_value'] / 1e6:.1f}m, or {mod['days_of_supply']:.0f} days of usage from {dos25:.0f} in 2025.</p>
+{B.chart("ML-driven vs. baseline, January to June 2026 against 1H/2H 2025", charts["outcomes"])}
 
 {B.section("modeloverview", "Section 2", "Model Overview")}
 
@@ -558,31 +566,33 @@ algorithms were tuned and compared on their forecasts for that year, and the
 {CAND_LABEL[WIN].lower() if WIN != 'XGBoost' else 'XGBoost'} model, with the lowest error, was selected. Validation
 error is scored on total usage over each item's lead time.</p>
 {candidate_table()}
-<p>To understand how well the model performed against baseline, we'll compare the model's performance in the
-1H 2026 to the same period of time under a status quo scenario where the shop did not use the model. This
-status quo scenario assumes the shop operated
-in 1H 2026 as it did throughout 2025, including with stale lead times and reorder points, the buyers'
-four-and-a-half-month lots and with the data errors fully intact. The middle column is the buyers' manual
-reordering run on the cleaned records.</p>
+<p>To understand how well the model performed against baseline, we'll compare the performance of the model and
+baseline in 1H 2026 to the same period of time under a status quo scenario. This status quo scenario assumes the
+shop operated in 1H 2026 as it did throughout 2025, including manual reordering and with the data errors fully
+intact (with stale lead times and reorder points). Baseline assumes the same manual reordering on cleaned
+records. The demand forecasting model achieved significant improvements over both baseline and status quo across
+the key production and purchasing KPIs: stockout days, jobs held for material, and rush freight expense.</p>
 {compare_table()}
-<p>The model carries more stock than manual reordering on the cleaned records and slightly more than the status
-quo over the same six months.</p>
-{B.chart("Status quo, manual reordering on the cleaned records and the model, by measure", charts["variants"])}
+<p>The reordering decisions driven by the demand forecasting model result in more inventory than baseline and
+slightly more than the status quo over the same six months. This is because the model's buffers are sized to the
+fill-rate targets
+on the items with the widest forecast error, where the manual rule's thin buffers are what produce its stockouts;
+part of the 2026 model figure also reflects the over-correction on intermittent
+items that the monitor flagged for retraining (see <a href="monitoring_report.html">monitoring report</a>).</p>
 {B.chart("Average inventory by month, January to June 2026", charts["invm"])}
 
-{B.section("limits", "Section 3.3", "Assumptions &amp; Limitations")}
+{B.section("limits", "Section 3.3", "Limitations")}
 <ul class="limitation-list">
-  <li><strong>It forecasts demand, not supply.</strong> The model predicts how much the shop will use; it takes each
-      supplier's lead time from its recent deliveries, refreshed monthly, and does not predict a late delivery. The buffer covers
-      the usual spread of deliveries, not a supplier failure.</li>
-  <li><strong>Booking visibility.</strong> Customer orders are booked {BOOK_LO} to {BOOK_HI} days before
-      their jobs are released.</li>
-  <li><strong>Expediting is held constant.</strong> All three replays expedite the same items the purchasing
-      manager tracked before go-live, so rush spend reflects how often those items were at risk, not a change in
-      how hard the shop chases suppliers.</li>
-  <li><strong>Intermittent items ran high in live use.</strong> After bias correction, the forecasts for intermittent
-      items ran high in {INT_MONTHS} ({INT_BIAS}), which the monitor flagged for retraining; the buffers on those
-      items were larger than needed in those months.</li>
+  <li><strong>Lumpy and intermittent items are forecast poorly.</strong> About two-fifths of the catalog uses items in
+      only a few weeks each year; no method forecasts those at low error. The safety buffer, not the forecast, is what
+      keeps them in stock.</li>
+  <li><strong>The model only predicts demand, not supply.</strong> The model predicts how much the shop will use; it
+      takes each supplier's lead time from its recent deliveries, refreshed monthly, and does not predict a late
+      delivery. The buffer covers the usual spread of deliveries but does not account for potential supplier
+      failures.</li>
+  <li><strong>Most of each item's usage has no advance signal.</strong> Booked jobs cover about a third of usage on bill
+      parts; floor pulls and service issues, the other two-thirds, are forecast from history alone, so a new customer,
+      a product launch or a lost account shows up only after it reaches the usage records.</li>
 </ul>
 """
 
