@@ -8,7 +8,7 @@ Reference layout (the archive of the post-update sequence): ml/data/backtest/wee
 weekly_backtest.parquet; runs/seq/ladder/metrics_<rung>.json, pred_<rung>.parquet, frame.parquet;
 runs/seq/policy/rop_schedule.json, retrain_log.json. The run folder has the layout run_package.py writes.
 
-Usage: python tests/parity/parity_b.py --reference DIR --run DIR [--json OUT]
+Usage: python src/tests/parity/parity_b.py --reference DIR --run DIR [--json OUT]
 """
 from __future__ import annotations
 
@@ -153,7 +153,7 @@ def schedule_table_check(tables: Path, doc: Path) -> dict:
     return {"rows_table": len(t), "rows_document": len(ref), "status": "identical" if same else "MISS"}
 
 
-REF_DEFAULT = Path(__file__).resolve().parents[2] / "reference" / "2026-10_post_signal_update"
+REF_DEFAULT = Path(__file__).resolve().parents[3] / "reference" / "2026-10_post_signal_update"
 
 
 def main() -> None:

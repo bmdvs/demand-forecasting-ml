@@ -1,6 +1,6 @@
 # Platform setup and operation
 
-The demand-forecasting platform runs on Azure Databricks: Unity Catalog for storage, a Lakeflow pipeline for the warehouse (`resources/pipeline.yml`, sources in `pipelines/`) and the monthly job `dfm_monthly` for the model (`resources/jobs.yml`, package in `src/dfm/`). Both are deployed as one Databricks Asset Bundle (`databricks.yml`). This folder holds the setup and maintenance scripts. Workspace hosts, application ids, subscription ids and secrets come from the environment or a CLI profile and are never written to the repository.
+The demand-forecasting platform runs on Azure Databricks: Unity Catalog for storage, a Lakeflow pipeline for the warehouse (`infra/bundle/pipeline.yml`, sources in `pipelines/`) and the monthly job `dfm_monthly` for the model (`infra/bundle/jobs.yml`, package in `src/dfm/`). Both are deployed as one Databricks Asset Bundle (`databricks.yml`). This folder holds the setup and maintenance scripts. Workspace hosts, application ids, subscription ids and secrets come from the environment or a CLI profile and are never written to the repository.
 
 ## Scripts, in setup order
 
@@ -11,7 +11,7 @@ The demand-forecasting platform runs on Azure Databricks: Unity Catalog for stor
 | `land_extracts.py --profile PROFILE [--pass pass1\|pass2\|all] [--check]` | Lands the source extracts as Parquet in the landing volume with checksum and read-back verification, plus the forward-window results file, and writes a landing manifest | catalog owner |
 | `build_wheel.py` | Builds the `dfm` wheel into an emptied `dist/bundle/`; the bundle runs it on every deploy | (bundle) |
 | `data_profiles.sh [--check]` | Creates the three data profiles (`gold.reorder_schedule` snapshot, `gold.feature_frame` time series, `monitoring.forecast_errors` inference) after the first monthly run in a catalog; the monitor task refreshes them each month | the deploy service principal on prod (`DATABRICKS_CONFIG_PROFILE`), see below |
-| `export_gold_snapshot.py --profile PROFILE --version ... --issued-run ... --monitor-run ...` | Exports `exports/gold_snapshot/`: the gold tables the report generators read, the monitoring tables, the registry's version tags and the forward replay, as Parquet and CSV with a manifest. Needs `DFM_WAREHOUSE_ID` | a reader of `gold` and `monitoring` |
+| `export_gold_snapshot.py --profile PROFILE --version ... --issued-run ... --monitor-run ...` | Exports `docs/data/gold_snapshot/`: the gold tables the report generators read, the monitoring tables, the registry's version tags and the forward replay, as Parquet and CSV with a manifest. Needs `DFM_WAREHOUSE_ID` | a reader of `gold` and `monitoring` |
 
 ## Deploying
 
@@ -26,7 +26,7 @@ databricks bundle deploy -t prod
 - **dev** deploys under the deploying user (`[dev <user>]` names, catalog `dfm_dev`, landing pass `pass1`), so the parity sequence can be rerun there.
 - **prod** deploys under `/Workspace/Shared/.bundle/dfm/prod`, catalog `dfm`, landing pass `pass2` (the final extracts, prod's standing state). The job runs as the deploy service principal, whose application id is passed as `BUNDLE_VAR_deploy_sp`. Prod is deployed as that service principal, from CI (`.github/workflows/ci.yml`, with the workspace host, client id and client secret as repository secrets) or from a CLI profile holding its OAuth credentials. Deploying as a user would need the `servicePrincipal.user` role on the service principal to set the job's run-as identity.
 - Changing a target's landing pass is a full refresh of its pipeline: `databricks pipelines start-update <pipeline id> --full-refresh`.
-- A deploy builds the wheel; `exports/` is not synced to the workspace.
+- A deploy builds the wheel; `docs/data/` is not synced to the workspace.
 
 ## Standing permission rules
 

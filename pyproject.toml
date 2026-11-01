@@ -26,3 +26,21 @@ build-backend = "setuptools.build_meta"
 
 [tool.setuptools]
 packages = ["data_source"]
+
+# Lint for the package and its tests, the pipelines and the infrastructure scripts. Function bodies in
+# src/dfm were copied from the modeling scripts unchanged, so their statement style (several short
+# statements on one line, single-letter names) is accepted rather than rewritten.
+[tool.ruff]
+line-length = 160
+target-version = "py312"
+extend-exclude = ["ml", "data_source", "analytics", "docs", "reference", "runs", "dist"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B006", "B008"]
+ignore = ["E701", "E702", "E731", "E741"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["dfm", "data_source"]
+
+[tool.pytest.ini_options]
+testpaths = ["src/tests"]

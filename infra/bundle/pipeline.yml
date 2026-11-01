@@ -11,10 +11,10 @@ resources:
       serverless: ${var.serverless_pipeline}
       photon: true
       channel: CURRENT
-      root_path: ..
+      root_path: ../..
       libraries:
         - glob:
-            include: ../pipelines/**
+            include: ../../pipelines/**
       configuration:
         dfm.landing_root: ${var.landing_root}
         dfm.pass: ${var.extract_pass}

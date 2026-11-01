@@ -208,7 +208,7 @@ __marimo__/
 
 # Additional Settings
 
-# Local working data and the former ml/ layout (the report code is in reports/); kept on disk, not tracked
+# Local working data and the former ml/ layout (the report code is in docs/build/); kept on disk, not tracked
 ml/
 
 # Generated data, ground-truth crosswalks and ML artifacts — regenerated from

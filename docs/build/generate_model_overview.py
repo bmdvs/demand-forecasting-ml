@@ -3,10 +3,10 @@
 Plain-language report on the demand model and on what six months of running the shop on it delivered.
 January to June 2026 is compared two ways: against 2025 as the shop recorded it (the two halves averaged
 to a six-month basis), and against the same six months of demand replayed under the status quo and under
-manual reordering on the cleaned records. Every figure is read from the gold snapshot (reports/sources.py),
+manual reordering on the cleaned records. Every figure is read from the gold snapshot (docs/build/sources.py),
 the parity reference archive, or the truth files.
 
-    PYTHONIOENCODING=utf-8 .venv/Scripts/python -m reports.generate_model_overview
+    PYTHONIOENCODING=utf-8 .venv/Scripts/python -m docs.build.generate_model_overview
 
 Also writes docs/screenshots/model_outcomes.png, the summary results chart (2025 against the baseline and the
 model), for the README.
@@ -23,7 +23,7 @@ from . import sources as SR
 from .brand import DARK_BLUE, LIGHT_BLUE, MED_GREY, GREEN, DARK_GREY
 from .generate_reorder_queue import build_queue
 
-REPO = Path(__file__).resolve().parents[1]
+REPO = Path(__file__).resolve().parents[2]
 RAW = REPO / "data_source" / "raw"
 OUT = REPO / "docs" / "reports" / "model_overview.html"
 OUTCOMES_PNG = REPO / "docs" / "screenshots" / "model_outcomes.png"

@@ -5,12 +5,12 @@ bundle:
 # DATABRICKS_HOST, so no workspace identifier is committed.
 
 include:
-  - resources/*.yml
+  - infra/bundle/*.yml
 
 # The gold snapshot is data for the deliverables, not code the jobs run.
 sync:
   exclude:
-    - exports/**
+    - docs/data/**
 
 # The package wheel, built into an emptied dist/bundle/ so only the current wheel is attached.
 artifacts:

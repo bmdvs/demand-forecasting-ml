@@ -25,11 +25,11 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install -e src pytest ruff==0.17.2
       - name: Lint
-        run: ruff check src tests infra pipelines
+        run: ruff check src infra pipelines
       - name: Test
         env:
           MLFLOW_DISABLE_AGENT_HINT: "1"
-        run: pytest -q tests
+        run: pytest -q
 
   bundle-validate:
     needs: lint-test

@@ -7,7 +7,7 @@ Rows are aligned by sorting on every non-floating-point column, then on the floa
 columns rounded to ten significant digits.
 
 Usage:
-  python tests/parity/compare.py REFERENCE_DIR CANDIDATE_DIR [--tables a,b] [--names map.json]
+  python src/tests/parity/compare.py REFERENCE_DIR CANDIDATE_DIR [--tables a,b] [--names map.json]
                                  [--json out.json] [--markdown out.md]
 """
 from __future__ import annotations

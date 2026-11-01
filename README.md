@@ -72,8 +72,8 @@ Historically, the shop's inventory reordering was done manually and ran on data 
 |---|---|
 | [`pipelines/`](pipelines/) | The Lakeflow pipeline in SQL: bronze (the landed extracts), silver (staging, the sixteen data-quality flags and the intermediate models), gold (the marts the model reads and the audit's error register), and integrity checks. |
 | [`infra/`](infra/) | Platform setup and maintenance: Unity Catalog objects and grants, extract landing, data profiles and the gold snapshot export ([setup notes](infra/README.md)). |
-| [`resources/`](resources/) and [`databricks.yml`](databricks.yml) | The Databricks Asset Bundle: the pipeline and the monthly job `dfm_monthly`, with dev and prod targets. |
-| [`tests/`](tests/) | Unit tests for the package, and the local parity runner in [`tests/parity/`](tests/parity/) that checks the platform's tables and model outputs against the archived reference run. |
+| [`infra/bundle/`](infra/bundle/) and [`databricks.yml`](databricks.yml) | The Databricks Asset Bundle: the pipeline and the monthly job `dfm_monthly`, with dev and prod targets. |
+| [`src/tests/`](src/tests/) | Unit tests for the package, and the local parity runner in [`src/tests/parity/`](src/tests/parity/) that checks the platform's tables and model outputs against the archived reference run. |
 | [`data_source/`](data_source/) | The data generators and sample extracts from the ERP, warehouse system and buyer's spreadsheet. |
 
 ---
@@ -138,17 +138,17 @@ python -m data_source.generate.export_truth
 python infra/land_extracts.py --profile <profile> --pass pass2
 
 # 4. Local parity runner: the package on the archived reference, against the platform's outputs
-python tests/parity/run_package.py --archive reference/2026-10_post_signal_update --out runs/parity/package/archive_pass2
-python tests/parity/parity_b.py --reference reference/2026-10_post_signal_update --run runs/parity/package/archive_pass2
+python src/tests/parity/run_package.py --archive reference/2026-10_post_signal_update --out runs/parity/package/archive_pass2
+python src/tests/parity/parity_b.py --reference reference/2026-10_post_signal_update --run runs/parity/package/archive_pass2
 
 # 5. Report generators, from the gold snapshot (the audit also reads the two local analyses)
-python -m reports.reliability
-python -m reports.financials
-python -m reports.generate_data_quality_audit
-python -m reports.generate_reorder_queue
-python -m reports.generate_model_overview
-python -m reports.generate_technical_report
-python -m reports.generate_monitoring_report
+python -m docs.build.reliability
+python -m docs.build.financials
+python -m docs.build.generate_data_quality_audit
+python -m docs.build.generate_reorder_queue
+python -m docs.build.generate_model_overview
+python -m docs.build.generate_technical_report
+python -m docs.build.generate_monitoring_report
 ```
 
 ```bash
