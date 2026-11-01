@@ -8,7 +8,8 @@ the parity reference archive, or the truth files.
 
     PYTHONIOENCODING=utf-8 .venv/Scripts/python -m reports.generate_model_overview
 
-Also writes docs/screenshots/model_outcomes.png, the three-variant results chart, for the README.
+Also writes docs/screenshots/model_outcomes.png, the summary results chart (2025 against the baseline and the
+model), for the README.
 """
 import base64
 import json
@@ -34,6 +35,10 @@ H1, H2 = REC["1H25"], REC["2H25"]
 F = fr["forward"]["1H26"]
 VARIANTS = [("dirty", "Status quo"), ("clean_rule", "Manual reordering on the cleaned records"), ("model", "The model")]
 VAR_COL = {"dirty": MED_GREY, "clean_rule": LIGHT_BLUE, "model": DARK_BLUE}
+# the summary chart: 2025 as recorded (halves averaged), the baseline (manual reordering on the cleaned
+# records) and the model, January to June 2026
+SUMMARY = [("rec25", "1H/2H '25 avg."), ("clean_rule", "Baseline"), ("model", "Demand forecasting model")]
+SUMMARY_COL = {"rec25": MED_GREY, "clean_rule": LIGHT_BLUE, "model": DARK_BLUE}
 SEG_ORDER = ["smooth", "erratic", "lumpy", "intermittent"]
 
 # the champion's training run (version 1): its S1 rung result, as the parity reference archived it
@@ -85,13 +90,14 @@ def chg(a_, b_):
 
 
 # ── charts ────────────────────────────────────────────────────────────────────
-def _variant_panels(panels, h=3.4):
-    """One panel per measure, one bar per variant, the change against the status quo above the other two."""
+def _variant_panels(panels, h=3.4, series=None, colors=None, legend_bottom=False):
+    """One panel per measure, one bar per series, the change against the first series above the others."""
     import matplotlib.pyplot as plt
+    series, colors = series or VARIANTS, colors or VAR_COL
     fig, axes = plt.subplots(1, len(panels), figsize=(B.CHART_W, h))
-    keys = [v for v, _ in VARIANTS]
+    keys = [v for v, _ in series]
     for ax, (title, vals, fmt) in zip(axes, panels):
-        bars = ax.bar(range(len(keys)), vals, color=[VAR_COL[v] for v in keys], width=0.7)
+        bars = ax.bar(range(len(keys)), vals, color=[colors[v] for v in keys], width=0.7)
         for i, (b_, v) in enumerate(zip(bars, vals)):
             c_ = (v - vals[0]) / vals[0] * 100
             lab = fmt.format(v) + ("" if i == 0 else "\n(0%)" if round(c_) == 0 else f"\n({c_:+.0f}%)")
@@ -100,22 +106,29 @@ def _variant_panels(panels, h=3.4):
         ax.set_ylim(0, max(vals) * 1.32); ax.set_yticks([]); ax.set_xticks([])
         B.chart_style(ax)
         ax.spines["left"].set_visible(False)
-    handles = [plt.Rectangle((0, 0), 1, 1, color=VAR_COL[v]) for v in keys]
-    fig.legend(handles, [n for _, n in VARIANTS], loc="upper center", ncol=3, frameon=False, fontsize=9,
-               bbox_to_anchor=(0.5, 1.0))
-    fig.tight_layout(w_pad=1.4, rect=(0, 0, 1, 0.9))
+    handles = [plt.Rectangle((0, 0), 1, 1, color=colors[v]) for v in keys]
+    if legend_bottom:
+        fig.legend(handles, [n for _, n in series], loc="lower center", ncol=len(keys), frameon=False, fontsize=9,
+                   bbox_to_anchor=(0.5, 0.0))
+        fig.tight_layout(w_pad=1.4, rect=(0, 0.1, 1, 1))
+    else:
+        fig.legend(handles, [n for _, n in series], loc="upper center", ncol=len(keys), frameon=False, fontsize=9,
+                   bbox_to_anchor=(0.5, 1.0))
+        fig.tight_layout(w_pad=1.4, rect=(0, 0, 1, 0.9))
     return fig
 
 
 def chart_outcomes():
-    """The three variants over the same six months: stockout days, held jobs, rush spend, average inventory.
-    Also saved as docs/screenshots/model_outcomes.png."""
-    keys = [v for v, _ in VARIANTS]
+    """2025 as recorded (the two halves averaged) against the baseline and the model, January to June 2026:
+    stockout days, held jobs, rush spend, average inventory. Also saved as docs/screenshots/model_outcomes.png."""
+    def vals(key, scale=1):
+        return [(half(key) if v == "rec25" else F[v][key]) / scale for v, _ in SUMMARY]
     fig = _variant_panels([
-        ("Stockout days", [F[v]["stockout_days"] for v in keys], "{:,.0f}"),
-        ("Jobs held for material", [F[v]["jobs_delayed"] for v in keys], "{:,.0f}"),
-        ("Rush spend ($000)", [F[v]["rush_spend"] / 1000 for v in keys], "${:,.0f}K"),
-        ("Average inventory ($M)", [F[v]["avg_inventory_value"] / 1e6 for v in keys], "${:,.2f}M")])
+        ("Stockout days", vals("stockout_days"), "{:,.0f}"),
+        ("Jobs held for material", vals("jobs_delayed"), "{:,.0f}"),
+        ("Rush spend ($000)", vals("rush_spend", 1000), "${:,.0f}K"),
+        ("Average inventory ($M)", vals("avg_inventory_value", 1e6), "${:,.2f}M")],
+        series=SUMMARY, colors=SUMMARY_COL, legend_bottom=True)
     b64 = B.b64(fig)
     OUTCOMES_PNG.parent.mkdir(parents=True, exist_ok=True)
     OUTCOMES_PNG.write_bytes(base64.b64decode(b64))
@@ -479,17 +492,15 @@ the reordering process was labor-intensive and imprecise: stock levels and lead 
 unverified, safety stock was inflated, and rush orders were relied upon to compensate for shortfalls. The result
 was the shop carrying excess inventory, {dos25:.0f} days of usage, yet still logging elevated stockout days,
 held jobs for missing material and rush freight spend.</p>
-<p>The results below compare January to June 2026 with 2025 as the shop recorded it, with 2025's two halves
-averaged to a six-month basis. Stockout days fell
-<strong>{fall(half('stockout_days'), mod['stockout_days'])}</strong>, jobs held for material fell
-<strong>{fall(half('jobs_delayed'), mod['jobs_delayed'])}</strong> and rush spend fell
-<strong>{fall(half('rush_spend'), mod['rush_spend'])}</strong>, while average inventory fell
+<p>The results below compare the performance of the demand forecasting model and baseline in January to June 2026
+against 2025 as the shop recorded it, with 2025's two halves averaged to a six-month basis. Baseline assumes the
+shop continued their manual reordering process as they did in 2025 on the cleaned data records. The model achieved
+significant improvements in stockout days (<strong>{chg(half('stockout_days'), mod['stockout_days'])}</strong>),
+jobs held for material (<strong>{chg(half('jobs_delayed'), mod['jobs_delayed'])}</strong>), and rush spend
+(<strong>{chg(half('rush_spend'), mod['rush_spend'])}</strong>), while average inventory fell
 <strong>{fall(half('avg_inventory_value'), mod['avg_inventory_value'])}</strong>, to
-{mod['days_of_supply']:.0f} days of usage from {dos25:.0f}.</p>
-<p>Over the same six months of demand, the model also beat the two ways the shop could have reordered without it:
-the status quo, as the shop ran in 2025, and manual reordering on the cleaned records. It cut stockout days, held
-jobs and rush spend the furthest of the three, and carried slightly more inventory than either.</p>
-{B.chart("Status quo, manual reordering on the cleaned records and the model, January to June 2026", charts["outcomes"])}
+${mod['avg_inventory_value'] / 1e6:.1f}m, or {mod['days_of_supply']:.0f} days of usage from {dos25:.0f} in 2025.</p>
+{B.chart("ML-driven vs. baseline, January to June 2026 against 1H/2H 2025", charts["outcomes"])}
 
 {B.section("modeloverview", "Section 2", "Model Overview")}
 
