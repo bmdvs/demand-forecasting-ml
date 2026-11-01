@@ -251,7 +251,7 @@ def compare_table():
     ]
     rows = [[label, fn(d_), fn(r_), ch(r_), fn(m_), ch(m_)] for label, fn, ch in spec]
     return widths(B.data_table(["Measure", "Status quo", "Baseline", "Change",
-                                "Demand Forecasting Model", "Change"], rows, right=[1, 2, 3, 4, 5]), [26, 14, 18, 11, 14, 11])
+                                "Demand Forecasting Model", "Change"], rows, right=[1, 2, 3, 4, 5]), [24, 18, 18, 11, 18, 11])
 
 
 # ── figures quoted in the text ────────────────────────────────────────────────
@@ -563,7 +563,8 @@ error is scored on total usage over each item's lead time.</p>
 baseline in the 1H 2026 to the same period of time under a status quo scenario. This status quo scenario assumes
 the shop operated in 1H 2026 as it did throughout 2025, including manual reordering and with the data errors fully
 intact (with stale lead times and reorder points). Baseline assumes the same manual reordering on cleaned
-records.</p>
+records. The demand forecasting model achieved significant improvements in stockout days, jobs held for material,
+and rush freight expense.</p>
 {compare_table()}
 <p>The model carries more stock than baseline and slightly more than the status quo over the same six months. Its
 buffers are sized to the fill-rate targets on the items with the widest forecast error, where the manual rule's thin
