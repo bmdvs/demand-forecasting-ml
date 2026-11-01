@@ -22,8 +22,8 @@ A **demand forecasting ML model** was then built on the cleaned records. Every w
 - **Purpose and use.** Every Monday the model forecasts each item's usage over its supplier lead time and turns it into a reorder point (the stock level at which to order) and an order quantity, written to the ERP's purchasing screen. A buffer is added from the item's forecast error, its supplier's lead-time variability and a fill-rate target set by criticality. The model is intended to be used by buyers as their default weekly reorder queue, with every line open to review and override.
 - **Model training.** The model was trained on three years of remediated ERP history: inventory transactions, production orders and bills of materials, service orders, purchase-order receipts, and the item and supplier masters.
   - It takes the parts that booked jobs will draw as known, and forecasts the rest of each item's usage: mainly floor pulls, service issues and jobs not yet booked.
-  - That forecast is driven by the item's own usage history, expressed as lagged and rolling features computed up to the forecast date. Demand forecasts for service items also consider the expected lifespan for the installed base of fielded products.
-  - A random forest is trained across all items on these features together with each item's demand pattern, class, lead time and annual volume.
+  - That forecast is driven by the item's own usage history, expressed as lagged and rolling features computed up to the forecast date. 
+  - A random forest is trained across all items on these features together with each item's demand pattern, class, lead time and annual volume. 
 - **Model evaluation.** Candidates (ridge, random forest, XGBoost) were tuned with Optuna on a validation window, selected by rule, and scored on a held-out 2025 backtest.
   - Seven baseline methods were computed, the strongest being the moving average by demand pattern (47.2% WAPE).
   - The production model reaches 43.0% overall and 37.1% on line-critical parts, an 8.9% reduction in error against baseline.
