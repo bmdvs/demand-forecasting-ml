@@ -467,8 +467,14 @@ toc = ('<a href="#summary">Executive Summary</a><hr>'
        '<a href="#performance">Model Performance</a>'
        '<a href="#scoring" class="sub">Scoring Summary</a>'
        '<a href="#accuracy" class="sub">Accuracy and Validation</a>'
-       '<a href="#limits" class="sub">Assumptions &amp; Limitations</a>')
+       '<a href="#limits" class="sub">Limitations</a>')
 
+
+# the limitations quote two fractions: lumpy and intermittent items about two-fifths of the catalog, booked jobs
+# about a third of usage over the lead time on bill parts
+_li_share = (seg_n.get('lumpy', 0) + seg_n.get('intermittent', 0)) / sum(seg_n.values())
+assert 0.35 <= _li_share <= 0.45, f"lumpy and intermittent share {_li_share:.3f} is not about two-fifths"
+assert 0.28 <= firm_share_bill <= 0.38, f"booked share on bill parts {firm_share_bill:.3f} is not about a third"
 
 body = f"""
 {B.section("summary", "Section 1", "Executive Summary")}
@@ -574,19 +580,18 @@ part of the 2026 model figure also reflects the over-correction on intermittent
 items that the monitor flagged for retraining (see <a href="monitoring_report.html">monitoring report</a>).</p>
 {B.chart("Average inventory by month, January to June 2026", charts["invm"])}
 
-{B.section("limits", "Section 3.3", "Assumptions &amp; Limitations")}
+{B.section("limits", "Section 3.3", "Limitations")}
 <ul class="limitation-list">
-  <li><strong>It forecasts demand, not supply.</strong> The model predicts how much the shop will use; it takes each
-      supplier's lead time from its recent deliveries, refreshed monthly, and does not predict a late delivery. The buffer covers
-      the usual spread of deliveries, not a supplier failure.</li>
-  <li><strong>Booking visibility.</strong> Customer orders are booked {BOOK_LO} to {BOOK_HI} days before
-      their jobs are released.</li>
-  <li><strong>Expediting is held constant.</strong> All three replays expedite the same items the purchasing
-      manager tracked before go-live, so rush spend reflects how often those items were at risk, not a change in
-      how hard the shop chases suppliers.</li>
-  <li><strong>Intermittent items ran high in live use.</strong> After bias correction, the forecasts for intermittent
-      items ran high in {INT_MONTHS} ({INT_BIAS}), which the monitor flagged for retraining; the buffers on those
-      items were larger than needed in those months.</li>
+  <li><strong>Lumpy and intermittent items are forecast poorly.</strong> About two-fifths of the catalog uses items in
+      only a few weeks each year; no method forecasts those at low error. The safety buffer, not the forecast, is what
+      keeps them in stock.</li>
+  <li><strong>The model only predicts demand, not supply.</strong> The model predicts how much the shop will use; it
+      takes each supplier's lead time from its recent deliveries, refreshed monthly, and does not predict a late
+      delivery. The buffer covers the usual spread of deliveries but does not account for potential supplier
+      failures.</li>
+  <li><strong>Most of each item's usage has no advance signal.</strong> Booked jobs cover about a third of usage on bill
+      parts; floor pulls and service issues, the other two-thirds, are forecast from history alone, so a new customer,
+      a product launch or a lost account shows up only after it reaches the usage records.</li>
 </ul>
 """
 
