@@ -574,7 +574,8 @@ records. The demand forecasting model achieved significant improvements over bot
 the key production and purchasing KPIs: stockout days, jobs held for material, and rush freight expense.</p>
 {compare_table()}
 <p>The reordering decisions driven by the demand forecasting model result in more inventory than baseline and
-slightly more than the status quo over the same six months. The model's buffers are sized to the fill-rate targets
+slightly more than the status quo over the same six months. This is because the model's buffers are sized to the
+fill-rate targets
 on the items with the widest forecast error, where the manual rule's thin buffers are what produce its stockouts;
 part of the 2026 model figure also reflects the over-correction on intermittent
 items that the monitor flagged for retraining (see <a href="monitoring_report.html">monitoring report</a>).</p>
