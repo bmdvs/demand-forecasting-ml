@@ -32,7 +32,7 @@ A **demand forecasting ML model** was then built on the cleaned records. Every w
 - **Production monitoring.** Retrained monthly and refreshed weekly, with a monitor that tracks forecast error and bias by demand pattern, feature drift, supplier lead-time drift and data quality against investigate-and-retrain thresholds.
   - Full monitoring detail is in the [monitoring report](https://bmdvs.github.io/demand-forecasting-ml/docs/reports/monitoring_report.html).
 
-The model's reorder suggestions are embedded in the shop's existing ERP purchasing screen:
+The model's reorder suggestions are embedded in the shop's existing ERP purchasing screen and ranked by urgency:
 
 [![ERP reorder queue with embedded demand forecasts](docs/screenshots/erp_queue.png)](https://bmdvs.github.io/demand-forecasting-ml/docs/index.html)
 
