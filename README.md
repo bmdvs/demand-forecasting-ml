@@ -1,28 +1,36 @@
-# Demand Forecasting ML Model & ERP Data Quality Audit
+# Machine Learning Model: Demand Forecasting 
 
 This project was built on Azure Databricks: source extracts land in Unity Catalog, a Lakeflow pipeline cleans and transforms them, and a monthly job trains, gates, scores and monitors the model through MLflow and the Unity Catalog model registry.
 
 The work began with a full [data quality audit](https://bmdvs.github.io/demand-forecasting-ml/docs/reports/data_quality_audit.html) of the shop's ERP, which found sixteen recurring error types across eight tables and remediated them so the records could be trusted.
 
-A **demand forecasting ML model** was then built on the cleaned records. Every week it forecasts demand and sets the reorder decision for each of the shop's 1,339 stocked items. The model is detailed in the [model overview](https://bmdvs.github.io/demand-forecasting-ml/docs/reports/model_overview.html) and summarized below.
+A **demand forecasting ML model** was then built on the cleaned records. Every week it forecasts demand and sets the reorder decision for each of the shop's 1,300 stocked items. The model's code is found [HERE]. The model is detailed in the [model overview](https://bmdvs.github.io/demand-forecasting-ml/docs/reports/model_overview.html) and summarized below.
 
-- **Results.** The model has set every reorder decision the shop made from January to June 2026. The table compares that period with 2025, when buyers reordered by hand on the uncleaned records, and shows the same manual process run on the cleaned records over the same six months. The model improved every production and purchasing KPI. Both methods carried less inventory than 2025 and freed cash tied in working capital, mainly through the audit's recomputed reorder points and safety stock, with merged duplicate items removing a second buffer on the same part.
+- **Results.** The model has set every reorder decision the shop made from January to June 2026. The table compares that period with 2025, when buyers reordered by hand on the uncleaned records, and shows the same manual process run on the cleaned records over the same six months. The model significantly improved every production and purchasing KPI. Both methods carried less inventory than 2025 and freed cash tied in working capital, driven by recomputed reorder points and safety stock as a result of the data quality audit.
 
 <div align="center">
 
-<b>Reordering on the cleaned ERP records, January to June 2026, against 2025</b>
+<b>ML-driven vs. Manual Reordering Performance on Cleaned ERP Records (1H 2026 against 2025)</b>
 
 | | Stockout days | Jobs held for material | Rush-freight spend | Avg. inventory balance |
 |:---|:---:|:---:|:---:|:---:|
-| **Manual reordering** | −7% | −10% | −19% | −11% (139 days of usage, from 161) |
-| **ML-driven reordering** | −36% | −43% | −46% | −5% (148 days of usage, from 161) |
+| Manual reordering | −7% | −10% | −19% | −11% (139 days of usage, from 161) |
+| **ML-driven reordering** | **−36%** | **−43%** | **−46%** | **−5% (148 days of usage, from 161)** |
 
 </div>
 
-- **Purpose and use.** Every Monday the model forecasts each item's usage over its supplier lead time and turns it into a reorder point (the stock level at which to order) and an order quantity, written to the ERP's purchasing screen. A buffer is added from the item's forecast error, its supplier's lead-time variability and a fill-rate target set by criticality. The model is intended to be used by buyers as their weekly reorder queue, with every line open to review and override.
-- **Model training.** The model was trained on three years of remediated ERP history: inventory transactions, production orders and bills of materials, service orders, purchase-order receipts, and the item and supplier masters. It takes the parts that booked jobs will draw as known, and forecasts the rest of each item's usage: mainly floor pulls, service issues and jobs not yet booked. That forecast is driven by the item's own usage history, expressed as lagged and rolling features computed up to the forecast date. A single random forest is trained across all items on these features together with each item's demand pattern, class, lead time and annual volume, so the model pools what it learns across items with similar histories rather than fitting each series alone. Nothing outside the ERP enters the model.
-- **Model evaluation.** Candidates (ridge, random forest, XGBoost) were tuned with Optuna on a validation window, selected by rule, and scored on a held-out 2025 backtest against seven simple methods a buyer could run by hand, the strongest being the order book plus the best moving average by demand pattern (47.2% WAPE). The production model reaches 43.0% overall and 37.1% on line-critical parts, an 8.9% reduction in error against the best manual method with the same information. Most of the remaining error sits in the lumpy and intermittent items, about two-fifths of the catalog, whose demand arrives in a few weeks a year; no method forecasts those at low error. A feature study tested five further signal groups; none improved held-out accuracy, and the smaller set was kept. Full evaluation and technical detail are in the [technical report](https://bmdvs.github.io/demand-forecasting-ml/docs/reports/technical_report.html).
-- **Production monitoring.** Retrained monthly and refreshed weekly, with a monitor that tracks forecast error and bias by demand pattern, feature drift, supplier lead-time drift and data quality against investigate-and-retrain thresholds. Detail is in the [monitoring report](https://bmdvs.github.io/demand-forecasting-ml/docs/reports/monitoring_report.html).
+- **Purpose and use.** Every Monday the model forecasts each item's usage over its supplier lead time and turns it into a reorder point (the stock level at which to order) and an order quantity, written to the ERP's purchasing screen. A buffer is added from the item's forecast error, its supplier's lead-time variability and a fill-rate target set by criticality. The model is intended to be used by buyers as their default weekly reorder queue, with every line open to review and override.
+- **Model training.** The model was trained on three years of remediated ERP history: inventory transactions, production orders and bills of materials, service orders, purchase-order receipts, and the item and supplier masters.
+  - It takes the parts that booked jobs will draw as known, and forecasts the rest of each item's usage: mainly floor pulls, service issues and jobs not yet booked.
+  - That forecast is driven by the item's own usage history, expressed as lagged and rolling features computed up to the forecast date. Demand forecasts for service items also consider the expected lifespan for the installed base of fielded products.
+  - A random forest is trained across all items on these features together with each item's demand pattern, class, lead time and annual volume.
+- **Model evaluation.** Candidates (ridge, random forest, XGBoost) were tuned with Optuna on a validation window, selected by rule, and scored on a held-out 2025 backtest.
+  - Seven baseline methods were computed, the strongest being the moving average by demand pattern (47.2% WAPE).
+  - The production model reaches 43.0% overall and 37.1% on line-critical parts, an 8.9% reduction in error against baseline.
+  - Most of the remaining error sits in the lumpy and intermittent items, about two-fifths of the catalog, whose demand arrives in a few weeks a year; no method forecasts those at low error.
+  - Full evaluation and technical detail are in the [technical report](https://bmdvs.github.io/demand-forecasting-ml/docs/reports/technical_report.html).
+- **Production monitoring.** Retrained monthly and refreshed weekly, with a monitor that tracks forecast error and bias by demand pattern, feature drift, supplier lead-time drift and data quality against investigate-and-retrain thresholds.
+  - Full monitoring detail is in the [monitoring report](https://bmdvs.github.io/demand-forecasting-ml/docs/reports/monitoring_report.html).
 
 The model's reorder suggestions are embedded in the shop's existing ERP purchasing screen:
 
