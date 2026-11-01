@@ -10,7 +10,7 @@ A **demand forecasting ML model** was then built on the cleaned records. Every w
   
 <div align="center">
 
-<b>ML-driven vs. Manual Reordering Performance on Cleaned ERP Records (1H 2026 against 2025)</b>
+<b>Performance of ML-driven vs. Manual Reordering on Cleaned ERP Records (1H 2026 against 2025)</b>
 
 | | Stockout days | Jobs held for material | Rush-freight spend | Avg. inventory balance |
 |:---|:---:|:---:|:---:|:---:|
