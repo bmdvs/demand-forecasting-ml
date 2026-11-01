@@ -6,8 +6,8 @@ The work began with a full [data quality audit](https://bmdvs.github.io/demand-f
 
 A **demand forecasting ML model** was then built on the cleaned records. Every week it forecasts demand and sets the reorder decision for each of the shop's 1,300 stocked items. The model's code is found [here](src/dfm/). The model is detailed in the [model overview](https://bmdvs.github.io/demand-forecasting-ml/docs/reports/model_overview.html) and summarized below.
 
-- **Results.** The model has set every reorder decision the shop made from January to June 2026. The table compares that period with 2025, when buyers reordered by hand on the uncleaned records, and shows the same manual process run on the cleaned records over the same six months. The model significantly improved every production and purchasing KPI. Both methods carried less inventory than 2025 and freed cash tied in working capital, driven by recomputed reorder points and safety stock as a result of the data quality audit.
-
+- **Results.** The model has set every reorder decision the shop made from January to June 2026. The table compares that period with 2025, when buyers reordered by hand on the uncleaned records, and shows the same manual process run on the cleaned records over the same six months. The model significantly improved every production and purchasing KPI. Both methods carried less inventory than 2025, driven by recomputed reorder points and safety stock as a result of the data quality audit.
+  
 <div align="center">
 
 <b>ML-driven vs. Manual Reordering Performance on Cleaned ERP Records (1H 2026 against 2025)</b>
