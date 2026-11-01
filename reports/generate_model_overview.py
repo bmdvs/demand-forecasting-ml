@@ -561,11 +561,11 @@ algorithms were tuned and compared on their forecasts for that year, and the
 error is scored on total usage over each item's lead time.</p>
 {candidate_table()}
 <p>To understand how well the model performed against baseline, we'll compare the performance of the model and
-baseline in the 1H 2026 to the same period of time under a status quo scenario. This status quo scenario assumes
-the shop operated in 1H 2026 as it did throughout 2025, including manual reordering and with the data errors fully
+baseline in 1H 2026 to the same period of time under a status quo scenario. This status quo scenario assumes the
+shop operated in 1H 2026 as it did throughout 2025, including manual reordering and with the data errors fully
 intact (with stale lead times and reorder points). Baseline assumes the same manual reordering on cleaned
-records. The demand forecasting model achieved significant improvements in stockout days, jobs held for material,
-and rush freight expense.</p>
+records. The demand forecasting model achieved significant improvements over both baseline and status quo across
+the key production and purchasing KPIs: stockout days, jobs held for material, and rush freight expense.</p>
 {compare_table()}
 <p>The reordering decisions driven by the demand forecasting model result in more inventory than baseline and
 slightly more than the status quo over the same six months. The model's buffers are sized to the fill-rate targets
