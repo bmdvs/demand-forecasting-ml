@@ -60,16 +60,21 @@ Historically, the shop's inventory reordering was done manually and ran on data 
 
 ## Code
 
+### ML model
+
 | Folder | What it is |
 |---|---|
 | [`src/dfm/`](src/dfm/) | The model package: features, training and selection, the reorder policy, the promotion gates and the monitor, with the monthly job's entry points (train, promote, score, monitor) in `entrypoints/`. |
+
+### Data & ML engineering
+
+| Folder | What it is |
+|---|---|
 | [`pipelines/`](pipelines/) | The Lakeflow pipeline in SQL: bronze (the landed extracts), silver (staging, the sixteen data-quality flags and the intermediate models), gold (the marts the model reads and the audit's error register), and integrity checks. |
-| [`resources/`](resources/) and [`databricks.yml`](databricks.yml) | The Databricks Asset Bundle: the pipeline and the monthly job `dfm_monthly`, with dev and prod targets. |
 | [`infra/`](infra/) | Platform setup and maintenance: Unity Catalog objects and grants, extract landing, data profiles and the gold snapshot export ([setup notes](infra/README.md)). |
+| [`resources/`](resources/) and [`databricks.yml`](databricks.yml) | The Databricks Asset Bundle: the pipeline and the monthly job `dfm_monthly`, with dev and prod targets. |
 | [`tests/`](tests/) | Unit tests for the package, and the local parity runner in [`tests/parity/`](tests/parity/) that checks the platform's tables and model outputs against the archived reference run. |
-| [`reports/`](reports/) | The report generators, reading the gold snapshot, and the two local analyses the audit reads: the reliability of on-hand balances and the financial measures. |
-| [`exports/gold_snapshot/`](exports/gold_snapshot/) | The gold tables, monitoring tables, registry version tags and replay results the reports read, as Parquet and CSV with a manifest. |
-| [`exports/feature_study/`](exports/feature_study/) | The feature study's metrics by rung, read by the technical report. |
+| [`data_source/`](data_source/) | The data generators and sample extracts from the ERP, warehouse system and buyer's spreadsheet. |
 
 ---
 
