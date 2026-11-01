@@ -497,7 +497,7 @@ jobs held for material (<strong>{chg(half('jobs_delayed'), mod['jobs_delayed'])}
 (<strong>{chg(half('rush_spend'), mod['rush_spend'])}</strong>), while average inventory fell
 <strong>{fall(half('avg_inventory_value'), mod['avg_inventory_value'])}</strong>, to
 ${mod['avg_inventory_value'] / 1e6:.1f}m, or {mod['days_of_supply']:.0f} days of usage from {dos25:.0f} in 2025.</p>
-{B.chart("ML-driven vs. baseline, January to June 2026 against 1H/2H 2025", charts["outcomes"])}
+{B.chart("ML-driven reordering vs. baseline, January to June 2026 against 1H/2H 2025", charts["outcomes"])}
 
 {B.section("modeloverview", "Section 2", "Model Overview")}
 
