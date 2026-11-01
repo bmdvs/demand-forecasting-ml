@@ -33,7 +33,7 @@ fr = SR.forward_results()
 REC = fr["as_recorded"]
 H1, H2 = REC["1H25"], REC["2H25"]
 F = fr["forward"]["1H26"]
-VARIANTS = [("dirty", "Status quo"), ("clean_rule", "Manual reordering on the cleaned records"), ("model", "The model")]
+VARIANTS = [("dirty", "Status quo"), ("clean_rule", "Baseline"), ("model", "The model")]
 VAR_COL = {"dirty": MED_GREY, "clean_rule": LIGHT_BLUE, "model": DARK_BLUE}
 # the summary chart: 2025 as recorded (halves averaged), the baseline (manual reordering on the cleaned
 # records) and the model, January to June 2026
@@ -133,16 +133,6 @@ def chart_outcomes():
     OUTCOMES_PNG.parent.mkdir(parents=True, exist_ok=True)
     OUTCOMES_PNG.write_bytes(base64.b64decode(b64))
     return b64
-
-
-def chart_variants():
-    """The three variants: stockout days, held jobs, rush spend and inventory at the end of June."""
-    keys = [v for v, _ in VARIANTS]
-    return B.b64(_variant_panels([
-        ("Stockout days", [F[v]["stockout_days"] for v in keys], "{:,.0f}"),
-        ("Jobs held for material", [F[v]["jobs_delayed"] for v in keys], "{:,.0f}"),
-        ("Rush spend ($000)", [F[v]["rush_spend"] / 1000 for v in keys], "${:,.0f}K"),
-        ("Inventory, end of June ($M)", [F[v]["end_inventory_value"] / 1e6 for v in keys], "${:,.2f}M")]))
 
 
 def chart_inventory_months():
@@ -260,8 +250,8 @@ def compare_table():
         ("Purchases", lambda x: money(x["purchases"]), lambda x: change("purchases", x)),
     ]
     rows = [[label, fn(d_), fn(r_), ch(r_), fn(m_), ch(m_)] for label, fn, ch in spec]
-    return widths(B.data_table(["Measure", "Status quo", "Manual reordering on the cleaned records", "Change",
-                                "The model", "Change"], rows, right=[1, 2, 3, 4, 5]), [26, 14, 18, 11, 14, 11])
+    return widths(B.data_table(["Measure", "Status quo", "Baseline", "Change",
+                                "Demand Forecasting Model", "Change"], rows, right=[1, 2, 3, 4, 5]), [26, 14, 18, 11, 14, 11])
 
 
 # ── figures quoted in the text ────────────────────────────────────────────────
@@ -466,7 +456,7 @@ FLOW_HTML = (
 _png = REPO / "docs" / "screenshots" / "erp_queue.png"
 erp_b64 = base64.b64encode(_png.read_bytes()).decode()
 
-charts = {"outcomes": chart_outcomes(), "variants": chart_variants(), "actions": chart_actions(),
+charts = {"outcomes": chart_outcomes(), "actions": chart_actions(),
           "actions_m": chart_actions_by_month(), "invm": chart_inventory_months(), "valcat": chart_value_by_category(),
           "catseg": chart_category_patterns(), "unitcat": chart_units_by_category(), "examples": chart_examples()}
 
@@ -569,16 +559,14 @@ algorithms were tuned and compared on their forecasts for that year, and the
 {CAND_LABEL[WIN].lower() if WIN != 'XGBoost' else 'XGBoost'} model, with the lowest error, was selected. Validation
 error is scored on total usage over each item's lead time.</p>
 {candidate_table()}
-<p>To understand how well the model performed against baseline, we'll compare the model's performance in the
-1H 2026 to the same period of time under a status quo scenario where the shop did not use the model. This
-status quo scenario assumes the shop operated
-in 1H 2026 as it did throughout 2025, including with stale lead times and reorder points, the buyers'
-four-and-a-half-month lots and with the data errors fully intact. The middle column is the buyers' manual
-reordering run on the cleaned records.</p>
+<p>To understand how well the model performed against baseline, we'll compare the performance of the model and
+baseline in the 1H 2026 to the same period of time under a status quo scenario. This status quo scenario assumes
+the shop operated in 1H 2026 as it did throughout 2025, including manual reordering and with the data errors fully
+intact (with stale lead times and reorder points). Baseline assumes the same manual reordering on cleaned
+records.</p>
 {compare_table()}
 <p>The model carries more stock than manual reordering on the cleaned records and slightly more than the status
 quo over the same six months.</p>
-{B.chart("Status quo, manual reordering on the cleaned records and the model, by measure", charts["variants"])}
 {B.chart("Average inventory by month, January to June 2026", charts["invm"])}
 
 {B.section("limits", "Section 3.3", "Assumptions &amp; Limitations")}
