@@ -568,7 +568,7 @@ records.</p>
 <p>The model carries more stock than baseline and slightly more than the status quo over the same six months. Its
 buffers are sized to the fill-rate targets on the items with the widest forecast error, where the manual rule's thin
 buffers are what produce its stockouts; part of the 2026 figure also reflects the over-correction on intermittent
-items that the monitor flagged for retraining.</p>
+items that the monitor flagged for retraining (see <a href="monitoring_report.html">monitoring report</a>).</p>
 {B.chart("Average inventory by month, January to June 2026", charts["invm"])}
 
 {B.section("limits", "Section 3.3", "Assumptions &amp; Limitations")}
