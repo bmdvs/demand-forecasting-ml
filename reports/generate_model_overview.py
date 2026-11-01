@@ -484,7 +484,8 @@ was the shop carrying excess inventory, {dos25:.0f} days of usage, yet still log
 held jobs for missing material and rush freight spend.</p>
 <p>The results below compare the performance of the demand forecasting model and baseline method in January to June
 2026 against 2025 as the shop recorded it, with 2025's two halves averaged to a six-month basis. Baseline assumes the
-shop continued their manual reordering process as they did in 2025 on the newly cleaned data records. The model achieved
+shop continued their manual reordering process as they did in 2025, but on the newly cleaned data records. The model
+achieved
 significant improvements in stockout days (<strong>{chg(half('stockout_days'), mod['stockout_days'])}</strong>),
 jobs held for material (<strong>{chg(half('jobs_delayed'), mod['jobs_delayed'])}</strong>), and rush spend
 (<strong>{chg(half('rush_spend'), mod['rush_spend'])}</strong>), while average inventory fell
