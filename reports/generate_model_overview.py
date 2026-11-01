@@ -565,8 +565,10 @@ the shop operated in 1H 2026 as it did throughout 2025, including manual reorder
 intact (with stale lead times and reorder points). Baseline assumes the same manual reordering on cleaned
 records.</p>
 {compare_table()}
-<p>The model carries more stock than manual reordering on the cleaned records and slightly more than the status
-quo over the same six months.</p>
+<p>The model carries more stock than baseline and slightly more than the status quo over the same six months. Its
+buffers are sized to the fill-rate targets on the items with the widest forecast error, where the manual rule's thin
+buffers are what produce its stockouts; part of the 2026 figure also reflects the over-correction on intermittent
+items that the monitor flagged for retraining.</p>
 {B.chart("Average inventory by month, January to June 2026", charts["invm"])}
 
 {B.section("limits", "Section 3.3", "Assumptions &amp; Limitations")}
