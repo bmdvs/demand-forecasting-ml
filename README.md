@@ -36,12 +36,6 @@ The model's reorder suggestions are embedded in the shop's existing ERP purchasi
 
 [![ERP reorder queue with embedded demand forecasts](docs/screenshots/erp_queue.png)](https://bmdvs.github.io/demand-forecasting-ml/docs/index.html)
 
-Its results over the six months it has run the shop's reorders, against the two ways the shop could have reordered without it:
-
-[![Model outcomes, January to June 2026](docs/screenshots/model_outcomes.png)](https://bmdvs.github.io/demand-forecasting-ml/docs/reports/model_overview.html)
-
-> [**Open the live reorder queue →**](https://bmdvs.github.io/demand-forecasting-ml/docs/index.html)
-
 ---
 
 ## Business Context
