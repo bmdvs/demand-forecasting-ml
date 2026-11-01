@@ -20,7 +20,7 @@ conversions on file, the duplicate records retired to their survivors and the
 bills of materials corrected. Value is the book balance on the date at
 standard cost, the class median where the cost is blank.
 
-Run:  python -m reports.reliability
+Run:  python -m docs.build.reliability
 """
 from __future__ import annotations
 

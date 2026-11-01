@@ -42,7 +42,7 @@ resources:
               experiment_root: ${var.experiment_root}
               job_run_id: "{{job.run_id}}"
           libraries:
-            - whl: ../dist/bundle/*.whl
+            - whl: ../../dist/bundle/*.whl
         - task_key: promote
           depends_on:
             - task_key: train
@@ -56,7 +56,7 @@ resources:
               job_run_id: "{{job.run_id}}"
               auto_promote: "{{job.parameters.auto_promote}}"
           libraries:
-            - whl: ../dist/bundle/*.whl
+            - whl: ../../dist/bundle/*.whl
         - task_key: score
           depends_on:
             - task_key: promote
@@ -69,7 +69,7 @@ resources:
               experiment_root: ${var.experiment_root}
               job_run_id: "{{job.run_id}}"
           libraries:
-            - whl: ../dist/bundle/*.whl
+            - whl: ../../dist/bundle/*.whl
         - task_key: monitor
           depends_on:
             - task_key: score
@@ -83,4 +83,4 @@ resources:
               job_run_id: "{{job.run_id}}"
               forward_results: ${var.landing_root}/truth/forward_results/${var.extract_pass}/forward_results.json
           libraries:
-            - whl: ../dist/bundle/*.whl
+            - whl: ../../dist/bundle/*.whl

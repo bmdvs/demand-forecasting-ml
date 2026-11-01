@@ -8,7 +8,7 @@ within two weeks of it are ORDER SOON, and each line flags where the cleanup
 changed the item (merged record, corrected lead time, corrected bill, restored
 history) so the buyer sees why a number moved. Writes docs/index.html.
 
-Run:  python -m reports.generate_reorder_queue
+Run:  python -m docs.build.generate_reorder_queue
 """
 from __future__ import annotations
 
@@ -19,7 +19,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-REPO = Path(__file__).resolve().parents[1]
+REPO = Path(__file__).resolve().parents[2]
 RAW = REPO / "data_source" / "raw"
 REM = RAW / "remediation"
 OUT = REPO / "docs" / "index.html"
@@ -27,7 +27,7 @@ OUT = REPO / "docs" / "index.html"
 import sys
 sys.path.insert(0, str(REPO))
 from data_source.generate import config as C  # noqa: E402
-from reports import sources as SR  # noqa: E402
+from docs.build import sources as SR  # noqa: E402
 
 AS_OF = C.AS_OF_DATE
 ORDER_COVER_DAYS = C.ORDER_COVER_DAYS

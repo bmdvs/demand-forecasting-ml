@@ -7,7 +7,7 @@ environment (DFM_WAREHOUSE_ID) or --warehouse-id, never from the repository. The
 stopped at the end unless --keep-running is given.
 
 Usage:
-  python tests/parity/export_tables.py --profile PROFILE --catalog dfm_dev --schemas silver,gold --out DIR
+  python src/tests/parity/export_tables.py --profile PROFILE --catalog dfm_dev --schemas silver,gold --out DIR
 """
 from __future__ import annotations
 

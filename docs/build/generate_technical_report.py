@@ -4,9 +4,9 @@ Model card, training data, model selection and performance, the feature study, f
 usage forecast becomes a reorder point and an order quantity, known limitations, deployment and operations,
 and an appendix of the feature study's tables. Figures come from the champion's training run as the parity
 reference archived it (S1 result, 2025 test predictions and feature frame), the feature-study ladder in
-exports/feature_study/, and the gold snapshot (schedule, monitoring tables, registry): reports/sources.py.
+docs/data/feature_study/, and the gold snapshot (schedule, monitoring tables, registry): docs/build/sources.py.
 
-    PYTHONIOENCODING=utf-8 .venv/Scripts/python -m reports.generate_technical_report
+    PYTHONIOENCODING=utf-8 .venv/Scripts/python -m docs.build.generate_technical_report
 """
 import json
 from math import erf, exp, pi, sqrt
@@ -19,7 +19,7 @@ from . import brand as B
 from . import sources as SR
 from .brand import DARK_BLUE, LIGHT_BLUE, MED_GREY, LIGHT_GREY, GREEN, AMBER, ACCENT_RED
 
-REPO = Path(__file__).resolve().parents[1]
+REPO = Path(__file__).resolve().parents[2]
 RAW = REPO / "data_source" / "raw"
 SEQ = SR.REFERENCE / "runs" / "seq" / "ladder"
 OUT = REPO / "docs" / "reports" / "technical_report.html"
@@ -42,7 +42,7 @@ assert {k: int((REF["split"] == k).sum()) for _, k in SPLITS} == {"train": C["ro
 pred = pd.read_parquet(SEQ / "pred_S1.parquet")                      # 2025 test rows
 pred["fc"] = pred[f"predc_{WIN}"]                                    # bias-corrected total forecast
 
-# ── the feature study (exports/feature_study/) ─────────────────────────────────────────
+# ── the feature study (docs/data/feature_study/) ─────────────────────────────────────────
 LADDER = [("reference", "Reference (usage history)"), ("S1", "Order book"), ("S2", "Product families"),
           ("S3", "Shortage history"), ("S4a", "Lifecycle"), ("S4b", "Lifecycle, longer history"),
           ("S5", "Supply"), ("S6", "Calendar")]

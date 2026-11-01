@@ -11,8 +11,8 @@ With --score-archive the policy scores a second archive's tables with the model 
 dfm-score does at pass 2 when the champion was trained at pass 1.
 
 Usage:
-  python tests/parity/run_package.py --archive DIR --out DIR [--no-shap] [--score-archive DIR]
-  python tests/parity/run_package.py --tables DIR --landing DIR [--pass pass1] --out DIR [--no-shap]
+  python src/tests/parity/run_package.py --archive DIR --out DIR [--no-shap] [--score-archive DIR]
+  python src/tests/parity/run_package.py --tables DIR --landing DIR [--pass pass1] --out DIR [--no-shap]
 """
 from __future__ import annotations
 
@@ -22,7 +22,7 @@ import sys
 import time
 from pathlib import Path
 
-REPO = Path(__file__).resolve().parents[2]
+REPO = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(REPO / "src"))
 
 from dfm import store as S  # noqa: E402

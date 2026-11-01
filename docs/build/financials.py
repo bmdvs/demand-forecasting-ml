@@ -23,7 +23,7 @@ and with what kind of money it is:
                 reorder point on a dead item); reported with how often it was
                 acted on
 
-Run:  python -m reports.financials
+Run:  python -m docs.build.financials
 """
 from __future__ import annotations
 
@@ -35,7 +35,7 @@ import pandas as pd
 
 from pathlib import Path
 
-REPO = Path(__file__).resolve().parents[1]
+REPO = Path(__file__).resolve().parents[2]
 from data_source.generate import config as _C
 
 C_REM_START, C_REM_END = _C.REMEDIATION_START, _C.REMEDIATION_END

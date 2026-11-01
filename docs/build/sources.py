@@ -1,11 +1,11 @@
-"""Inputs of the report generators, read from the gold snapshot (exports/gold_snapshot/).
+"""Inputs of the report generators, read from the gold snapshot (docs/data/gold_snapshot/).
 
 Each function returns its input in the form the generators have always read: the mart files' column names
 and types, the reorder schedule as its document, the monitor's summary and CSV tables, the forward results
 with their replayed variants. The snapshot's MANIFEST.json says which table, Delta version and job run each
 file came from. Inputs the snapshot does not carry stay where they are: the local analyses in ml/data
 (weekly model metrics, three-way training, explain outputs, reliability, financials), the extracts and the
-truth files in data_source/, and the feature-study ladder in exports/feature_study/.
+truth files in data_source/, and the feature-study ladder in docs/data/feature_study/.
 
 The reorder schedule document's settings (planning origins, fill-rate targets, lot rules, service factors)
 are not table columns; they are read from the parity reference's schedule document, and the items from the
@@ -19,11 +19,11 @@ from pathlib import Path
 
 import pandas as pd
 
-REPO = Path(__file__).resolve().parents[1]
-SNAP = REPO / "exports" / "gold_snapshot"
+REPO = Path(__file__).resolve().parents[2]
+SNAP = REPO / "docs" / "data" / "gold_snapshot"
 REFERENCE = REPO / "reference" / "2026-10_post_signal_update"
 TRUTH = REPO / "data_source" / "truth"
-LADDER = REPO / "exports" / "feature_study"
+LADDER = REPO / "docs" / "data" / "feature_study"
 
 
 def _read(folder: str, name: str) -> pd.DataFrame:

@@ -6,7 +6,7 @@ archive's mart files and extracts; data quality from the archive's warehouse fil
 the extracts at ../data_source, so the file is opened from a scratch folder whose data_source points at
 the archive's). Forward results: the archive's truth file.
 
-Usage: python tests/parity/run_monitor.py --archive DIR --out DIR [--reference DIR] [--scratch DIR]
+Usage: python src/tests/parity/run_monitor.py --archive DIR --out DIR [--reference DIR] [--scratch DIR]
 """
 from __future__ import annotations
 
@@ -19,7 +19,7 @@ from pathlib import Path
 
 import pandas as pd
 
-ROOT = Path(__file__).resolve().parents[2]
+ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(ROOT / "src"))
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 

@@ -18,7 +18,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import brand as B
 import sources as SR
 
-REPO = Path(__file__).resolve().parents[1]
+REPO = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(REPO))
 from data_source.generate import config as C
 RAW = REPO / "data_source" / "raw"
@@ -110,7 +110,7 @@ def gather():
     d["inv_value_total"] = float(rs["before"]["total"]["value"])
     d["inv_value_after"] = float(rs["after"]["total"]["value"])
 
-    # ── financial impact, measured from the records (reports/financials.py) ──
+    # ── financial impact, measured from the records (docs/build/financials.py) ──
     d["fin"] = json.loads((FIN / "financials.json").read_text())
 
     # ── defect burden ───────────────────────────────────────────────────────

@@ -4,7 +4,7 @@ Reads the update's events with the Databricks CLI and prints, per dataset, the r
 each expectation's passed and failed record counts, then the update's start, end and state.
 
 Usage:
-  python tests/parity/pipeline_update.py --profile PROFILE PIPELINE_ID UPDATE_ID [--json out.json]
+  python src/tests/parity/pipeline_update.py --profile PROFILE PIPELINE_ID UPDATE_ID [--json out.json]
 """
 from __future__ import annotations
 

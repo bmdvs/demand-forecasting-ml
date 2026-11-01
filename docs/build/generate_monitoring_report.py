@@ -2,10 +2,10 @@
 
 Status and retraining decision, then the monitoring layers (performance, drift, data quality), the business
 KPIs the reorder policy is accountable for, the supplier lead-time review, and the monitoring log. Monthly over
-the live window, January to June 2026, from the gold snapshot's monitoring tables (reports/sources.py), with
+the live window, January to June 2026, from the gold snapshot's monitoring tables (docs/build/sources.py), with
 the champion's 2025 predictions from the parity reference and the replay's monthly results.
 
-    PYTHONIOENCODING=utf-8 .venv/Scripts/python -m reports.generate_monitoring_report
+    PYTHONIOENCODING=utf-8 .venv/Scripts/python -m docs.build.generate_monitoring_report
 """
 import json
 from pathlib import Path
@@ -17,7 +17,7 @@ from . import brand as B
 from . import sources as SR
 from .brand import DARK_BLUE, LIGHT_BLUE, ACCENT_RED, AMBER, GREEN, MED_GREY, BG_GREY, DARK_GREY
 
-REPO = Path(__file__).resolve().parents[1]
+REPO = Path(__file__).resolve().parents[2]
 RAW = REPO / "data_source" / "raw"
 TRUTH = REPO / "data_source" / "truth"
 SEQ = SR.REFERENCE / "runs" / "seq" / "ladder"

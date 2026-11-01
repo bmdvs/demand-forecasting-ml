@@ -1,6 +1,6 @@
 """Export the gold snapshot the report generators read, as Parquet and CSV with a manifest.
 
-Contents (exports/gold_snapshot/):
+Contents (docs/data/gold_snapshot/):
   tables/      the gold tables the generators read (and the item crosswalk from silver), each at the Delta
                version of the run whose outputs the deliverables describe: the warehouse marts as the final
                pipeline update left them, the model tables of the run that issued the schedule in force
@@ -18,7 +18,7 @@ stopped at the end.
 Usage:
   python infra/export_gold_snapshot.py --profile PROFILE --catalog dfm --version gold.weekly_backtest=1 \
       --version gold.reorder_schedule=1 --version gold.reorder_queue=1 --issued-run JOB_RUN_ID \
-      --monitor-run JOB_RUN_ID --pass pass2 [--out exports/gold_snapshot]
+      --monitor-run JOB_RUN_ID --pass pass2 [--out docs/data/gold_snapshot]
 """
 from __future__ import annotations
 
@@ -37,7 +37,7 @@ import pyarrow as pa
 import pyarrow.parquet as pq
 
 REPO = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(REPO / "tests" / "parity"))
+sys.path.insert(0, str(REPO / "src" / "tests" / "parity"))
 import export_tables as E  # noqa: E402  (the statement API reader shared with the parity runner)
 
 MODEL = "ml.demand_models"
@@ -118,7 +118,7 @@ def main() -> None:
     ap.add_argument("--monitor-run", required=True, help="job run whose monitor wrote the monitoring tables")
     ap.add_argument("--pass", dest="pass_name", default="pass2", help="landing pass of the warehouse tables")
     ap.add_argument("--landing-root", default="/Volumes/dfm/landing/exports")
-    ap.add_argument("--out", type=Path, default=REPO / "exports" / "gold_snapshot")
+    ap.add_argument("--out", type=Path, default=REPO / "docs" / "data" / "gold_snapshot")
     a = ap.parse_args()
     if not a.warehouse_id:
         raise SystemExit("set DFM_WAREHOUSE_ID or pass --warehouse-id")

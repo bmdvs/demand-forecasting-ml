@@ -7,7 +7,7 @@ It does not replace the pipeline update; parity is reported on the tables the pi
 Requires pyspark matching the runtime's Spark minor version and a Java runtime.
 
 Usage:
-  python tests/parity/run_local_spark.py --landing runs/landing/files --pass pass1 --out runs/parity/local/pass1
+  python src/tests/parity/run_local_spark.py --landing runs/landing/files --pass pass1 --out runs/parity/local/pass1
 """
 from __future__ import annotations
 
@@ -19,7 +19,7 @@ from pathlib import Path
 
 import pyarrow.parquet as pq
 
-REPO = Path(__file__).resolve().parents[2]
+REPO = Path(__file__).resolve().parents[3]
 CREATE = re.compile(r"CREATE OR REFRESH (PRIVATE )?(STREAMING TABLE|MATERIALIZED VIEW) ([\w.]+)", re.S)
 CONSTRAINT = re.compile(r"CONSTRAINT (\w+) EXPECT \((.*)\)(?: ON VIOLATION (FAIL UPDATE|DROP ROW))?,?\s*$")
 REF = re.compile(r"\b(bronze|silver|gold)\.(\w+)")
